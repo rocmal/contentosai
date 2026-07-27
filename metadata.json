@@ -1,0 +1,6 @@
+{
+  "name": "Lumora",
+  "description": "Lumora is an AI-powered Content Operating System that enables businesses, creators, agencies, and enterprises to plan, create, generate, edit, automate, publish, and analyze content from one intelligent workspace.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
