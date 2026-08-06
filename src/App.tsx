@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import { CommandPalette } from './components/CommandPalette';
 import { FloatingAIAssistant } from './components/FloatingAIAssistant';
 import { GuidedTourModal } from './components/GuidedTourModal';
 import { Header } from './components/Header';
+import { LandingPage } from './components/LandingPage';
+import { LoginView } from './components/LoginView';
 import { MobileNav } from './components/MobileNav';
 import { Sidebar } from './components/Sidebar';
+import { useAuth } from './contexts/AuthContext';
 
 import { AIAgentsView } from './components/views/AIAgentsView';
 import { AIStudioView } from './components/views/AIStudioView';
@@ -25,6 +29,7 @@ import { SettingsView } from './components/views/SettingsView';
 import { TeamView } from './components/views/TeamView';
 import { VideoStudioView } from './components/views/VideoStudioView';
 import { VoiceStudioView } from './components/views/VoiceStudioView';
+import { CharacterStudioView } from './components/views/CharacterStudioView';
 
 import {
   initialAIAgents,
@@ -46,8 +51,54 @@ import {
   WorkflowNode,
 } from './types';
 
+const VIEW_TYPES: ViewType[] = [
+  'dashboard',
+  'ai-studio',
+  'projects',
+  'campaigns',
+  'calendar',
+  'video-studio',
+  'image-studio',
+  'voice-studio',
+  'character-studio',
+  'brand-brain',
+  'media-library',
+  'automation',
+  'ai-agents',
+  'analytics',
+  'marketplace',
+  'team',
+  'integrations',
+  'billing',
+  'settings',
+  'help',
+];
+
+function isViewType(value: string): value is ViewType {
+  return (VIEW_TYPES as string[]).includes(value);
+}
+
+/** Reads the current view straight out of the URL hash (e.g. "#video-studio")
+ * so a bookmark/refresh/paste lands on the same screen instead of always
+ * resetting to Dashboard - this app has no router, the hash is the only
+ * thing that survives a full page load. */
+function getViewFromHash(): ViewType | null {
+  const hash = window.location.hash.replace(/^#/, '');
+  return isViewType(hash) ? hash : null;
+}
+
+/** Logged-out visitors get two real paths - "/" (LandingPage) and "/login"
+ * (LoginView) - via plain pushState instead of a router dependency, since
+ * server.ts already falls back to index.html for any unmatched path in both
+ * dev (Vite's appType: 'spa') and prod (its explicit `app.get('*', ...)`). */
+function getPublicRouteFromPath(): 'landing' | 'login' {
+  return window.location.pathname === '/login' ? 'login' : 'landing';
+}
+
 export function App() {
-  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
+  const { isAuthenticated, isLoading } = useAuth();
+  const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromHash() ?? 'dashboard');
+  const [publicRoute, setPublicRoute] = useState<'landing' | 'login'>(() => getPublicRouteFromPath());
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
@@ -71,6 +122,51 @@ export function App() {
     }
   }, [darkMode]);
 
+  // Keep the URL hash in sync with the current view - lets a bookmark,
+  // refresh, or pasted link (e.g. http://localhost:3000/#video-studio) open
+  // directly to that screen, and makes browser back/forward move between
+  // views instead of doing nothing.
+  useEffect(() => {
+    if (window.location.hash.replace(/^#/, '') !== currentView) {
+      window.location.hash = currentView;
+    }
+  }, [currentView]);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const view = getViewFromHash();
+      if (view) setCurrentView(view);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => setPublicRoute(getPublicRouteFromPath());
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const navigateToLogin = () => {
+    window.history.pushState({}, '', '/login');
+    setPublicRoute('login');
+  };
+
+  const navigateToLanding = () => {
+    window.history.pushState({}, '', '/');
+    setPublicRoute('landing');
+  };
+
+  // Land on Integrations after the Meta OAuth redirect (?meta_connected=1 /
+  // ?meta_error=...) so the connect result is actually visible, even if the
+  // callback redirect ever loses its #integrations hash for some reason.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('meta_connected') || params.has('meta_error')) {
+      setCurrentView('integrations');
+    }
+  }, []);
+
   const handleSaveToCalendar = (item: any) => {
     const newEv: CalendarEvent = {
       id: `cal-${Date.now()}`,
@@ -88,6 +184,22 @@ export function App() {
   const handleRunQuickAI = (prompt: string) => {
     setCurrentView('ai-studio');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return publicRoute === 'login' ? (
+      <LoginView onBack={navigateToLanding} />
+    ) : (
+      <LandingPage onLoginClick={navigateToLogin} />
+    );
+  }
 
   return (
     <div className={`min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-150`}>
@@ -153,11 +265,7 @@ export function App() {
           )}
 
           {currentView === 'calendar' && (
-            <ContentCalendarView
-              events={calendarEvents}
-              onNavigate={(v) => setCurrentView(v)}
-              onUpdateEvents={(evs) => setCalendarEvents(evs)}
-            />
+            <ContentCalendarView onNavigate={(v) => setCurrentView(v)} />
           )}
 
           {currentView === 'video-studio' && (
@@ -170,6 +278,10 @@ export function App() {
 
           {currentView === 'voice-studio' && (
             <VoiceStudioView onNavigate={(v) => setCurrentView(v)} />
+          )}
+
+          {currentView === 'character-studio' && (
+            <CharacterStudioView onNavigate={(v) => setCurrentView(v)} />
           )}
 
           {currentView === 'media-library' && (

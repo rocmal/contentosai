@@ -1,17 +1,24 @@
 import React from 'react';
 import { Check, CreditCard, Sparkles, Zap } from 'lucide-react';
 import { ViewType } from '../../types';
+import { PRICING_PLANS, formatPlanPrice } from '../../lib/pricingPlans';
 
 interface BillingViewProps {
   onNavigate: (view: ViewType) => void;
 }
 
 export const BillingView: React.FC<BillingViewProps> = ({ onNavigate }) => {
-  const plans = [
-    { name: 'Starter', price: '$49', credits: '2,500 Credits / mo', active: false },
-    { name: 'Pro OS', price: '$149', credits: '10,000 Credits / mo', active: true },
-    { name: 'Enterprise OS', price: '$499', credits: 'Unlimited AI Credits', active: false },
-  ];
+  const plans = PRICING_PLANS.map((plan) => {
+    const custom = plan.priceMonthly == null;
+    return {
+      name: plan.name,
+      price: formatPlanPrice(plan, 'monthly').priceDisplay,
+      period: custom ? '' : '/month',
+      credits: plan.credits,
+      custom,
+      active: plan.key === 'pro',
+    };
+  });
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
@@ -35,7 +42,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ onNavigate }) => {
       <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 to-blue-950 text-white space-y-4 shadow-xl border border-slate-800">
         <div className="flex justify-between items-center text-xs font-semibold">
           <span className="flex items-center gap-1">
-            <Sparkles className="w-4 h-4 text-blue-400" /> Current Plan: Pro OS Plan
+            <Sparkles className="w-4 h-4 text-blue-400" /> Current Plan: Pro Plan
           </span>
           <span className="font-mono text-blue-300">8,450 / 10,000 Credits Remaining</span>
         </div>
@@ -64,18 +71,18 @@ export const BillingView: React.FC<BillingViewProps> = ({ onNavigate }) => {
               )}
             </div>
 
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{p.price}<span className="text-xs font-medium text-slate-400">/month</span></p>
+            <p className="text-2xl font-black text-slate-900 dark:text-white">{p.price}<span className="text-xs font-medium text-slate-400">{p.period}</span></p>
             <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">{p.credits}</p>
 
             <button
-              onClick={() => alert(`Upgraded to ${p.name}`)}
+              onClick={() => (p.custom ? window.open('mailto:sales@lumoraos.in') : alert(`Upgraded to ${p.name}`))}
               className={`w-full py-2.5 rounded-xl font-semibold text-xs transition-colors ${
                 p.active
                   ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'
                   : 'bg-blue-600 hover:bg-blue-500 text-white'
               }`}
             >
-              {p.active ? 'Active Plan' : 'Upgrade Plan'}
+              {p.active ? 'Active Plan' : p.custom ? 'Contact Sales' : 'Upgrade Plan'}
             </button>
           </div>
         ))}
