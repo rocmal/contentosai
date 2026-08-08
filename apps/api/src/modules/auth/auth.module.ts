@@ -5,7 +5,10 @@ import { PassportModule } from '@nestjs/passport';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { UsersModule } from '@modules/users/users.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
+import { WorkspacesModule } from '@modules/workspaces/workspaces.module';
 import { RolesModule } from '@modules/roles/roles.module';
+import { BillingModule } from '@modules/billing/billing.module';
+import { CreditsModule } from '@modules/credits/credits.module';
 import { RefreshTokenModel } from './infrastructure/persistence/refresh-token.model';
 import { EmailVerificationTokenModel } from './infrastructure/persistence/email-verification-token.model';
 import { PasswordResetTokenModel } from './infrastructure/persistence/password-reset-token.model';
@@ -46,7 +49,10 @@ import { AuthController } from './presentation/auth.controller';
     }),
     UsersModule,
     OrganizationsModule,
+    WorkspacesModule,
     RolesModule,
+    BillingModule,
+    CreditsModule,
   ],
   controllers: [AuthController],
   providers: [

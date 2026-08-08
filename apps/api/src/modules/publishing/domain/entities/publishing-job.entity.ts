@@ -13,4 +13,5 @@ export interface PublishingJob extends BaseTenantEntity {
   scheduledAt: Date | null;
   publishedAt: Date | null;
   externalPostId: string | null;
+  permalink: string | null;
 }

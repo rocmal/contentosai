@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowUpRight,
   BarChart2,
@@ -9,6 +9,7 @@ import {
   Clock,
   ExternalLink,
   FolderKanban,
+  Loader2,
   Megaphone,
   Plus,
   Share2,
@@ -19,25 +20,70 @@ import {
   Zap,
 } from 'lucide-react';
 import {
-  CalendarEvent,
-  GenerationHistoryItem,
   Project,
   ViewType,
 } from '../../types';
+import { listContent, listMyGallery, listScheduledPosts, MediaAsset, PublishingJob } from '../../lib/api';
 
 interface DashboardViewProps {
   onNavigate: (view: ViewType) => void;
   projects: Project[];
-  calendarEvents: CalendarEvent[];
-  generations: GenerationHistoryItem[];
+}
+
+interface QueueItem {
+  job: PublishingJob;
+  title: string;
+}
+
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+function formatScheduledTime(iso: string | null): string {
+  if (!iso) return 'Not yet scheduled';
+  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   projects,
-  calendarEvents,
-  generations,
 }) => {
+  const [generations, setGenerations] = useState<MediaAsset[] | null>(null);
+  const [queue, setQueue] = useState<QueueItem[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    listMyGallery(undefined, 5)
+      .then((items) => {
+        if (!cancelled) setGenerations(items);
+      })
+      .catch(() => {
+        if (!cancelled) setGenerations([]);
+      });
+    Promise.all([listScheduledPosts(), listContent()])
+      .then(([jobs, content]) => {
+        if (cancelled) return;
+        const contentById = new Map(content.map((c) => [c.id, c]));
+        const items = jobs
+          .filter((job) => job.status === 'scheduled')
+          .slice(0, 3)
+          .map((job) => ({ job, title: (job.contentId && contentById.get(job.contentId)?.title) || 'Untitled' }));
+        setQueue(items);
+      })
+      .catch(() => {
+        if (!cancelled) setQueue([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-200">
       {/* Hero Greeting Section */}
@@ -243,30 +289,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
-            {calendarEvents.slice(0, 3).map((event) => (
-              <div
-                key={event.id}
-                className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50 space-y-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                    {event.platform} • {event.contentType}
-                  </span>
-                  <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {event.scheduledTime}
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
-                  {event.title}
-                </p>
-                <div className="flex items-center justify-between pt-1">
-                  <span className="text-[10px] text-slate-400">By {event.author}</span>
-                  <span className="px-2 py-0.5 text-[10px] font-semibold rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                    {event.status}
-                  </span>
-                </div>
+            {queue === null ? (
+              <div className="flex items-center justify-center py-6 text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
               </div>
-            ))}
+            ) : queue.length === 0 ? (
+              <p className="text-[11px] text-slate-400 text-center py-6">
+                Nothing queued. Generate content in AI Studio and schedule it to see it here.
+              </p>
+            ) : (
+              queue.map(({ job, title }) => (
+                <div
+                  key={job.id}
+                  className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50 space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      {job.platform}
+                    </span>
+                    <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> {formatScheduledTime(job.scheduledAt)}
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
+                    {title}
+                  </p>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -289,23 +339,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="space-y-3">
-            {generations.map((gen) => (
-              <div
-                key={gen.id}
-                className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-1.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded">
-                    {gen.type}
-                  </span>
-                  <span className="text-[10px] text-slate-400">{gen.createdAt}</span>
-                </div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">{gen.title}</h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-                  {gen.preview}
-                </p>
+            {generations === null ? (
+              <div className="flex items-center justify-center py-8 text-slate-400">
+                <Loader2 className="w-4 h-4 animate-spin" />
               </div>
-            ))}
+            ) : generations.length === 0 ? (
+              <p className="text-[11px] text-slate-400 text-center py-8">
+                No generations yet. Run the AI Studio wizard or a Studio to create your first asset.
+              </p>
+            ) : (
+              generations.map((gen) => (
+                <div
+                  key={gen.id}
+                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded uppercase">
+                      {gen.type}
+                    </span>
+                    <span className="text-[10px] text-slate-400">{timeAgo(gen.createdAt)}</span>
+                  </div>
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
+                    {gen.fileName}
+                  </h4>
+                  {gen.prompt && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                      {gen.prompt}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
 

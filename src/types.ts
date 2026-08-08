@@ -7,6 +7,7 @@ export type ViewType =
   | 'video-studio'
   | 'image-studio'
   | 'voice-studio'
+  | 'character-studio'
   | 'brand-brain'
   | 'media-library'
   | 'automation'
@@ -17,6 +18,7 @@ export type ViewType =
   | 'integrations'
   | 'billing'
   | 'settings'
+  | 'profile'
   | 'help';
 
 export type ThemeMode = 'light' | 'dark';
@@ -30,6 +32,8 @@ export interface UserProfile {
 }
 
 export interface BrandBrain {
+  /** Present once loaded from/saved to the real brand-profiles backend; absent for the local mock default shown before that fetch resolves. */
+  id?: string;
   businessName: string;
   industry: string;
   tagline: string;
@@ -45,6 +49,8 @@ export interface BrandBrain {
   targetAudience: string;
   competitors: string[];
   keywords: string[];
+  /** Freeform sample of the brand's writing style / voice guidelines. */
+  guidelines?: string;
   socialAccounts: {
     platform: string;
     handle: string;
@@ -63,38 +69,22 @@ export interface Project {
   thumbnail?: string;
 }
 
+export type CampaignStatus = 'draft' | 'active' | 'completed' | 'archived';
+
+/** Mirrors apps/api CampaignResponseDto - only the fields the backend
+ * actually persists. No platforms/progress/reach/postsCount - those were
+ * mock-only display fields with no backing data model. */
 export interface Campaign {
   id: string;
+  organizationId: string;
+  workspaceId: string;
   name: string;
-  status: 'Active' | 'Draft' | 'Completed' | 'Scheduled';
-  platforms: string[];
-  startDate: string;
-  endDate: string;
-  contentCount: number;
-  goal: string;
-  reach: string;
-}
-
-export interface CalendarEvent {
-  id: string;
-  title: string;
-  platform: 'Instagram' | 'LinkedIn' | 'YouTube' | 'TikTok' | 'Twitter/X' | 'Blog' | 'Newsletter';
-  contentType: string;
-  scheduledTime: string;
-  status: 'Draft' | 'Review' | 'Approved' | 'Published' | 'Rejected';
-  author: string;
-  previewText?: string;
-  mediaUrl?: string;
-}
-
-export interface GenerationHistoryItem {
-  id: string;
-  title: string;
-  type: string;
-  provider: string;
+  description: string | null;
+  status: CampaignStatus;
+  startDate: string | null;
+  endDate: string | null;
   createdAt: string;
-  preview: string;
-  tags: string[];
+  updatedAt: string;
 }
 
 export interface AIAgent {
@@ -108,24 +98,6 @@ export interface AIAgent {
   tasksCompleted: number;
   accuracy: string;
   currentTask?: string;
-}
-
-export interface WorkflowNode {
-  id: string;
-  type: 'trigger' | 'research' | 'generate' | 'review' | 'publish' | 'analytics' | 'notification' | 'condition' | 'delay' | 'loop' | 'agent';
-  title: string;
-  description: string;
-  icon: string;
-  position: { x: number; y: number };
-  status?: 'success' | 'running' | 'idle' | 'failed';
-  config?: Record<string, any>;
-}
-
-export interface WorkflowEdge {
-  id: string;
-  source: string;
-  target: string;
-  label?: string;
 }
 
 export interface IntegrationItem {

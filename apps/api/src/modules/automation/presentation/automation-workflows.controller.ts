@@ -3,10 +3,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
-import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { AutomationWorkflowsService } from '../application/services/automation-workflows.service';
 import { CreateAutomationWorkflowDto } from '../application/dto/create-automation-workflow.dto';
 import { UpdateAutomationWorkflowDto } from '../application/dto/update-automation-workflow.dto';
+import { ListAutomationWorkflowsQueryDto } from '../application/dto/list-automation-workflows-query.dto';
 import { AutomationWorkflowResponseDto } from '../application/dto/automation-workflow-response.dto';
 
 @ApiTags('automation')
@@ -28,13 +28,18 @@ export class AutomationWorkflowsController {
 
   @Get()
   @RequirePermissions('automation.read')
-  @ApiOperation({ summary: 'List automation workflows' })
-  async findAll(@Query() query: PaginationQueryDto) {
+  @ApiOperation({ summary: 'List automation workflows (pass organizationId/workspaceId to scope to one tenant)' })
+  async findAll(@Query() query: ListAutomationWorkflowsQueryDto) {
+    const filters: Record<string, string> = {};
+    if (query.organizationId) filters.organizationId = query.organizationId;
+    if (query.workspaceId) filters.workspaceId = query.workspaceId;
+
     const result = await this.automationWorkflowsService.findAll({
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+      filters: Object.keys(filters).length ? filters : undefined,
     });
     return {
       items: result.items.map(

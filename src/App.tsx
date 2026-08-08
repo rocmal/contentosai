@@ -9,6 +9,7 @@ import { LoginView } from './components/LoginView';
 import { MobileNav } from './components/MobileNav';
 import { Sidebar } from './components/Sidebar';
 import { useAuth } from './contexts/AuthContext';
+import { getMyBrandProfile, getSetting, setSetting } from './lib/api';
 
 import { AIAgentsView } from './components/views/AIAgentsView';
 import { AIStudioView } from './components/views/AIStudioView';
@@ -26,6 +27,7 @@ import { MarketplaceView } from './components/views/MarketplaceView';
 import { MediaLibraryView } from './components/views/MediaLibraryView';
 import { ProjectsView } from './components/views/ProjectsView';
 import { SettingsView } from './components/views/SettingsView';
+import { ProfileView } from './components/views/ProfileView';
 import { TeamView } from './components/views/TeamView';
 import { VideoStudioView } from './components/views/VideoStudioView';
 import { VoiceStudioView } from './components/views/VoiceStudioView';
@@ -34,21 +36,13 @@ import { CharacterStudioView } from './components/views/CharacterStudioView';
 import {
   initialAIAgents,
   initialBrandBrain,
-  initialCalendarEvents,
-  initialCampaigns,
-  initialGenerations,
   initialProjects,
-  initialWorkflowNodes,
 } from './mockData';
 import {
   AIAgent,
   BrandBrain,
-  CalendarEvent,
-  Campaign,
-  GenerationHistoryItem,
   Project,
   ViewType,
-  WorkflowNode,
 } from './types';
 
 const VIEW_TYPES: ViewType[] = [
@@ -71,6 +65,7 @@ const VIEW_TYPES: ViewType[] = [
   'integrations',
   'billing',
   'settings',
+  'profile',
   'help',
 ];
 
@@ -87,30 +82,71 @@ function getViewFromHash(): ViewType | null {
   return isViewType(hash) ? hash : null;
 }
 
-/** Logged-out visitors get two real paths - "/" (LandingPage) and "/login"
- * (LoginView) - via plain pushState instead of a router dependency, since
- * server.ts already falls back to index.html for any unmatched path in both
- * dev (Vite's appType: 'spa') and prod (its explicit `app.get('*', ...)`). */
-function getPublicRouteFromPath(): 'landing' | 'login' {
-  return window.location.pathname === '/login' ? 'login' : 'landing';
+/** Logged-out visitors get three real paths - "/" (LandingPage), "/login",
+ * and "/signup" (both LoginView, different initial mode) - via plain
+ * pushState instead of a router dependency, since server.ts already falls
+ * back to index.html for any unmatched path in both dev (Vite's appType:
+ * 'spa') and prod (its explicit `app.get('*', ...)`). */
+function getPublicRouteFromPath(): 'landing' | 'login' | 'signup' {
+  if (window.location.pathname === '/login') return 'login';
+  if (window.location.pathname === '/signup') return 'signup';
+  return 'landing';
 }
 
 export function App() {
   const { isAuthenticated, isLoading } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromHash() ?? 'dashboard');
-  const [publicRoute, setPublicRoute] = useState<'landing' | 'login'>(() => getPublicRouteFromPath());
+  const [publicRoute, setPublicRoute] = useState<'landing' | 'login' | 'signup'>(() => getPublicRouteFromPath());
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
   const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
 
   // Application Persistent State
+  // Starts as the local mock so every view has something to render
+  // immediately; replaced by the real persisted profile (if any exists yet)
+  // once the fetch below resolves.
   const [brandBrain, setBrandBrain] = useState<BrandBrain>(initialBrandBrain);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    getMyBrandProfile().then((profile) => {
+      if (!cancelled && profile) setBrandBrain(profile);
+    }).catch(() => {
+      // No brand profile yet, or a transient fetch error - the mock default stays as a starting point.
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  // Dark mode defaults to on (matches the previous hardcoded behavior) until
+  // the workspace's persisted preference (if any) loads.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    getSetting<boolean>('darkMode').then((value) => {
+      if (!cancelled && typeof value === 'boolean') setDarkMode(value);
+    }).catch(() => {
+      // No saved preference yet, or a transient fetch error - the default stays.
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+
+  const toggleDarkMode = () => {
+    setDarkMode((prev) => {
+      const next = !prev;
+      setSetting('darkMode', next).catch(() => {
+        // Best-effort persistence - the toggle still works locally even if this fails.
+      });
+      return next;
+    });
+  };
+
   const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(initialCalendarEvents);
-  const [generations, setGenerations] = useState<GenerationHistoryItem[]>(initialGenerations);
-  const [workflowNodes, setWorkflowNodes] = useState<WorkflowNode[]>(initialWorkflowNodes);
   const [aiAgents, setAiAgents] = useState<AIAgent[]>(initialAIAgents);
 
   // Sync dark mode class
@@ -125,12 +161,23 @@ export function App() {
   // Keep the URL hash in sync with the current view - lets a bookmark,
   // refresh, or pasted link (e.g. http://localhost:3000/#video-studio) open
   // directly to that screen, and makes browser back/forward move between
-  // views instead of doing nothing.
+  // views instead of doing nothing. Only applies to the authenticated app -
+  // otherwise this stamps a stale "#dashboard" onto the logged-out landing
+  // page/login URL before anyone has actually navigated anywhere.
   useEffect(() => {
+    if (!isAuthenticated) return;
     if (window.location.hash.replace(/^#/, '') !== currentView) {
       window.location.hash = currentView;
     }
-  }, [currentView]);
+  }, [currentView, isAuthenticated]);
+
+  // Strip any stray view hash (e.g. a leftover "#dashboard" from a prior
+  // session) while logged out, since the landing page/login have no views.
+  useEffect(() => {
+    if (!isAuthenticated && window.location.hash) {
+      window.history.replaceState({}, '', window.location.pathname + window.location.search);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -152,6 +199,11 @@ export function App() {
     setPublicRoute('login');
   };
 
+  const navigateToSignup = () => {
+    window.history.pushState({}, '', '/signup');
+    setPublicRoute('signup');
+  };
+
   const navigateToLanding = () => {
     window.history.pushState({}, '', '/');
     setPublicRoute('landing');
@@ -167,19 +219,6 @@ export function App() {
     }
   }, []);
 
-  const handleSaveToCalendar = (item: any) => {
-    const newEv: CalendarEvent = {
-      id: `cal-${Date.now()}`,
-      title: item.title || 'Generated Post',
-      platform: item.platform || 'LinkedIn',
-      contentType: item.contentType || 'Post',
-      scheduledTime: 'Tomorrow, 11:00 AM',
-      status: 'Approved',
-      author: 'Alex Rivera',
-      previewText: item.previewText || '',
-    };
-    setCalendarEvents((prev) => [newEv, ...prev]);
-  };
 
   const handleRunQuickAI = (prompt: string) => {
     setCurrentView('ai-studio');
@@ -194,11 +233,13 @@ export function App() {
   }
 
   if (!isAuthenticated) {
-    return publicRoute === 'login' ? (
-      <LoginView onBack={navigateToLanding} />
-    ) : (
-      <LandingPage onLoginClick={navigateToLogin} />
-    );
+    if (publicRoute === 'login') {
+      return <LoginView initialMode="signin" onBack={navigateToLanding} />;
+    }
+    if (publicRoute === 'signup') {
+      return <LoginView initialMode="signup" onBack={navigateToLanding} />;
+    }
+    return <LandingPage onLoginClick={navigateToLogin} onSignupClick={navigateToSignup} />;
   }
 
   return (
@@ -218,7 +259,7 @@ export function App() {
           currentView={currentView}
           onNavigate={(view) => setCurrentView(view)}
           theme={darkMode ? 'dark' : 'light'}
-          onToggleTheme={() => setDarkMode(!darkMode)}
+          onToggleTheme={toggleDarkMode}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           onQuickGenerate={() => setCurrentView('ai-studio')}
           onStartTour={() => setIsTourOpen(true)}
@@ -230,8 +271,6 @@ export function App() {
             <DashboardView
               onNavigate={(v) => setCurrentView(v)}
               projects={projects}
-              calendarEvents={calendarEvents}
-              generations={generations}
             />
           )}
 
@@ -239,7 +278,6 @@ export function App() {
             <AIStudioView
               brandBrain={brandBrain}
               onNavigate={(v) => setCurrentView(v)}
-              onSaveToCalendar={handleSaveToCalendar}
             />
           )}
 
@@ -258,10 +296,7 @@ export function App() {
           )}
 
           {currentView === 'campaigns' && (
-            <CampaignsView
-              campaigns={campaigns}
-              onNavigate={(v) => setCurrentView(v)}
-            />
+            <CampaignsView onNavigate={(v) => setCurrentView(v)} />
           )}
 
           {currentView === 'calendar' && (
@@ -289,10 +324,7 @@ export function App() {
           )}
 
           {currentView === 'automation' && (
-            <AutomationView
-              nodes={workflowNodes}
-              onNavigate={(v) => setCurrentView(v)}
-            />
+            <AutomationView onNavigate={(v) => setCurrentView(v)} />
           )}
 
           {currentView === 'ai-agents' && (
@@ -325,10 +357,12 @@ export function App() {
           {currentView === 'settings' && (
             <SettingsView
               darkMode={darkMode}
-              onToggleDarkMode={() => setDarkMode(!darkMode)}
+              onToggleDarkMode={toggleDarkMode}
               onNavigate={(v) => setCurrentView(v)}
             />
           )}
+
+          {currentView === 'profile' && <ProfileView />}
 
           {currentView === 'help' && (
             <HelpGuideView

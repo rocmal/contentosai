@@ -4,7 +4,15 @@ import {
   IVoiceProvider,
   VoiceGenerationRequest,
   VoiceGenerationResult,
+  VoiceInfo,
 } from '../../domain/interfaces/voice-provider.interface';
+
+interface CartesiaVoice {
+  id: string;
+  name: string;
+  language?: string;
+  gender?: string;
+}
 
 @Injectable()
 export class CartesiaProvider implements IVoiceProvider {
@@ -15,9 +23,12 @@ export class CartesiaProvider implements IVoiceProvider {
 
   constructor(private readonly configService: ConfigService) {}
 
+  private get apiKey(): string {
+    return this.configService.get<string>('ai.voice.cartesia.apiKey') ?? '';
+  }
+
   async generateSpeech(request: VoiceGenerationRequest): Promise<VoiceGenerationResult> {
-    const apiKey = this.configService.get<string>('ai.voice.cartesia.apiKey') ?? '';
-    if (!apiKey) {
+    if (!this.apiKey) {
       throw new ServiceUnavailableException('Cartesia voice generation is not configured');
     }
 
@@ -28,7 +39,7 @@ export class CartesiaProvider implements IVoiceProvider {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-API-Key': apiKey,
+        'X-API-Key': this.apiKey,
         'Cartesia-Version': this.apiVersion,
       },
       body: JSON.stringify({
@@ -51,5 +62,30 @@ export class CartesiaProvider implements IVoiceProvider {
       mimeType: 'audio/mpeg',
       audioBase64: audioBuffer.toString('base64'),
     };
+  }
+
+  async listVoices(): Promise<VoiceInfo[]> {
+    if (!this.apiKey) {
+      return [];
+    }
+
+    const response = await fetch('https://api.cartesia.ai/voices', {
+      headers: { 'X-API-Key': this.apiKey, 'Cartesia-Version': this.apiVersion },
+    });
+    if (!response.ok) {
+      return [];
+    }
+
+    const body = (await response.json()) as CartesiaVoice[];
+    return body.map((voice) => ({
+      id: voice.id,
+      name: voice.name,
+      locale: voice.language,
+      gender: voice.gender,
+    }));
+  }
+
+  async healthCheck(): Promise<boolean> {
+    return !!this.apiKey;
   }
 }

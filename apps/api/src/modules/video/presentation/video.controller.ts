@@ -15,8 +15,13 @@ export class VideoController {
   @Post('generate')
   @RequirePermissions('video.generate')
   @ApiOperation({ summary: 'Submit a video generation job to the selected provider' })
-  async generate(@Body() dto: GenerateVideoDto, @CurrentUser('id') userId: string) {
-    return this.videoService.submitJob(dto, userId);
+  async generate(
+    @Body() dto: GenerateVideoDto,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string | null,
+    @CurrentUser('workspaceId') workspaceId: string | null,
+  ) {
+    return this.videoService.submitJob(dto, { userId, organizationId, workspaceId });
   }
 
   @Get('jobs/:jobId')

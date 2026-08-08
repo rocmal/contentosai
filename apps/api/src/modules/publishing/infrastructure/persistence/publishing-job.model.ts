@@ -37,4 +37,7 @@ export class PublishingJobModel extends BaseModel {
 
   @Column({ type: DataType.STRING(255), allowNull: true })
   declare externalPostId: string | null;
+
+  @Column({ type: DataType.STRING(500), allowNull: true })
+  declare permalink: string | null;
 }

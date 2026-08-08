@@ -63,4 +63,15 @@ export class S3StorageProvider implements IStorageProvider {
   async delete(key: string): Promise<void> {
     await this.getClient().send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }
+
+  async read(key: string): Promise<Buffer> {
+    const response = await this.getClient().send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    const bytes = await response.Body?.transformToByteArray();
+    if (!bytes) {
+      throw new ServiceUnavailableException(`S3 object "${key}" has no body`);
+    }
+    return Buffer.from(bytes);
+  }
 }

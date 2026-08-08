@@ -30,4 +30,10 @@ export class CreatePublishingJobDto {
   @IsString()
   @MaxLength(255)
   externalPostId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  permalink?: string;
 }

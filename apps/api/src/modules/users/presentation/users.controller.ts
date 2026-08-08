@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { UsersService } from '../application/services/users.service';
 import { CreateUserDto } from '../application/dto/create-user.dto';
@@ -43,10 +44,16 @@ export class UsersController {
   }
 
   @Get('me')
-  @ApiOperation({ summary: "Get the authenticated user's profile" })
-  async me(@CurrentUser('id') userId: string): Promise<UserResponseDto> {
-    const user = await this.usersService.findById(userId);
-    return new UserResponseDto(user);
+  @ApiOperation({ summary: "Get the authenticated user's profile, including current tenant context" })
+  async me(
+    @CurrentUser() currentUser: AuthenticatedUser,
+  ): Promise<UserResponseDto & { organizationId: string | null; workspaceId: string | null }> {
+    const user = await this.usersService.findById(currentUser.id);
+    return {
+      ...new UserResponseDto(user),
+      organizationId: currentUser.organizationId,
+      workspaceId: currentUser.workspaceId,
+    };
   }
 
   @Get(':id')

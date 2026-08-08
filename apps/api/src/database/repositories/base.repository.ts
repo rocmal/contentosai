@@ -83,7 +83,15 @@ export abstract class BaseRepository<
     if (!instance) {
       throw new NotFoundException(`${this.entityName} with id "${id}" not found`);
     }
-    instance.set({ ...(data as Record<string, unknown>), updatedBy: actorId ?? null } as never);
+    // Callers pass partial DTOs where an omitted field is `undefined`, not
+    // absent - spreading those into set() explicitly assigns `undefined` to
+    // that attribute (clearing it), which fails validation for any
+    // allowNull:false column the caller didn't intend to touch. Only apply
+    // keys the caller actually provided.
+    const definedData = Object.fromEntries(
+      Object.entries(data as Record<string, unknown>).filter(([, value]) => value !== undefined),
+    );
+    instance.set({ ...definedData, updatedBy: actorId ?? null } as never);
     await instance.save({ transaction });
     return this.toEntity(instance);
   }

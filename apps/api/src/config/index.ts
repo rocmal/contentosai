@@ -8,6 +8,9 @@ import mailConfig from './mail.config';
 import oauthConfig from './oauth.config';
 import stripeConfig from './stripe.config';
 import monitoringConfig from './monitoring.config';
+import metaConfig from './meta.config';
+import linkedinConfig from './linkedin.config';
+import youtubeConfig from './youtube.config';
 
 export const configurations = [
   appConfig,
@@ -20,6 +23,9 @@ export const configurations = [
   oauthConfig,
   stripeConfig,
   monitoringConfig,
+  metaConfig,
+  linkedinConfig,
+  youtubeConfig,
 ];
 
 export * from './env.validation';

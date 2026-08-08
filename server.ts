@@ -1,10 +1,18 @@
+import { config as loadEnv } from 'dotenv';
 import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
+// dotenv is a declared dependency but nothing was actually loading .env.local
+// locally (AI Studio's cloud runtime injects secrets as real env vars, but a
+// local `npm run dev` has no such injection). Same precedence as Vite's own
+// client-side env loading: .env.local wins, .env is the fallback.
+loadEnv({ path: path.resolve(process.cwd(), '.env.local') });
+loadEnv({ path: path.resolve(process.cwd(), '.env') });
+
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 app.use(express.json());
 

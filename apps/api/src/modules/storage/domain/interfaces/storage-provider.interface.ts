@@ -15,4 +15,7 @@ export interface IStorageProvider {
   upload(input: UploadFileInput): Promise<StoredFile>;
   getUrl(key: string): Promise<string>;
   delete(key: string): Promise<void>;
+  /** Raw bytes for a stored key - used when a cached generation result
+   * needs to be served back out in its original (e.g. base64) form. */
+  read(key: string): Promise<Buffer>;
 }

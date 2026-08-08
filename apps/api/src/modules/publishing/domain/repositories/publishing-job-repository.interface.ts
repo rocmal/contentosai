@@ -10,6 +10,7 @@ export interface CreatePublishingJobData {
   scheduledAt?: Date | null;
   publishedAt?: Date | null;
   externalPostId?: string | null;
+  permalink?: string | null;
 }
 
 export type UpdatePublishingJobData = Partial<

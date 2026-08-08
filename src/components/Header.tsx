@@ -68,6 +68,10 @@ export const Header: React.FC<HeaderProps> = ({
       title: 'Voice Studio',
       subtitle: 'Voice library, custom vocal cloning, and emotive voiceover generator.',
     },
+    'character-studio': {
+      title: 'Character Studio',
+      subtitle: 'Upload a photo, add a script and voice, get a talking-avatar video.',
+    },
     'brand-brain': {
       title: 'Brand Brain Memory',
       subtitle: 'Your central brand knowledge base used across all AI generations.',
@@ -107,6 +111,10 @@ export const Header: React.FC<HeaderProps> = ({
     settings: {
       title: 'Workspace Settings',
       subtitle: 'Configure workspace preferences, security, and defaults.',
+    },
+    profile: {
+      title: 'Profile',
+      subtitle: 'Your account details and plan usage.',
     },
     help: {
       title: 'Help Center & Tutorials',

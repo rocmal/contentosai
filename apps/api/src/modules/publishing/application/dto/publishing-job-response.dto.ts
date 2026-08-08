@@ -11,6 +11,7 @@ export class PublishingJobResponseDto {
   @ApiProperty({ nullable: true }) scheduledAt: Date | null;
   @ApiProperty({ nullable: true }) publishedAt: Date | null;
   @ApiProperty({ nullable: true }) externalPostId: string | null;
+  @ApiProperty({ nullable: true }) permalink: string | null;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
 
@@ -24,6 +25,7 @@ export class PublishingJobResponseDto {
     this.scheduledAt = publishingJob.scheduledAt;
     this.publishedAt = publishingJob.publishedAt;
     this.externalPostId = publishingJob.externalPostId;
+    this.permalink = publishingJob.permalink;
     this.createdAt = publishingJob.createdAt;
     this.updatedAt = publishingJob.updatedAt;
   }

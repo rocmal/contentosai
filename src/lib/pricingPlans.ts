@@ -11,6 +11,8 @@ export interface PricingPlan {
   priceMonthly: number | null;
   /** Per-month USD price when billed annually (~20% off). */
   priceAnnual: number | null;
+  /** Matches apps/api's PLAN_CREDIT_ALLOTMENTS - null means unlimited (Enterprise). */
+  creditsPerMonth: number | null;
   credits: string;
   seats: string;
   popular: boolean;
@@ -24,6 +26,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     tagline: 'For individuals and small teams getting started.',
     priceMonthly: 49,
     priceAnnual: 39,
+    creditsPerMonth: 2500,
     credits: '2,500 credits / month',
     seats: '1 seat',
     popular: false,
@@ -40,6 +43,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     tagline: 'For growing marketing teams shipping weekly.',
     priceMonthly: 149,
     priceAnnual: 119,
+    creditsPerMonth: 10000,
     credits: '10,000 credits / month',
     seats: 'Up to 5 seats',
     popular: true,
@@ -57,6 +61,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     tagline: 'For agencies and large organizations at scale.',
     priceMonthly: null,
     priceAnnual: null,
+    creditsPerMonth: null,
     credits: 'Unlimited credits',
     seats: 'Unlimited seats',
     popular: false,

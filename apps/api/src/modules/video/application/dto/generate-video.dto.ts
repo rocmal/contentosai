@@ -1,7 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsInt, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
 
-export const VIDEO_PROVIDER_NAMES = ['veo', 'runway', 'kling', 'pika'] as const;
+// "mock" is only actually usable outside production (see VideoProviderFactory);
+// it's listed here so local dev requests validate without a real vendor key.
+export const VIDEO_PROVIDER_NAMES = ['veo', 'runway', 'kling', 'pika', 'luma', 'mock'] as const;
 
 export class GenerateVideoDto {
   @ApiProperty({ example: 'A drone shot flying over a futuristic city at sunset' })

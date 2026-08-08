@@ -10,6 +10,11 @@ export interface CreateMediaAssetData {
   mimeType: string;
   sizeBytes: number;
   type: MediaAssetType;
+  prompt?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  voiceId?: string | null;
+  cacheKeyHash?: string | null;
 }
 
 export type UpdateMediaAssetData = Partial<

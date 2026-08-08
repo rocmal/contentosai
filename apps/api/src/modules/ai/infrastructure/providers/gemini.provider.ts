@@ -19,7 +19,9 @@ interface GeminiGenerateContentResponse {
 @Injectable()
 export class GeminiProvider extends BaseAIProvider implements IAIProvider {
   readonly name = 'gemini';
-  private readonly defaultModel = 'gemini-1.5-flash';
+  // "-latest" alias so this doesn't go stale as Google rotates dated model
+  // versions (gemini-1.5-flash, the previous default, has since been retired).
+  private readonly defaultModel = 'gemini-flash-latest';
 
   constructor(private readonly configService: ConfigService) {
     super();

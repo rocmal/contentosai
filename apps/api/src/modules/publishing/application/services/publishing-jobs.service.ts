@@ -33,7 +33,12 @@ export class PublishingJobsService {
 
     this.eventEmitter.emit(
       'publishing.created',
-      new PublishingJobCreatedEvent(publishingJob.id, publishingJob.workspaceId),
+      new PublishingJobCreatedEvent(
+        publishingJob.id,
+        publishingJob.workspaceId,
+        publishingJob.status,
+        publishingJob.scheduledAt,
+      ),
     );
 
     return publishingJob;
@@ -62,6 +67,7 @@ export class PublishingJobsService {
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : undefined,
         publishedAt: dto.publishedAt ? new Date(dto.publishedAt) : undefined,
         externalPostId: dto.externalPostId,
+        permalink: dto.permalink,
       },
       actorId,
     );

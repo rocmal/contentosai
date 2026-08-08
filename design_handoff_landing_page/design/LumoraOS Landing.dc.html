@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 72'%3E%3Ccircle cx='36' cy='36' r='32' fill='%232563EB'/%3E%3Crect x='33' y='14' width='6' height='44' rx='3' fill='white'/%3E%3Crect x='33' y='14' width='6' height='44' rx='3' fill='white' transform='rotate(45 36 36)'/%3E%3Crect x='33' y='14' width='6' height='44' rx='3' fill='white' transform='rotate(90 36 36)'/%3E%3Crect x='33' y='14' width='6' height='44' rx='3' fill='white' transform='rotate(135 36 36)'/%3E%3C/svg%3E">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;background:#0B1120;font-family:'Inter',system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased;}
+  a{color:#60A5FA;text-decoration:none;}
+  a:hover{color:#93C5FD;}
+  ::selection{background:#2563EB;color:#fff;}
+  button{font-family:inherit;}
+</style>
+</helmet>
+
+<div style="background:#0B1120;color:#F8FAFC;min-height:100vh;overflow-x:hidden;">
+
+<!-- NAV -->
+<header style="position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);background:rgba(11,17,32,0.8);border-bottom:1px solid rgba(255,255,255,0.08);">
+  <div style="max-width:1180px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <a href="#" style="display:flex;align-items:center;gap:10px;">
+      <svg width="32" height="32" viewBox="0 0 72 72" style="flex-shrink:0;">
+        <defs><radialGradient id="sparkGradNav" cx="35%" cy="35%" r="75%"><stop offset="0%" stop-color="#3B82F6"></stop><stop offset="100%" stop-color="#1D4ED8"></stop></radialGradient></defs>
+        <circle cx="36" cy="36" r="32" fill="url(#sparkGradNav)"></circle>
+        <rect x="33" y="14" width="6" height="44" rx="3" fill="#fff"></rect>
+        <rect x="33" y="14" width="6" height="44" rx="3" fill="#fff" transform="rotate(45 36 36)"></rect>
+        <rect x="33" y="14" width="6" height="44" rx="3" fill="#fff" transform="rotate(90 36 36)"></rect>
+        <rect x="33" y="14" width="6" height="44" rx="3" fill="#fff" transform="rotate(135 36 36)"></rect>
+      </svg>
+      <span style="font-size:19px;font-weight:800;color:#F8FAFC;letter-spacing:-0.01em;">Lumora<span style="color:#60A5FA;">OS</span></span>
+    </a>
+    <nav style="display:flex;align-items:center;gap:28px;flex-wrap:wrap;">
+      <a href="#features" style="font-size:14px;color:#CBD5E1;">Features</a>
+      <a href="#how-it-works" style="font-size:14px;color:#CBD5E1;">How it works</a>
+      <a href="#pricing" style="font-size:14px;color:#CBD5E1;">Pricing</a>
+      <a href="#faq" style="font-size:14px;color:#CBD5E1;">FAQ</a>
+    </nav>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="#" style="font-size:14px;font-weight:600;color:#F8FAFC;padding:9px 16px;white-space:nowrap;flex-shrink:0;">Log in</a>
+      <a href="#pricing" style="font-size:14px;font-weight:700;color:#fff;padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#2563EB,#6366F1);box-shadow:0 4px 14px rgba(37,99,235,0.35);white-space:nowrap;flex-shrink:0;">Start free trial</a>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section style="position:relative;padding:100px 24px 80px;overflow:hidden;">
+  <div style="position:absolute;top:-120px;left:50%;transform:translateX(-50%);width:900px;height:500px;background:radial-gradient(circle,rgba(37,99,235,0.28),transparent 70%);filter:blur(40px);pointer-events:none;"></div>
+  <div style="max-width:900px;margin:0 auto;text-align:center;position:relative;">
+    <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);font-size:12px;font-weight:700;letter-spacing:0.04em;color:#A5B4FC;margin-bottom:24px;">AI CONTENT OPERATING SYSTEM</div>
+    <h1 style="font-size:clamp(36px,5.2vw,64px);font-weight:800;line-height:1.08;letter-spacing:-0.02em;margin:0 0 20px;color:#F8FAFC;">One platform for every piece of content your brand needs.</h1>
+    <p style="font-size:clamp(16px,1.6vw,19px);line-height:1.6;color:#94A3B8;max-width:640px;margin:0 auto 36px;">Generate on-brand images, clone voices, sync lifelike talking avatars, and produce full videos, then plan and publish everywhere. All from one brand-aware platform.</p>
+    <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:16px;">
+      <a href="#pricing" style="font-size:15px;font-weight:700;color:#fff;padding:14px 28px;border-radius:12px;background:linear-gradient(135deg,#2563EB,#6366F1);box-shadow:0 8px 24px rgba(37,99,235,0.4);white-space:nowrap;flex-shrink:0;">Start free trial</a>
+      <a href="#pricing" style="font-size:15px;font-weight:600;color:#F8FAFC;padding:14px 28px;border-radius:12px;border:1px solid rgba(255,255,255,0.16);white-space:nowrap;flex-shrink:0;">See pricing</a>
+    </div>
+    <p style="font-size:13px;color:#64748B;">Cancel anytime. No setup fees.</p>
+  </div>
+
+  <div style="max-width:1000px;margin:56px auto 0;position:relative;">
+    <video src="./assets/lumora-brand-ad.mp4" autoplay="" muted="" loop="" playsinline="" style="width:100%;display:block;border-radius:20px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 30px 80px rgba(0,0,0,0.45);background:#000;"></video>
+  </div>
+</section>
+
+<!-- NAME MEANING -->
+<section style="padding:0 24px 64px;">
+  <div style="max-width:720px;margin:0 auto;text-align:center;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">THE NAME</div>
+    <p style="font-size:17px;line-height:1.7;color:#CBD5E1;margin:0;">Lumora blends <em style="color:#F8FAFC;font-style:normal;font-weight:600;">lumen</em>, the unit of light, with <em style="color:#F8FAFC;font-style:normal;font-weight:600;">aura</em>, the presence a brand builds around itself. The name reflects the job the platform does: giving every piece of content the same brand light, consistently, at scale.</p>
+  </div>
+</section>
+
+<!-- TRUST STRIP -->
+<section style="padding:32px 24px 64px;">
+  <div style="max-width:1180px;margin:0 auto;">
+    <p style="text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#475569;letter-spacing:0.03em;margin:0 0 20px;">customer logos — replace with your own</p>
+    <div style="display:flex;justify-content:center;gap:20px;flex-wrap:wrap;">
+      <div style="width:130px;height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.14);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#475569;">LOGO</div>
+      <div style="width:130px;height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.14);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#475569;">LOGO</div>
+      <div style="width:130px;height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.14);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#475569;">LOGO</div>
+      <div style="width:130px;height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.14);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#475569;">LOGO</div>
+      <div style="width:130px;height:40px;border-radius:8px;border:1px dashed rgba(255,255,255,0.14);display:flex;align-items:center;justify-content:center;font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#475569;">LOGO</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" style="padding:80px 24px;background:#0F172A;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);">
+  <div style="max-width:1180px;margin:0 auto;">
+    <div style="text-align:center;max-width:640px;margin:0 auto 56px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">PLATFORM</div>
+      <h2 style="font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-0.01em;margin:0 0 14px;color:#F8FAFC;">Everything your content team needs, in one place.</h2>
+      <p style="font-size:16px;color:#94A3B8;margin:0;">Seven AI studios, one shared brand memory.</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;">
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(37,99,235,0.14);border:1px solid rgba(37,99,235,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><path d="M21 15l-5-5-9 9"></path></svg>
+        </div>
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Image Studio</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Generate on-brand product shots, ad creatives, and social graphics in seconds, then upscale, remove backgrounds, or magic-resize for any platform.</p>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(99,102,241,0.14);border:1px solid rgba(99,102,241,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A5B4FC" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        </div>
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Voice Studio</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Clone a voice once and generate narration in dozens of languages and tones, or pick from a library of studio-grade voices.</p>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(20,184,166,0.14);border:1px solid rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M9 15c1 1 5 1 6 0"></path><path d="M2 9v6"></path><path d="M22 9v6"></path></svg>
+        </div>
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Character Studio</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Turn a single photo and a script into a talking avatar with accurate lip-sync. No camera, actor, or studio required.</p>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(37,99,235,0.14);border:1px solid rgba(37,99,235,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="14" height="14" rx="2"></rect><path d="M16 9l6-3v12l-6-3"></path></svg>
+        </div>
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Video Studio</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Script, storyboard, and edit video end-to-end with AI B-roll, auto captions, and voiceover in one timeline.</p>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(99,102,241,0.14);border:1px solid rgba(99,102,241,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A5B4FC" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.6L18 9l-4.2 1.4L12 15l-1.8-4.6L6 9l4.2-1.4L12 3z"></path><path d="M19 15l.7 1.7L21.5 18l-1.8.7L19 21l-.7-1.7L16.5 18l1.8-.7L19 15z"></path></svg>
+        </div>
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Brand Brain</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Teach the platform your brand once: voice, colors, tone, positioning. Every generation stays on-brand automatically.</p>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(20,184,166,0.14);border:1px solid rgba(20,184,166,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="9" width="14" height="10" rx="2"></rect><circle cx="9.5" cy="14" r="1" fill="#2DD4BF" stroke="none"></circle><circle cx="14.5" cy="14" r="1" fill="#2DD4BF" stroke="none"></circle><line x1="12" y1="5" x2="12" y2="9"></line><circle cx="12" cy="3.3" r="1.1" fill="#2DD4BF" stroke="none"></circle></svg>
+        </div>
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">AI Agents &amp; Automation</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Autonomous agents research topics, draft campaigns, repurpose one video into ten platform-ready clips, and publish on schedule.</p>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(37,99,235,0.14);border:1px solid rgba(37,99,235,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="16" y1="2" x2="16" y2="6"></line></svg>
+        </div>
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Calendar &amp; Publishing</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Plan, review, approve, and auto-publish across every connected channel from one shared calendar.</p>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:28px;">
+        <div style="width:44px;height:44px;border-radius:12px;background:rgba(37,99,235,0.14);border:1px solid rgba(37,99,235,0.3);display:flex;align-items:center;justify-content:center;margin-bottom:18px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        </div>
+        <h3 style="font-size:17px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Analytics</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Executive insights, engagement scores, and CTR across every channel, with AI-recommended strategy adjustments.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works" style="padding:80px 24px;">
+  <div style="max-width:1180px;margin:0 auto;">
+    <div style="text-align:center;max-width:640px;margin:0 auto 56px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">WORKFLOW</div>
+      <h2 style="font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-0.01em;margin:0 0 14px;color:#F8FAFC;">From brief to published, in four steps.</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:32px;">
+      <div>
+        <div style="font-size:32px;font-weight:800;color:rgba(96,165,250,0.35);margin-bottom:10px;">01</div>
+        <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Set up Brand Brain</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Add your brand voice, colors, and audience once.</p>
+      </div>
+      <div>
+        <div style="font-size:32px;font-weight:800;color:rgba(96,165,250,0.35);margin-bottom:10px;">02</div>
+        <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Generate</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Create images, voice, video, or talking avatars from a prompt or script.</p>
+      </div>
+      <div>
+        <div style="font-size:32px;font-weight:800;color:rgba(96,165,250,0.35);margin-bottom:10px;">03</div>
+        <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Review &amp; approve</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Your team reviews drafts together in one shared workspace.</p>
+      </div>
+      <div>
+        <div style="font-size:32px;font-weight:800;color:rgba(96,165,250,0.35);margin-bottom:10px;">04</div>
+        <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Publish everywhere</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Auto-schedule and publish across every connected channel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DEMO VIDEO -->
+<section style="padding:80px 24px;">
+  <div style="max-width:900px;margin:0 auto;text-align:center;">
+    <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">DEMO</div>
+    <h2 style="font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-0.01em;margin:0 0 32px;color:#F8FAFC;">See LumoraOS in action.</h2>
+    <video src="./assets/lumora-tutorial.mp4" controls="" style="width:100%;display:block;border-radius:20px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 30px 80px rgba(0,0,0,0.45);background:#000;"></video>
+  </div>
+</section>
+
+<!-- INTEGRATIONS -->
+<section style="padding:80px 24px;background:#0F172A;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);">
+  <div style="max-width:1180px;margin:0 auto;">
+    <div style="text-align:center;max-width:640px;margin:0 auto 44px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">UNDER THE HOOD</div>
+      <h2 style="font-size:clamp(26px,3vw,36px);font-weight:800;letter-spacing:-0.01em;margin:0;color:#F8FAFC;">Built on leading AI models. Publishes everywhere your audience is.</h2>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:20px;align-items:center;">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">Gemini</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">GPT-4o</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">Claude</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">Flux / Stable Diffusion</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">ElevenLabs</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">LinkedIn</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">YouTube</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">Twitter / X</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">Instagram</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">Slack</span>
+        <span style="padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);font-size:13px;color:#CBD5E1;">WordPress</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<sc-if value="{{ showComparison }}" hint-placeholder-val="{{ true }}">
+<section style="padding:80px 24px;">
+  <div style="max-width:900px;margin:0 auto;">
+    <div style="text-align:center;max-width:600px;margin:0 auto 48px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">WHY LUMORAOS</div>
+      <h2 style="font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-0.01em;margin:0;color:#F8FAFC;">Replace five tools with one.</h2>
+    </div>
+    <div style="border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;background:rgba(255,255,255,0.03);">
+        <div style="padding:16px 24px;font-size:13px;font-weight:700;color:#64748B;border-right:1px solid rgba(255,255,255,0.08);">FRAGMENTED TOOLS</div>
+        <div style="padding:16px 24px;font-size:13px;font-weight:700;color:#818CF8;">LUMORAOS</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,0.08);">
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;border-right:1px solid rgba(255,255,255,0.08);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:2px;"><path d="M18 6L6 18M6 6l12 12"></path></svg><span style="font-size:14px;color:#94A3B8;">5+ separate subscriptions to manage</span></div>
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6L9 17l-5-5"></path></svg><span style="font-size:14px;color:#E2E8F0;">One platform, one bill</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,0.08);">
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;border-right:1px solid rgba(255,255,255,0.08);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:2px;"><path d="M18 6L6 18M6 6l12 12"></path></svg><span style="font-size:14px;color:#94A3B8;">Brand guidelines re-explained in every tool</span></div>
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6L9 17l-5-5"></path></svg><span style="font-size:14px;color:#E2E8F0;">Brand Brain enforces it automatically</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,0.08);">
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;border-right:1px solid rgba(255,255,255,0.08);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:2px;"><path d="M18 6L6 18M6 6l12 12"></path></svg><span style="font-size:14px;color:#94A3B8;">Separate editors for image, voice &amp; video</span></div>
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6L9 17l-5-5"></path></svg><span style="font-size:14px;color:#E2E8F0;">One unified studio</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,0.08);">
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;border-right:1px solid rgba(255,255,255,0.08);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:2px;"><path d="M18 6L6 18M6 6l12 12"></path></svg><span style="font-size:14px;color:#94A3B8;">Manual scheduling across every channel</span></div>
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6L9 17l-5-5"></path></svg><span style="font-size:14px;color:#E2E8F0;">Auto-publish everywhere from one calendar</span></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,0.08);">
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;border-right:1px solid rgba(255,255,255,0.08);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:2px;"><path d="M18 6L6 18M6 6l12 12"></path></svg><span style="font-size:14px;color:#94A3B8;">Generic, off-brand AI output</span></div>
+        <div style="padding:18px 24px;display:flex;gap:10px;align-items:flex-start;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6L9 17l-5-5"></path></svg><span style="font-size:14px;color:#E2E8F0;">Generation trained on your brand</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+</sc-if>
+
+<!-- PRICING -->
+<section id="pricing" style="padding:80px 24px;background:#0F172A;border-top:1px solid rgba(255,255,255,0.06);border-bottom:1px solid rgba(255,255,255,0.06);">
+  <div style="max-width:1180px;margin:0 auto;">
+    <div style="text-align:center;max-width:640px;margin:0 auto 32px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">PRICING</div>
+      <h2 style="font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-0.01em;margin:0 0 14px;color:#F8FAFC;">Simple plans that scale with your content output.</h2>
+      <p style="font-size:16px;color:#94A3B8;margin:0;">Every plan includes Brand Brain, so generations always stay on-brand.</p>
+    </div>
+
+    <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:48px;">
+      <div style="display:inline-flex;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:999px;padding:4px;gap:2px;">
+        <button onClick="{{ setMonthly }}" style="{{ monthlyBtnStyle }}">Monthly</button>
+        <button onClick="{{ setAnnual }}" style="{{ annualBtnStyle }}">Annual · save ~20%</button>
+      </div>
+      <div style="display:inline-flex;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:999px;padding:4px;gap:2px;">
+        <button onClick="{{ setINR }}" style="{{ inrBtnStyle }}">₹ INR</button>
+        <button onClick="{{ setUSD }}" style="{{ usdBtnStyle }}">$ USD</button>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;align-items:start;">
+      <sc-for list="{{ plans }}" as="plan" hint-placeholder-count="3">
+        <div style="position:relative;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:20px;">
+          <sc-if value="{{ plan.popular }}">
+            <div style="position:absolute;inset:-1px;border-radius:20px;border:2px solid #2563EB;pointer-events:none;"></div>
+            <div style="position:absolute;top:-12px;left:32px;background:linear-gradient(135deg,#2563EB,#6366F1);color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:999px;letter-spacing:0.02em;">MOST POPULAR</div>
+          </sc-if>
+          <div>
+            <h3 style="font-size:19px;font-weight:800;margin:0 0 6px;color:#F8FAFC;">{{ plan.name }}</h3>
+            <p style="font-size:13px;color:#94A3B8;margin:0;min-height:36px;">{{ plan.tagline }}</p>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <span style="font-size:38px;font-weight:800;color:#F8FAFC;">{{ plan.priceDisplay }}</span>
+            <span style="font-size:13px;color:#94A3B8;">{{ plan.periodLabel }}</span>
+          </div>
+          <p style="font-size:13px;color:#818CF8;font-weight:600;margin:0;">{{ plan.credits }} · {{ plan.seats }}</p>
+          <a href="#" style="text-align:center;width:100%;padding:12px;border-radius:12px;font-weight:700;font-size:14px;color:#fff;background:linear-gradient(135deg,#2563EB,#6366F1);white-space:nowrap;">{{ plan.ctaLabel }}</a>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+            <sc-for list="{{ plan.features }}" as="feat" hint-placeholder-count="4">
+              <div style="display:flex;gap:8px;align-items:flex-start;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:3px;"><path d="M20 6L9 17l-5-5"></path></svg>
+                <span style="font-size:13px;color:#CBD5E1;line-height:1.5;">{{ feat }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <p style="text-align:center;font-size:12.5px;color:#64748B;max-width:560px;margin:40px auto 0;">1 credit ≈ 1 image, ~1 minute of AI voice, or ~10 seconds of video. Actual usage varies by model and output resolution.</p>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<section style="padding:80px 24px;">
+  <div style="max-width:1180px;margin:0 auto;">
+    <div style="max-width:640px;margin:0 0 48px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">ABOUT</div>
+      <h2 style="font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-0.01em;margin:0 0 16px;color:#F8FAFC;">Built for teams that publish content every day.</h2>
+      <p style="font-size:16px;line-height:1.65;color:#94A3B8;margin:0;">LumoraOS started as an answer to a simple problem: content teams were stitching together a dozen point tools to write, design, voice, and ship a single campaign. We built one platform that remembers your brand and produces every format from it.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;">
+      <div style="border-top:2px solid #2563EB;padding-top:20px;">
+        <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Speed</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Minutes from brief to a full set of ready-to-publish assets.</p>
+      </div>
+      <div style="border-top:2px solid #6366F1;padding-top:20px;">
+        <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Brand consistency</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">Every output checked against the same brand memory, every time.</p>
+      </div>
+      <div style="border-top:2px solid #14B8A6;padding-top:20px;">
+        <h3 style="font-size:16px;font-weight:700;margin:0 0 8px;color:#F8FAFC;">Scale</h3>
+        <p style="font-size:14px;line-height:1.6;color:#94A3B8;margin:0;">One campaign becomes ten assets across every channel you publish to.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="padding:80px 24px;background:#0F172A;border-top:1px solid rgba(255,255,255,0.06);">
+  <div style="max-width:760px;margin:0 auto;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;color:#818CF8;margin-bottom:12px;">FAQ</div>
+      <h2 style="font-size:clamp(28px,3.4vw,40px);font-weight:800;letter-spacing:-0.01em;margin:0;color:#F8FAFC;">Frequently asked questions.</h2>
+    </div>
+    <sc-for list="{{ faqItems }}" as="item" hint-placeholder-count="6">
+      <div style="border-bottom:1px solid rgba(255,255,255,0.08);">
+        <button onClick="{{ item.toggle }}" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 4px;background:transparent;border:none;text-align:left;cursor:pointer;color:#F8FAFC;font-size:16px;font-weight:600;">
+          <span>{{ item.q }}</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#818CF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="{{ item.chevronStyle }}flex-shrink:0;"><path d="M6 9l6 6 6-6"></path></svg>
+        </button>
+        <div style="{{ item.answerStyle }}">
+          <p style="padding:0 4px 20px;color:#94A3B8;font-size:14px;line-height:1.65;max-width:680px;margin:0;">{{ item.a }}</p>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section style="padding:80px 24px;">
+  <div style="max-width:900px;margin:0 auto;border-radius:24px;background:linear-gradient(135deg,#1e3a8a,#312e81);padding:56px 40px;text-align:center;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:-80px;right:-80px;width:280px;height:280px;background:radial-gradient(circle,rgba(20,184,166,0.25),transparent 70%);pointer-events:none;"></div>
+    <h2 style="font-size:clamp(26px,3.2vw,38px);font-weight:800;letter-spacing:-0.01em;margin:0 0 16px;color:#fff;position:relative;">Ready to produce content at the speed of your ideas?</h2>
+    <p style="font-size:16px;color:#C7D2FE;margin:0 0 32px;position:relative;">Start free, no credit card lock-in required to explore the platform.</p>
+    <div style="display:flex;justify-content:center;gap:14px;flex-wrap:wrap;position:relative;">
+      <a href="#pricing" style="font-size:15px;font-weight:700;color:#1e293b;padding:14px 28px;border-radius:12px;background:#fff;white-space:nowrap;flex-shrink:0;">Start free trial</a>
+      <a href="#" style="font-size:15px;font-weight:600;color:#fff;padding:14px 28px;border-radius:12px;border:1px solid rgba(255,255,255,0.35);white-space:nowrap;flex-shrink:0;">Talk to sales</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="padding:56px 24px 32px;border-top:1px solid rgba(255,255,255,0.08);">
+  <div style="max-width:1180px;margin:0 auto;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:32px;margin-bottom:40px;">
+      <div>
+        <a href="#" style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <svg width="26" height="26" viewBox="0 0 72 72" style="flex-shrink:0;">
+            <defs><radialGradient id="sparkGradFooter" cx="35%" cy="35%" r="75%"><stop offset="0%" stop-color="#3B82F6"></stop><stop offset="100%" stop-color="#1D4ED8"></stop></radialGradient></defs>
+            <circle cx="36" cy="36" r="32" fill="url(#sparkGradFooter)"></circle>
+            <rect x="33" y="14" width="6" height="44" rx="3" fill="#fff"></rect>
+            <rect x="33" y="14" width="6" height="44" rx="3" fill="#fff" transform="rotate(45 36 36)"></rect>
+            <rect x="33" y="14" width="6" height="44" rx="3" fill="#fff" transform="rotate(90 36 36)"></rect>
+            <rect x="33" y="14" width="6" height="44" rx="3" fill="#fff" transform="rotate(135 36 36)"></rect>
+          </svg>
+          <span style="font-size:16px;font-weight:800;color:#F8FAFC;">Lumora<span style="color:#60A5FA;">OS</span></span>
+        </a>
+        <p style="font-size:13px;color:#64748B;margin:0 0 4px;">The AI content operating system.</p>
+        <p style="font-size:12px;color:#475569;margin:0;">lumoraos.in</p>
+      </div>
+      <div>
+        <h4 style="font-size:12px;font-weight:700;letter-spacing:0.05em;color:#64748B;margin:0 0 14px;">PRODUCT</h4>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="#features" style="font-size:13px;color:#94A3B8;">Image Studio</a>
+          <a href="#features" style="font-size:13px;color:#94A3B8;">Voice Studio</a>
+          <a href="#features" style="font-size:13px;color:#94A3B8;">Character Studio</a>
+          <a href="#features" style="font-size:13px;color:#94A3B8;">Video Studio</a>
+          <a href="#pricing" style="font-size:13px;color:#94A3B8;">Pricing</a>
+        </div>
+      </div>
+      <div>
+        <h4 style="font-size:12px;font-weight:700;letter-spacing:0.05em;color:#64748B;margin:0 0 14px;">COMPANY</h4>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="#" style="font-size:13px;color:#94A3B8;">About</a>
+          <a href="#faq" style="font-size:13px;color:#94A3B8;">FAQ</a>
+          <a href="#" style="font-size:13px;color:#94A3B8;">Contact</a>
+        </div>
+      </div>
+      <div>
+        <h4 style="font-size:12px;font-weight:700;letter-spacing:0.05em;color:#64748B;margin:0 0 14px;">LEGAL</h4>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <a href="#" style="font-size:13px;color:#94A3B8;">Privacy Policy</a>
+          <a href="#" style="font-size:13px;color:#94A3B8;">Terms of Service</a>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:24px;">
+      <p style="font-size:12px;color:#475569;margin:0;">© 2026 LumoraOS. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: {},
+  &quot;currency&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;INR&quot;, &quot;options&quot;: [&quot;INR&quot;, &quot;USD&quot;], &quot;tsType&quot;: &quot;'INR'|'USD'&quot;, &quot;section&quot;: &quot;Pricing&quot; },
+  &quot;billingCycleDefault&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;monthly&quot;, &quot;options&quot;: [&quot;monthly&quot;, &quot;annual&quot;], &quot;tsType&quot;: &quot;'monthly'|'annual'&quot;, &quot;section&quot;: &quot;Pricing&quot; },
+  &quot;showComparison&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Sections&quot; }
+}">
+class Component extends DCLogic {
+  state = { billingCycle: null, currency: null, faqOpen: -1 };
+
+  plansData = [
+    {
+      key: 'starter',
+      name: 'Starter',
+      tagline: 'For individuals and small teams getting started.',
+      priceINR: { monthly: 1999, annual: 1599 },
+      priceUSD: { monthly: 29, annual: 23 },
+      credits: '2,500 credits / month',
+      seats: '1 seat',
+      popular: false,
+      features: [
+        'Image, Voice & Video Studio',
+        '1 Brand Brain profile',
+        'Standard voice library',
+        'Community support',
+      ],
+    },
+    {
+      key: 'pro',
+      name: 'Pro',
+      tagline: 'For growing marketing teams shipping weekly.',
+      priceINR: { monthly: 5999, annual: 4799 },
+      priceUSD: { monthly: 79, annual: 63 },
+      credits: '10,000 credits / month',
+      seats: 'Up to 5 seats',
+      popular: true,
+      features: [
+        'Everything in Starter',
+        'Character Studio (lip-sync avatars)',
+        'Custom voice cloning',
+        '3 active AI Agents',
+        'Priority support',
+      ],
+    },
+    {
+      key: 'enterprise',
+      name: 'Enterprise',
+      tagline: 'For agencies and large organizations at scale.',
+      custom: true,
+      credits: 'Unlimited credits',
+      seats: 'Unlimited seats',
+      popular: false,
+      features: [
+        'Everything in Pro',
+        'Unlimited AI Agents',
+        'Dedicated success manager',
+        'SSO & custom integrations',
+        'Custom usage-based billing',
+      ],
+    },
+  ];
+
+  faqData = [
+    { q: 'What are AI credits and how do they work?', a: 'Credits are the platform\u2019s single unit of usage across every studio. Generating an image, a minute of voice, or a video clip each consumes a different number of credits depending on the model and resolution. Unused credits do not roll over.' },
+    { q: 'Can I clone my own voice or use my own likeness for talking avatars?', a: 'Yes. Voice cloning and Character Studio avatars are built from media you upload, and you must have the right to use that voice or likeness. We require consent confirmation before any clone or avatar is generated.' },
+    { q: 'Which platforms can I publish to directly?', a: 'LumoraOS publishes to LinkedIn, YouTube, Twitter/X, Instagram, and WordPress, with Slack notifications for team approvals. More channels are added over time.' },
+    { q: 'Can I switch or cancel my plan anytime?', a: 'Yes. You can upgrade, downgrade, or cancel from Billing at any time. Changes apply at the start of your next billing cycle.' },
+    { q: 'Who owns the content I generate?', a: 'You own the rights to content generated from your account, subject to the usage terms of the underlying AI providers for any third-party training data restrictions.' },
+    { q: 'Do you offer a free trial?', a: 'Yes, every new workspace starts with a free trial period on the Starter plan so you can test Image, Voice, and Video Studio before adding a payment method.' },
+  ];
+
+  renderVals() {
+    const billingCycle = this.state.billingCycle || this.props.billingCycleDefault || 'monthly';
+    const currency = this.state.currency || this.props.currency || 'INR';
+    const isAnnual = billingCycle === 'annual';
+
+    const fmt = (n) => (currency === 'INR' ? '\u20B9' + n.toLocaleString('en-IN') : '$' + n);
+
+    const plans = this.plansData.map((p) => {
+      if (p.custom) {
+        return { ...p, priceDisplay: 'Custom', periodLabel: 'contact us', ctaLabel: 'Contact sales' };
+      }
+      const priceObj = currency === 'INR' ? p.priceINR : p.priceUSD;
+      const price = isAnnual ? priceObj.annual : priceObj.monthly;
+      return { ...p, priceDisplay: fmt(price), periodLabel: isAnnual ? '/mo, billed annually' : '/month', ctaLabel: 'Start free trial' };
+    });
+
+    const faqItems = this.faqData.map((f, i) => {
+      const open = this.state.faqOpen === i;
+      return {
+        ...f,
+        open,
+        toggle: () => this.setState((s) => ({ faqOpen: s.faqOpen === i ? -1 : i })),
+        answerStyle: 'overflow:hidden;display:' + (open ? 'block' : 'none') + ';',
+        chevronStyle: 'display:inline-block;transition:transform .2s ease;transform:rotate(' + (open ? '180deg' : '0deg') + ');',
+      };
+    });
+
+    const pillActive = 'padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:linear-gradient(135deg,#2563EB,#6366F1);color:#fff;';
+    const pillInactive = 'padding:8px 18px;border-radius:999px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:transparent;color:#94A3B8;';
+
+    return {
+      plans,
+      faqItems,
+      showComparison: this.props.showComparison !== false,
+      monthlyBtnStyle: !isAnnual ? pillActive : pillInactive,
+      annualBtnStyle: isAnnual ? pillActive : pillInactive,
+      inrBtnStyle: currency === 'INR' ? pillActive : pillInactive,
+      usdBtnStyle: currency === 'USD' ? pillActive : pillInactive,
+      setMonthly: () => this.setState({ billingCycle: 'monthly' }),
+      setAnnual: () => this.setState({ billingCycle: 'annual' }),
+      setINR: () => this.setState({ currency: 'INR' }),
+      setUSD: () => this.setState({ currency: 'USD' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

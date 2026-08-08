@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { IPasswordHasher, PASSWORD_HASHER } from '@shared/security/password-hasher.interface';
 import { UsersService } from '@modules/users/application/services/users.service';
@@ -7,7 +7,23 @@ import {
   IOrganizationMembersRepository,
   ORGANIZATION_MEMBERS_REPOSITORY,
 } from '@modules/organizations/domain/repositories/organization-member-repository.interface';
+import {
+  IOrganizationsRepository,
+  ORGANIZATIONS_REPOSITORY,
+} from '@modules/organizations/domain/repositories/organization-repository.interface';
+import {
+  IWorkspacesRepository,
+  WORKSPACES_REPOSITORY,
+} from '@modules/workspaces/domain/repositories/workspace-repository.interface';
+import { ROLES_REPOSITORY, IRolesRepository } from '@modules/roles/domain/repositories/role-repository.interface';
 import { RolesService } from '@modules/roles/application/services/roles.service';
+import {
+  ISubscriptionsRepository,
+  SUBSCRIPTIONS_REPOSITORY,
+} from '@modules/billing/domain/repositories/subscription-repository.interface';
+import { SubscriptionStatus } from '@modules/billing/domain/entities/subscription.entity';
+import { CreditsService } from '@modules/credits/application/services/credits.service';
+import { DEFAULT_PLAN } from '@modules/credits/credits.constants';
 import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
@@ -35,14 +51,25 @@ export interface IssuedTokens {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly rolesService: RolesService,
     private readonly tokenService: TokenService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly creditsService: CreditsService,
     @Inject(PASSWORD_HASHER) private readonly passwordHasher: IPasswordHasher,
     @Inject(ORGANIZATION_MEMBERS_REPOSITORY)
     private readonly organizationMembersRepository: IOrganizationMembersRepository,
+    @Inject(ORGANIZATIONS_REPOSITORY)
+    private readonly organizationsRepository: IOrganizationsRepository,
+    @Inject(WORKSPACES_REPOSITORY)
+    private readonly workspacesRepository: IWorkspacesRepository,
+    @Inject(ROLES_REPOSITORY)
+    private readonly rolesRepository: IRolesRepository,
+    @Inject(SUBSCRIPTIONS_REPOSITORY)
+    private readonly subscriptionsRepository: ISubscriptionsRepository,
     @Inject(REFRESH_TOKENS_REPOSITORY)
     private readonly refreshTokensRepository: IRefreshTokensRepository,
     @Inject(EMAIL_VERIFICATION_TOKENS_REPOSITORY)
@@ -59,9 +86,74 @@ export class AuthService {
       password: dto.password,
     });
 
+    await this.provisionPersonalWorkspace(safeUser.id, safeUser.email, dto.firstName);
     await this.requestEmailVerification(safeUser.id, safeUser.email);
 
     return this.issueTokensForUser(safeUser.id);
+  }
+
+  /** New signups previously got no organization/workspace at all - every
+   * "create X" action in the app (campaigns, brand profile, credits, ...)
+   * requires one, so a self-registered user landed in the dashboard with
+   * every such action failing. Mirrors what the demo-data seeder does for
+   * the seeded admin/member users: a personal org (the new user as owner,
+   * "super-admin" role - full permissions over their own org, same as the
+   * seeded admin), a "Default" workspace, and a starter-plan trial
+   * subscription + its matching initial credit grant. */
+  private async provisionPersonalWorkspace(
+    userId: string,
+    email: string,
+    firstName: string,
+  ): Promise<void> {
+    const superAdminRole = await this.rolesRepository.findBySlug(null, 'super-admin');
+    if (!superAdminRole) {
+      throw new Error(
+        'System role "super-admin" is missing - run the permissions/roles seeder before allowing signups.',
+      );
+    }
+
+    const organization = await this.createOrganizationWithUniqueSlug(firstName, email, userId);
+
+    const workspace = await this.workspacesRepository.create(
+      { organizationId: organization.id, name: 'Default', slug: 'default', description: null },
+      userId,
+    );
+
+    await this.organizationMembersRepository.create(
+      { organizationId: organization.id, userId, roleId: superAdminRole.id },
+      userId,
+    );
+
+    await this.subscriptionsRepository.create(
+      { organizationId: organization.id, plan: DEFAULT_PLAN, status: SubscriptionStatus.TRIALING },
+      userId,
+    );
+
+    try {
+      await this.creditsService.grantInitial(organization.id, workspace.id, DEFAULT_PLAN, userId);
+    } catch (err) {
+      // The org/workspace/subscription are real and usable even if this one
+      // step fails - don't fail the whole signup over it, but don't hide it either.
+      this.logger.error(
+        `Failed to grant initial credits for new workspace ${workspace.id}: ${
+          err instanceof Error ? err.message : err
+        }`,
+      );
+    }
+  }
+
+  private async createOrganizationWithUniqueSlug(firstName: string, email: string, ownerId: string) {
+    const base = slugify(firstName) || slugify(email.split('@')[0]) || 'workspace';
+    const displayName = firstName ? `${firstName}'s Workspace` : 'My Workspace';
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const slug = `${base}-${randomSlugSuffix()}`;
+      const existing = await this.organizationsRepository.findBySlug(slug);
+      if (!existing) {
+        return this.organizationsRepository.create({ name: displayName, slug, ownerId }, ownerId);
+      }
+    }
+    throw new Error('Failed to allocate a unique organization slug after 5 attempts');
   }
 
   async login(dto: LoginDto): Promise<IssuedTokens> {
@@ -173,11 +265,19 @@ export class AuthService {
       role.permissionSlugs?.forEach((slug) => permissionSlugs.add(slug));
     }
 
+    const organizationId = memberships[0]?.organizationId ?? null;
+    // No workspace-membership model exists yet - a user's organization
+    // membership implies access to all of that organization's workspaces, so
+    // the first one is used as the "current" workspace for tenant scoping.
+    const workspaces = organizationId
+      ? await this.workspacesRepository.listByOrganization(organizationId)
+      : [];
+
     return {
       id: user.id,
       email: user.email,
-      organizationId: memberships[0]?.organizationId ?? null,
-      workspaceId: null,
+      organizationId,
+      workspaceId: workspaces[0]?.id ?? null,
       roles: Array.from(roleSlugs),
       permissions: Array.from(permissionSlugs),
     };
@@ -196,4 +296,15 @@ export class AuthService {
 
     return { accessToken, refreshToken, user: authenticatedUser };
   }
+}
+
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-+|-+$)/g, '');
+}
+
+function randomSlugSuffix(): string {
+  return Math.random().toString(36).slice(2, 8);
 }

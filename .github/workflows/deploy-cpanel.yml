@@ -1,0 +1,119 @@
+name: Deploy to cPanel
+
+# Two separate Node.js apps live in this repo and are deployed independently:
+#   - apps/api      -> the real NestJS backend (api.lumoraos.in)
+#   - repo root      -> server.ts (Express + built Vite SPA + legacy AI Studio
+#                       routes), bundled to dist/server.cjs (lumoraos.in)
+#
+# .env.production is intentionally NEVER touched by this workflow - it's
+# gitignored, lives only on the server, and holds real DB/OAuth secrets that
+# should never pass through GitHub Actions logs. Only code is shipped here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy-api:
+    name: Deploy NestJS API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: apps/api/package-lock.json
+
+      - name: Install & build
+        working-directory: apps/api
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+      - name: Stage deploy folder (only what the server needs)
+        working-directory: apps/api
+        run: |
+          rm -rf .deploy
+          mkdir -p .deploy/src
+          cp -r dist .deploy/dist
+          cp -r src/database .deploy/src/database
+          cp .sequelizerc package.json package-lock.json .deploy/
+
+      - name: Sync files to cPanel
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avzr --delete
+          path: apps/api/.deploy/
+          remote_path: ${{ secrets.CPANEL_API_APP_ROOT }}/
+          remote_host: ${{ secrets.CPANEL_HOST }}
+          remote_port: ${{ secrets.CPANEL_SSH_PORT }}
+          remote_user: ${{ secrets.CPANEL_SSH_USERNAME }}
+          remote_key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+
+      - name: Install prod deps, migrate, restart
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.CPANEL_HOST }}
+          port: ${{ secrets.CPANEL_SSH_PORT }}
+          username: ${{ secrets.CPANEL_SSH_USERNAME }}
+          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            ${{ secrets.CPANEL_API_VENV_CMD }}
+            cd ${{ secrets.CPANEL_API_APP_ROOT }}
+            npm ci --omit=dev
+            npm run db:migrate
+            mkdir -p tmp && touch tmp/restart.txt
+
+  deploy-web:
+    name: Deploy frontend/server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install & build
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+      - name: Stage deploy folder (only what the server needs)
+        run: |
+          rm -rf .deploy
+          mkdir -p .deploy
+          cp -r dist .deploy/dist
+          cp package.json package-lock.json .deploy/
+
+      - name: Sync files to cPanel
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avzr --delete
+          path: .deploy/
+          remote_path: ${{ secrets.CPANEL_WEB_APP_ROOT }}/
+          remote_host: ${{ secrets.CPANEL_HOST }}
+          remote_port: ${{ secrets.CPANEL_SSH_PORT }}
+          remote_user: ${{ secrets.CPANEL_SSH_USERNAME }}
+          remote_key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+
+      - name: Install prod deps & restart
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.CPANEL_HOST }}
+          port: ${{ secrets.CPANEL_SSH_PORT }}
+          username: ${{ secrets.CPANEL_SSH_USERNAME }}
+          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            ${{ secrets.CPANEL_WEB_VENV_CMD }}
+            cd ${{ secrets.CPANEL_WEB_APP_ROOT }}
+            npm ci --omit=dev
+            mkdir -p tmp && touch tmp/restart.txt

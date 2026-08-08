@@ -6,10 +6,21 @@ export interface CreateBrandProfileData {
   workspaceId: string;
   name: string;
   industry?: string | null;
-  toneOfVoice?: string | null;
+  tagline?: string | null;
+  toneOfVoice?: string[] | null;
   brandColors?: string[] | null;
   logoUrl?: string | null;
   guidelines?: string | null;
+  websiteUrl?: string | null;
+  primaryFont?: string | null;
+  productsAndServices?: string[] | null;
+  mission?: string | null;
+  vision?: string | null;
+  primaryCTA?: string | null;
+  targetAudience?: string | null;
+  competitors?: string[] | null;
+  keywords?: string[] | null;
+  socialAccounts?: BrandProfile['socialAccounts'];
 }
 
 export type UpdateBrandProfileData = Partial<

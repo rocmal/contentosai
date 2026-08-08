@@ -77,4 +77,77 @@ export class IntegrationsService {
     await this.findById(id);
     await this.integrationsRepository.delete(id, actorId);
   }
+
+  /** Upserts a single connected-account row per workspace+provider, so
+   * reconnecting (e.g. re-running the Meta OAuth flow) refreshes the
+   * existing credentials instead of accumulating duplicate rows. */
+  async connect(
+    organizationId: string,
+    workspaceId: string,
+    provider: string,
+    credentials: Record<string, unknown>,
+    actorId?: string,
+  ): Promise<Integration> {
+    const existing = await this.integrationsRepository.findOne({ workspaceId, provider });
+    const encryptedCredentials = this.encryptionService.encrypt(JSON.stringify(credentials));
+
+    if (existing) {
+      return this.integrationsRepository.update(
+        existing.id,
+        { status: IntegrationStatus.CONNECTED, encryptedCredentials },
+        actorId,
+      );
+    }
+
+    const integration = await this.integrationsRepository.create(
+      {
+        organizationId,
+        workspaceId,
+        provider,
+        status: IntegrationStatus.CONNECTED,
+        encryptedCredentials,
+      },
+      actorId,
+    );
+    this.eventEmitter.emit(
+      'integrations.created',
+      new IntegrationCreatedEvent(integration.id, integration.workspaceId),
+    );
+    return integration;
+  }
+
+  async getDecryptedCredentials(
+    workspaceId: string,
+    provider: string,
+  ): Promise<Record<string, unknown> | null> {
+    const integration = await this.integrationsRepository.findOne({
+      workspaceId,
+      provider,
+      status: IntegrationStatus.CONNECTED,
+    });
+    if (!integration?.encryptedCredentials) {
+      return null;
+    }
+    return JSON.parse(this.encryptionService.decrypt(integration.encryptedCredentials)) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  async getConnectionStatus(
+    workspaceId: string,
+  ): Promise<Record<string, { connected: boolean; label?: string }>> {
+    const [facebook, instagram, linkedin, youtube] = await Promise.all([
+      this.getDecryptedCredentials(workspaceId, 'facebook'),
+      this.getDecryptedCredentials(workspaceId, 'instagram'),
+      this.getDecryptedCredentials(workspaceId, 'linkedin'),
+      this.getDecryptedCredentials(workspaceId, 'youtube'),
+    ]);
+    return {
+      facebook: { connected: !!facebook, label: (facebook?.pageName as string) ?? undefined },
+      instagram: { connected: !!instagram, label: (instagram?.igUsername as string) ?? undefined },
+      linkedin: { connected: !!linkedin, label: (linkedin?.memberName as string) ?? undefined },
+      youtube: { connected: !!youtube, label: (youtube?.channelTitle as string) ?? undefined },
+    };
+  }
 }

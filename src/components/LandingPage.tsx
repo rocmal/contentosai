@@ -16,6 +16,7 @@ import { PRICING_PLANS, formatPlanPrice, BillingCycle } from '../lib/pricingPlan
 
 interface LandingPageProps {
   onLoginClick: () => void;
+  onSignupClick: () => void;
 }
 
 const NAV_LINKS = [
@@ -90,7 +91,7 @@ function PillButton({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignupClick }) => {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
   const [faqOpen, setFaqOpen] = useState<number>(-1);
 
@@ -115,7 +116,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
               Log in
             </button>
             <button
-              onClick={onLoginClick}
+              onClick={onSignupClick}
               className="text-sm font-bold text-white px-5 py-2.5 rounded-[10px] bg-gradient-to-br from-[#2563EB] to-[#6366F1] shadow-[0_4px_14px_rgba(37,99,235,0.35)] whitespace-nowrap shrink-0"
             >
               Start free trial
@@ -139,7 +140,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
           </p>
           <div className="flex justify-center gap-3.5 flex-wrap mb-4">
             <button
-              onClick={onLoginClick}
+              onClick={onSignupClick}
               className="text-[15px] font-bold text-white px-7 py-3.5 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#6366F1] shadow-[0_8px_24px_rgba(37,99,235,0.4)] whitespace-nowrap shrink-0"
             >
               Start free trial
@@ -161,7 +162,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
             muted
             loop
             playsInline
-            className="w-full block rounded-[20px] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)] bg-black"
+            className="w-full aspect-video object-cover block rounded-[20px] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)] bg-black"
           />
         </div>
       </section>
@@ -174,25 +175,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
             Lumora blends <em className="text-[#F8FAFC] not-italic font-semibold">lumen</em>, the unit of light, with{' '}
             <em className="text-[#F8FAFC] not-italic font-semibold">aura</em>, the presence a brand builds around itself. The name reflects the job the platform does: giving every piece of content the same brand light, consistently, at scale.
           </p>
-        </div>
-      </section>
-
-      {/* TRUST STRIP */}
-      <section className="pt-8 pb-16 px-6">
-        <div className="max-w-[1180px] mx-auto">
-          <p className="text-center font-mono text-[11px] text-[#475569] tracking-[0.03em] mb-5">
-            customer logos — replace with your own
-          </p>
-          <div className="flex justify-center gap-5 flex-wrap">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="w-[130px] h-10 rounded-lg border border-dashed border-white/[0.14] flex items-center justify-center font-mono text-[11px] text-[#475569]"
-              >
-                LOGO
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -371,7 +353,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
                   </p>
                   <a
                     href={isEnterprise ? SALES_EMAIL : undefined}
-                    onClick={isEnterprise ? undefined : onLoginClick}
+                    onClick={isEnterprise ? undefined : onSignupClick}
                     className="text-center w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-[#2563EB] to-[#6366F1] whitespace-nowrap cursor-pointer"
                   >
                     {ctaLabel}
@@ -474,7 +456,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick }) => {
           </p>
           <div className="flex justify-center gap-3.5 flex-wrap relative">
             <button
-              onClick={onLoginClick}
+              onClick={onSignupClick}
               className="text-[15px] font-bold text-[#1e293b] px-7 py-3.5 rounded-xl bg-white whitespace-nowrap shrink-0"
             >
               Start free trial

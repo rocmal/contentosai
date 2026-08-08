@@ -1,47 +1,71 @@
 import React, { useState } from 'react';
 import {
+  AlertTriangle,
   Download,
   Image as ImageIcon,
-  Layers,
   Maximize2,
-  Minimize2,
   Scissors,
   Sparkles,
-  Wand2,
 } from 'lucide-react';
 import { ViewType } from '../../types';
+import * as api from '../../lib/api';
+import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
 
 interface ImageStudioViewProps {
   onNavigate: (view: ViewType) => void;
 }
+
+const PROVIDER_LABELS: Record<api.ImageProvider, string> = {
+  openai: 'OpenAI (DALL·E 3)',
+  stability: 'Stability AI',
+  flux: 'Flux (Black Forest Labs)',
+};
 
 export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) => {
   const [prompt, setPrompt] = useState(
     'Sleek 3D glassmorphism interface graphic showing an AI Content Operating System with glowing blue nodes, modern typography, 8k resolution'
   );
   const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:5'>('16:9');
-  const [stylePreset, setStylePreset] = useState('3D Tech Render');
+  const [provider, setProvider] = useState<api.ImageProvider>('flux');
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedImg, setGeneratedImg] = useState<string>(
-    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80'
-  );
+  const [error, setError] = useState<string | null>(null);
+  const [outOfCredits, setOutOfCredits] = useState(false);
+  const [generatedImg, setGeneratedImg] = useState<string | null>(null);
+  const [lastResult, setLastResult] = useState<api.ImageGenerationResult | null>(null);
 
-  const stylePresets = [
-    '3D Tech Render',
-    'Photorealistic 8K',
-    'Cyberpunk Neon',
-    'Minimalist Flat',
-    'Vector Illustration',
-  ];
+  const aspectToSize: Record<string, string> = {
+    '1:1': '1024x1024',
+    '16:9': '1792x1024',
+    '9:16': '1024x1792',
+    '4:5': '1024x1024',
+  };
 
-  const handleGenerateImage = () => {
+  const handleGenerateImage = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
-      setGeneratedImg(
-        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&auto=format&fit=crop&q=80'
-      );
+    setError(null);
+    setOutOfCredits(false);
+    try {
+      const result = await api.generateImage({
+        prompt,
+        provider,
+        size: aspectToSize[aspectRatio],
+        count: 1,
+      });
+      setLastResult(result);
+      setGeneratedImg(result.images[0] ?? null);
+    } catch (err) {
+      if (err instanceof api.ApiError && err.status === 402) {
+        setOutOfCredits(true);
+      } else {
+        setError(
+          err instanceof api.ApiError
+            ? err.message
+            : 'Could not reach the Lumora API. Is the backend running?',
+        );
+      }
+    } finally {
       setIsGenerating(false);
-    }, 1500);
+    }
   };
 
   return (
@@ -62,12 +86,20 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
           </p>
         </div>
 
-        <button
-          onClick={() => alert('High-resolution graphic downloaded!')}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-sm transition-all"
+        <a
+          href={generatedImg ?? undefined}
+          download={generatedImg ? 'lumora-generated-image' : undefined}
+          onClick={(e) => {
+            if (!generatedImg) e.preventDefault();
+          }}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-xs shadow-sm transition-all ${
+            generatedImg
+              ? 'bg-blue-600 hover:bg-blue-500 text-white cursor-pointer'
+              : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+          }`}
         >
           <Download className="w-4 h-4" /> Download Graphic
-        </button>
+        </a>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -88,6 +120,23 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
                 onChange={(e) => setPrompt(e.target.value)}
                 className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+                Provider
+              </label>
+              <select
+                value={provider}
+                onChange={(e) => setProvider(e.target.value as api.ImageProvider)}
+                className="w-full text-xs px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none"
+              >
+                {api.IMAGE_PROVIDERS.map((p) => (
+                  <option key={p} value={p}>
+                    {PROVIDER_LABELS[p]}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -117,31 +166,29 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
-                Style Preset
-              </label>
-              <select
-                value={stylePreset}
-                onChange={(e) => setStylePreset(e.target.value)}
-                className="w-full text-xs px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none"
-              >
-                {stylePresets.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <button
               onClick={handleGenerateImage}
-              disabled={isGenerating}
+              disabled={isGenerating || !prompt.trim()}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-95 transition-all disabled:opacity-50"
             >
               <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
               <span>{isGenerating ? 'Rendering Image...' : 'Generate AI Image'}</span>
             </button>
+
+            {outOfCredits && <OutOfCreditsNotice onNavigate={onNavigate} />}
+
+            {error && !outOfCredits && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <p className="text-[11px] leading-snug">{error}</p>
+              </div>
+            )}
+
+            {lastResult && !error && (
+              <p className="text-[10px] text-slate-400">
+                Generated with {lastResult.provider} · {lastResult.model}
+              </p>
+            )}
           </div>
 
           {/* Tools: Bg Removal & Upscaling */}
@@ -149,18 +196,21 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
             <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-1">
               AI Editing Utilities
             </h4>
+            <p className="text-[10px] text-slate-400 -mt-1">
+              Background removal and upscaling aren't wired to the backend yet.
+            </p>
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => alert('Background removed!')}
-                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors"
+                disabled
+                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-400 flex items-center gap-1.5 cursor-not-allowed"
               >
-                <Scissors className="w-3.5 h-3.5 text-blue-500" /> Remove Bg
+                <Scissors className="w-3.5 h-3.5" /> Remove Bg
               </button>
               <button
-                onClick={() => alert('Image upscaled to 4K resolution!')}
-                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 transition-colors"
+                disabled
+                className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 text-xs font-semibold text-slate-400 flex items-center gap-1.5 cursor-not-allowed"
               >
-                <Maximize2 className="w-3.5 h-3.5 text-emerald-500" /> 4K Upscale
+                <Maximize2 className="w-3.5 h-3.5" /> 4K Upscale
               </button>
             </div>
           </div>
@@ -172,14 +222,23 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
             {isGenerating ? (
               <div className="text-center space-y-3">
                 <Sparkles className="w-8 h-8 text-blue-500 animate-spin mx-auto" />
-                <p className="text-xs text-slate-400">Rendering high-fidelity graphic with Flux Pro...</p>
+                <p className="text-xs text-slate-400">
+                  Rendering high-fidelity graphic with {PROVIDER_LABELS[provider]}...
+                </p>
               </div>
-            ) : (
+            ) : generatedImg ? (
               <img
                 src={generatedImg}
                 alt="Generated Output"
                 className="w-full h-full object-cover"
               />
+            ) : (
+              <div className="text-center space-y-2 px-6">
+                <ImageIcon className="w-8 h-8 text-slate-700 mx-auto" />
+                <p className="text-xs text-slate-500">
+                  Nothing generated yet. Write a prompt and click "Generate AI Image".
+                </p>
+              </div>
             )}
           </div>
         </div>

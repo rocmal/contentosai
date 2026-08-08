@@ -8,6 +8,7 @@ import { MediaAssetsService } from '../application/services/media-assets.service
 import { CreateMediaAssetDto } from '../application/dto/create-media-asset.dto';
 import { UpdateMediaAssetDto } from '../application/dto/update-media-asset.dto';
 import { MediaAssetResponseDto } from '../application/dto/media-asset-response.dto';
+import { FindMyGalleryQueryDto } from '../application/dto/find-my-gallery-query.dto';
 
 @ApiTags('media')
 @ApiBearerAuth('access-token')
@@ -35,6 +36,20 @@ export class MediaAssetsController {
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+    });
+    return {
+      items: result.items.map((mediaAsset) => new MediaAssetResponseDto(mediaAsset)),
+      meta: result.meta,
+    };
+  }
+
+  @Get('my')
+  @RequirePermissions('media.read')
+  @ApiOperation({ summary: "The current user's own generated/uploaded media - a reusable gallery" })
+  async findMyGallery(@CurrentUser('id') userId: string, @Query() query: FindMyGalleryQueryDto) {
+    const result = await this.mediaAssetsService.findMyGallery(userId, query.type, {
+      page: query.page,
+      limit: query.limit,
     });
     return {
       items: result.items.map((mediaAsset) => new MediaAssetResponseDto(mediaAsset)),

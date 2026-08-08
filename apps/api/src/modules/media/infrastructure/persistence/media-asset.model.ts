@@ -31,4 +31,19 @@ export class MediaAssetModel extends BaseModel {
 
   @Column({ type: DataType.ENUM(...Object.values(MediaAssetType)), allowNull: false })
   declare type: MediaAssetType;
+
+  @Column({ type: DataType.TEXT, allowNull: true })
+  declare prompt: string | null;
+
+  @Column({ type: DataType.STRING(100), allowNull: true })
+  declare provider: string | null;
+
+  @Column({ type: DataType.STRING(150), allowNull: true })
+  declare model: string | null;
+
+  @Column({ type: DataType.STRING(150), allowNull: true })
+  declare voiceId: string | null;
+
+  @Column({ type: DataType.STRING(64), allowNull: true })
+  declare cacheKeyHash: string | null;
 }

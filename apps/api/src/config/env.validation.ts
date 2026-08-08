@@ -17,6 +17,7 @@ export const envValidationSchema = Joi.object({
   APP_HOST: Joi.string().default('localhost'),
   APP_URL: Joi.string().uri().required(),
   API_PREFIX: Joi.string().default('/api/v1'),
+  FRONTEND_URL: Joi.string().uri().default('http://localhost:3000'),
 
   // Security
   JWT_SECRET: Joi.string().min(16).required(),
@@ -70,16 +71,35 @@ export const envValidationSchema = Joi.object({
   RUNWAY_API_KEY: Joi.string().allow('').default(''),
   KLING_API_KEY: Joi.string().allow('').default(''),
   PIKA_API_KEY: Joi.string().allow('').default(''),
+  LUMA_API_KEY: Joi.string().allow('').default(''),
 
   // Image providers
   FLUX_API_KEY: Joi.string().allow('').default(''),
   STABILITY_API_KEY: Joi.string().allow('').default(''),
 
+  // Character (talking-avatar) providers
+  DID_API_KEY: Joi.string().allow('').default(''),
+  HEYGEN_API_KEY: Joi.string().allow('').default(''),
+  SYNTHESIA_API_KEY: Joi.string().allow('').default(''),
+  SYNTHESIA_AVATAR_ID: Joi.string().allow('').default(''),
+  SYNTHESIA_TEST_MODE: Joi.string().allow('').default('true'),
+  SADTALKER_PYTHON_PATH: Joi.string().allow('').default(''),
+  SADTALKER_DIR: Joi.string().allow('').default(''),
+  WAV2LIP_PYTHON_PATH: Joi.string().allow('').default(''),
+  WAV2LIP_DIR: Joi.string().allow('').default(''),
+  WAV2LIP_CHECKPOINT_PATH: Joi.string().allow('').default(''),
+
   // Voice providers
+  VOICE_PROVIDER: Joi.string()
+    .valid('edge', 'azure', 'elevenlabs', 'cartesia', 'piper')
+    .default('edge'),
   ELEVENLABS_API_KEY: Joi.string().allow('').default(''),
   CARTESIA_API_KEY: Joi.string().allow('').default(''),
   AZURE_SPEECH_KEY: Joi.string().allow('').default(''),
   AZURE_SPEECH_REGION: Joi.string().default('eastus'),
+  PIPER_BINARY_PATH: Joi.string().allow('').default(''),
+  PIPER_VOICES_DIR: Joi.string().allow('').default(''),
+  PIPER_DEFAULT_VOICE: Joi.string().allow('').default('en_US-lessac-medium'),
 
   // Email
   SMTP_HOST: Joi.string().allow('').default(''),
@@ -95,6 +115,21 @@ export const envValidationSchema = Joi.object({
   GITHUB_CLIENT_SECRET: Joi.string().allow('').default(''),
   MICROSOFT_CLIENT_ID: Joi.string().allow('').default(''),
   MICROSOFT_CLIENT_SECRET: Joi.string().allow('').default(''),
+
+  // Meta (Facebook / Instagram publishing)
+  META_APP_ID: Joi.string().allow('').default(''),
+  META_APP_SECRET: Joi.string().allow('').default(''),
+  META_REDIRECT_URI: Joi.string().allow('').default(''),
+  META_GRAPH_API_VERSION: Joi.string().default('v21.0'),
+
+  // LinkedIn (member post publishing)
+  LINKEDIN_CLIENT_ID: Joi.string().allow('').default(''),
+  LINKEDIN_CLIENT_SECRET: Joi.string().allow('').default(''),
+  LINKEDIN_REDIRECT_URI: Joi.string().allow('').default(''),
+  LINKEDIN_API_VERSION: Joi.string().default('202401'),
+
+  // YouTube (video upload publishing - reuses the Google OAuth client)
+  YOUTUBE_REDIRECT_URI: Joi.string().allow('').default(''),
 
   // Stripe
   STRIPE_SECRET_KEY: Joi.string().allow('').default(''),

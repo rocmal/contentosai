@@ -1,25 +1,164 @@
-import React, { useState } from 'react';
-import { Download, Mic, Play, Radio, Volume2 } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  AlertTriangle,
+  Bookmark,
+  Download,
+  Mic,
+  Pause,
+  Play,
+  Sparkles,
+  Volume2,
+  X,
+} from 'lucide-react';
 import { ViewType } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import * as api from '../../lib/api';
+import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
 
 interface VoiceStudioViewProps {
   onNavigate: (view: ViewType) => void;
 }
 
+const PROVIDER_INFO: Record<api.VoiceProvider, { name: string; description: string }> = {
+  edge: { name: 'Microsoft Edge TTS', description: 'Free, local dev - no account or key needed' },
+  elevenlabs: { name: 'ElevenLabs', description: 'Expressive, natural-sounding voices' },
+  cartesia: { name: 'Cartesia', description: 'Low-latency, deep narration' },
+  azure: { name: 'Azure Speech', description: 'Enterprise-grade neural TTS' },
+  piper: { name: 'Piper (offline)', description: 'Fully offline fallback - no internet or account needed' },
+};
+
+type Language = 'en' | 'hi';
+
+const LANGUAGE_LABELS: Record<Language, string> = { en: 'English', hi: 'हिंदी Hindi' };
+
+// Piper is the one provider with confirmed, installed voices per language -
+// picking a language here swaps its voiceId directly. Other providers keep
+// manual voiceId entry (see the input below) since we haven't verified a
+// Hindi voice id for each of them; `language` is still saved with the
+// template either way so it stays a meaningful filter later.
+const PIPER_VOICE_BY_LANGUAGE: Record<Language, string> = {
+  en: 'en_US-lessac-medium',
+  hi: 'hi_IN-priyamvada-medium',
+};
+
 export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) => {
+  const { user } = useAuth();
   const [text, setText] = useState(
     "Welcome to Lumora — the AI Content Operating System designed for high-growth tech teams. Scale your multi-channel marketing with a unified Brand Memory."
   );
-  const [voice, setVoice] = useState('Sarah - Tech Executive (ElevenLabs)');
+  // Defaults to the free local-dev provider (no key required); Azure/
+  // ElevenLabs/Cartesia remain one dropdown selection away.
+  const [provider, setProvider] = useState<api.VoiceProvider>('edge');
+  const [language, setLanguage] = useState<Language>('en');
+  const [voiceId, setVoiceId] = useState('');
   const [speed, setSpeed] = useState(1.0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [outOfCredits, setOutOfCredits] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const voices = [
-    { id: 'Sarah - Tech Executive (ElevenLabs)', name: 'Sarah', type: 'Tech & Professional', accent: 'US Natural' },
-    { id: 'Marcus - Deep Narrator (Cartesia)', name: 'Marcus', type: 'Documentary & Ad', accent: 'UK Deep' },
-    { id: 'Elena - Conversational Podcast', name: 'Elena', type: 'Podcast & Social', accent: 'US Warm' },
-    { id: 'Alex Rivera - Vocal Clone', name: 'Alex (Clone)', type: 'Custom Brand Voice', accent: 'Verified Vocal Clone' },
-  ];
+  const [voiceTemplates, setVoiceTemplates] = useState<api.VoiceTemplate[]>([]);
+  const [showSaveTemplatePanel, setShowSaveTemplatePanel] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateVisibility, setTemplateVisibility] = useState<api.VoiceTemplateVisibility>('private');
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [saveTemplateStatus, setSaveTemplateStatus] = useState<'idle' | 'saved' | 'error'>('idle');
+
+  useEffect(() => {
+    api.listVoiceTemplates().then(setVoiceTemplates).catch(() => undefined);
+  }, []);
+
+  const handleSelectLanguage = (lang: Language) => {
+    setLanguage(lang);
+    if (provider === 'piper') {
+      setVoiceId(PIPER_VOICE_BY_LANGUAGE[lang]);
+    }
+  };
+
+  const handleSelectProvider = (p: api.VoiceProvider) => {
+    setProvider(p);
+    if (p === 'piper') {
+      setVoiceId(PIPER_VOICE_BY_LANGUAGE[language]);
+    }
+  };
+
+  const handleGenerateSpeech = async () => {
+    setIsGenerating(true);
+    setError(null);
+    setOutOfCredits(false);
+    try {
+      const result = await api.generateSpeech({
+        text,
+        provider,
+        voiceId: voiceId.trim() || undefined,
+      });
+      setAudioUrl((previous) => {
+        if (previous) URL.revokeObjectURL(previous);
+        return result.audioUrl;
+      });
+      setIsPlaying(false);
+    } catch (err) {
+      if (err instanceof api.ApiError && err.status === 402) {
+        setOutOfCredits(true);
+      } else {
+        setError(
+          err instanceof api.ApiError
+            ? err.message
+            : 'Could not reach the Lumora API. Is the backend running?',
+        );
+      }
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleTogglePlay = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.playbackRate = speed;
+      void audio.play();
+    } else {
+      audio.pause();
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim() || !user?.organizationId || !user?.workspaceId) return;
+    setIsSavingTemplate(true);
+    setSaveTemplateStatus('idle');
+    try {
+      const saved = await api.saveVoiceTemplate({
+        organizationId: user.organizationId,
+        workspaceId: user.workspaceId,
+        name: templateName.trim(),
+        provider,
+        voiceId: voiceId.trim() || PIPER_VOICE_BY_LANGUAGE[language] || '',
+        language,
+        visibility: templateVisibility,
+      });
+      setVoiceTemplates((previous) => [saved, ...previous]);
+      setSaveTemplateStatus('saved');
+      setTemplateName('');
+      window.setTimeout(() => setShowSaveTemplatePanel(false), 1200);
+    } catch {
+      setSaveTemplateStatus('error');
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
+
+  const handlePickTemplate = (template: api.VoiceTemplate) => {
+    if (api.VOICE_PROVIDERS.includes(template.provider as api.VoiceProvider)) {
+      setProvider(template.provider as api.VoiceProvider);
+    }
+    if (template.language === 'en' || template.language === 'hi') {
+      setLanguage(template.language);
+    }
+    setVoiceId(template.voiceId);
+  };
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
@@ -31,45 +170,114 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
               <Mic className="w-5 h-5" />
             </span>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-              Voice Studio & Vocal Cloning
+              Voice Studio
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Text-to-Speech synthesis with emotional controls and instant voice cloning.
+            Text-to-Speech synthesis powered by ElevenLabs, Cartesia, Azure Speech, or the offline Piper fallback.
           </p>
         </div>
-
-        <button
-          onClick={() => alert('Vocal clone uploaded & trained successfully!')}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 text-white font-semibold text-xs transition-all"
-        >
-          <Radio className="w-4 h-4 text-emerald-400" /> Clone New Voice
-        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Voices Grid */}
+        {/* Providers Grid */}
         <div className="space-y-3">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Available AI Voices
+            Voice Provider
           </h3>
-          {voices.map((v) => (
+          {api.VOICE_PROVIDERS.map((p) => (
             <div
-              key={v.id}
-              onClick={() => setVoice(v.id)}
+              key={p}
+              onClick={() => handleSelectProvider(p)}
               className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                voice === v.id
+                provider === p
                   ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/30'
                   : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900'
               }`}
             >
               <div>
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">{v.name}</h4>
-                <p className="text-[10px] text-slate-500">{v.type} • {v.accent}</p>
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                  {PROVIDER_INFO[p].name}
+                </h4>
+                <p className="text-[10px] text-slate-500">{PROVIDER_INFO[p].description}</p>
               </div>
-              <Volume2 className={`w-4 h-4 ${voice === v.id ? 'text-blue-600' : 'text-slate-400'}`} />
+              <Volume2 className={`w-4 h-4 ${provider === p ? 'text-blue-600' : 'text-slate-400'}`} />
             </div>
           ))}
+
+          <div>
+            <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+              Language
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(LANGUAGE_LABELS) as Language[]).map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => handleSelectLanguage(lang)}
+                  className={`py-2 rounded-xl border text-xs font-bold transition-all ${
+                    language === lang
+                      ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'
+                  }`}
+                >
+                  {LANGUAGE_LABELS[lang]}
+                </button>
+              ))}
+            </div>
+            {provider !== 'piper' && (
+              <p className="text-[10px] text-slate-500 mt-1">
+                Only Piper auto-selects a voice per language right now - set the Voice ID below for other providers.
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+              Voice ID (optional)
+            </label>
+            <input
+              type="text"
+              value={voiceId}
+              onChange={(e) => setVoiceId(e.target.value)}
+              placeholder="e.g. en-US-AriaNeural - provider default used if empty"
+              className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {voiceTemplates.length > 0 && (
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Your saved voice templates
+              </h3>
+              <div className="space-y-2">
+                {voiceTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => handlePickTemplate(template)}
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 transition-colors flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {template.name}
+                      </p>
+                      <p className="text-[10px] text-slate-500 truncate">
+                        {PROVIDER_INFO[template.provider as api.VoiceProvider]?.name ?? template.provider} · {LANGUAGE_LABELS[template.language as Language] ?? template.language}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                        template.visibility === 'team'
+                          ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                      }`}
+                    >
+                      {template.visibility === 'team' ? 'Team' : 'Private'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Text Area & Audio Synthesizer */}
@@ -94,7 +302,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
-                  Pacing / Speed ({speed}x)
+                  Playback Speed ({speed.toFixed(2)}x)
                 </label>
                 <input
                   type="range"
@@ -108,13 +316,97 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
               </div>
             </div>
 
-            {/* Audio Waveform Player */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleGenerateSpeech}
+                disabled={isGenerating || !text.trim()}
+                className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                <span>{isGenerating ? 'Synthesizing Audio...' : 'Generate Speech'}</span>
+              </button>
+              <button
+                onClick={() => setShowSaveTemplatePanel(true)}
+                title="Save this provider + voice as a reusable template"
+                className="px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-colors flex items-center justify-center"
+              >
+                <Bookmark className="w-4 h-4" />
+              </button>
+            </div>
+
+            {showSaveTemplatePanel && (
+              <div className="p-4 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <Bookmark className="w-3.5 h-3.5" /> Save as voice template
+                  </h4>
+                  <button
+                    onClick={() => setShowSaveTemplatePanel(false)}
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={templateName}
+                  onChange={(e) => setTemplateName(e.target.value)}
+                  maxLength={150}
+                  placeholder="e.g. Hindi narrator - Priyamvada"
+                  className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  {(['private', 'team'] as const).map((visibility) => (
+                    <button
+                      key={visibility}
+                      onClick={() => setTemplateVisibility(visibility)}
+                      className={`py-2 rounded-xl border text-xs font-bold transition-all ${
+                        templateVisibility === visibility
+                          ? 'border-blue-600 bg-blue-100/60 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {visibility === 'private' ? 'Just me' : 'My whole team'}
+                    </button>
+                  ))}
+                </div>
+                {saveTemplateStatus === 'error' && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400">
+                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <p className="text-[11px] leading-snug">Could not save the template. Try again.</p>
+                  </div>
+                )}
+                <button
+                  onClick={handleSaveTemplate}
+                  disabled={isSavingTemplate || !templateName.trim()}
+                  className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-colors disabled:opacity-50"
+                >
+                  {saveTemplateStatus === 'saved' ? 'Saved!' : isSavingTemplate ? 'Saving...' : 'Save Template'}
+                </button>
+              </div>
+            )}
+
+            {outOfCredits && <OutOfCreditsNotice onNavigate={onNavigate} />}
+
+            {error && !outOfCredits && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <p className="text-[11px] leading-snug">{error}</p>
+              </div>
+            )}
+
+            {/* Audio Player */}
             <div className="p-4 rounded-xl bg-slate-950 text-white flex items-center justify-between gap-4">
               <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="p-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-transform active:scale-95"
+                onClick={handleTogglePlay}
+                disabled={!audioUrl}
+                className="p-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Play className="w-5 h-5 fill-current ml-0.5" />
+                {isPlaying ? (
+                  <Pause className="w-5 h-5 fill-current" />
+                ) : (
+                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                )}
               </button>
 
               <div className="flex-1 flex items-center gap-1 h-8">
@@ -129,12 +421,31 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                 ))}
               </div>
 
-              <button
-                onClick={() => alert('WAV Audio file downloaded!')}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+              <a
+                href={audioUrl ?? undefined}
+                download={audioUrl ? 'lumora-voiceover' : undefined}
+                onClick={(e) => {
+                  if (!audioUrl) e.preventDefault();
+                }}
+                className={`p-2 rounded-lg ${
+                  audioUrl
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer'
+                    : 'bg-slate-900 text-slate-600 cursor-not-allowed'
+                }`}
               >
                 <Download className="w-4 h-4" />
-              </button>
+              </a>
+
+              {audioUrl && (
+                <audio
+                  ref={audioRef}
+                  src={audioUrl}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={() => setIsPlaying(false)}
+                  className="hidden"
+                />
+              )}
             </div>
           </div>
         </div>

@@ -27,6 +27,10 @@ export class StorageService {
     return this.providerFactory.getProvider().getUrl(key);
   }
 
+  async readFile(key: string): Promise<Buffer> {
+    return this.providerFactory.getProvider().read(key);
+  }
+
   async delete(key: string): Promise<void> {
     await this.providerFactory.getProvider().delete(key);
   }

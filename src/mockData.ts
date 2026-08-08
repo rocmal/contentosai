@@ -1,17 +1,12 @@
 import {
   AIAgent,
   BrandBrain,
-  CalendarEvent,
-  Campaign,
-  GenerationHistoryItem,
   IndustryPack,
   IntegrationItem,
   MediaAsset,
   Project,
   TeamMember,
   VoiceProfile,
-  WorkflowEdge,
-  WorkflowNode,
 } from './types';
 
 export const initialBrandBrain: BrandBrain = {
@@ -82,135 +77,6 @@ export const initialProjects: Project[] = [
     lastUpdated: 'Yesterday',
     campaign: 'Trust & Reputation',
     thumbnail: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=400&auto=format&fit=crop&q=80',
-  },
-];
-
-export const initialCampaigns: Campaign[] = [
-  {
-    id: 'camp-1',
-    name: 'Q3 Enterprise AI Launch',
-    status: 'Active',
-    platforms: ['LinkedIn', 'Twitter/X', 'YouTube'],
-    startDate: '2026-07-01',
-    endDate: '2026-08-15',
-    contentCount: 24,
-    goal: 'Lead Generation',
-    reach: '842.5K',
-  },
-  {
-    id: 'camp-2',
-    name: 'Summer Developer Bootcamp & Webinar',
-    status: 'Active',
-    platforms: ['YouTube', 'Blog', 'Email'],
-    startDate: '2026-07-10',
-    endDate: '2026-08-30',
-    contentCount: 16,
-    goal: 'Community & Education',
-    reach: '310.2K',
-  },
-  {
-    id: 'camp-3',
-    name: 'Brand Refresh & Vision 2027',
-    status: 'Scheduled',
-    platforms: ['LinkedIn', 'Instagram', 'Twitter/X'],
-    startDate: '2026-09-01',
-    endDate: '2026-10-01',
-    contentCount: 10,
-    goal: 'Brand Awareness',
-    reach: 'Expected 1.2M',
-  },
-];
-
-export const initialCalendarEvents: CalendarEvent[] = [
-  {
-    id: 'cal-1',
-    title: 'How AI Agents are replacing legacy SaaS workflows in 2026',
-    platform: 'LinkedIn',
-    contentType: 'Carousel / PDF',
-    scheduledTime: 'Today, 2:30 PM',
-    status: 'Approved',
-    author: 'Alex Rivera',
-    previewText: 'Static automation is dead. Autonomous AI agents are taking over SaaS. Here are 5 real-world case studies...',
-    mediaUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'cal-2',
-    title: 'Lumora OS Demo: 0 to 10x Content Production in 60s',
-    platform: 'YouTube',
-    contentType: 'Video Short / Reel',
-    scheduledTime: 'Today, 5:00 PM',
-    status: 'Approved',
-    author: 'Sarah Chen',
-    previewText: 'Watch how we turn 1 brand guidelines input into 20 multi-channel assets in under 60 seconds.',
-    mediaUrl: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=300&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'cal-3',
-    title: 'The AI Content OS Playbook for Tech Founders',
-    platform: 'Newsletter',
-    contentType: 'Email Issue #42',
-    scheduledTime: 'Tomorrow, 9:00 AM',
-    status: 'Review',
-    author: 'Alex Rivera',
-    previewText: 'In this edition: why prompting is becoming obsolete, and how context graph architectures win...',
-  },
-  {
-    id: 'cal-4',
-    title: '3 Mistakes Founders Make When Scaling Content',
-    platform: 'Twitter/X',
-    contentType: 'Thread',
-    scheduledTime: 'Tomorrow, 11:30 AM',
-    status: 'Draft',
-    author: 'Elena Rostova',
-    previewText: '1/ Building isolated prompts instead of brand systems. 2/ Ignoring multi-modal video distribution...',
-  },
-  {
-    id: 'cal-5',
-    title: 'Productivity Unlocked: Case Study with Global Tech Inc.',
-    platform: 'Blog',
-    contentType: 'SEO Article',
-    scheduledTime: 'Jul 29, 10:00 AM',
-    status: 'Draft',
-    author: 'Marcus Vance',
-  },
-];
-
-export const initialGenerations: GenerationHistoryItem[] = [
-  {
-    id: 'gen-1',
-    title: 'LinkedIn Launch Post for Acme Cloud Engine',
-    type: 'LinkedIn Post',
-    provider: 'Gemini 3.6 Flash',
-    createdAt: '10 mins ago',
-    preview: '🚀 Thrilled to announce the official release of Acme Cloud Engine v3.0! Here is how we helped 50+ enterprise teams reduce dev friction by 40%...',
-    tags: ['Product Launch', 'B2B', 'Tech'],
-  },
-  {
-    id: 'gen-2',
-    title: 'AI Voiceover: Enterprise Security Audio Intro',
-    type: 'Voiceover',
-    provider: 'ElevenLabs / Cartesia',
-    createdAt: '25 mins ago',
-    preview: '"Welcome to Acme Security Center. All encryption protocols are verified and active."',
-    tags: ['Audio', 'Voice', 'Product'],
-  },
-  {
-    id: 'gen-3',
-    title: 'Cyberpunk Cybernetics Thumbnail Graphic',
-    type: 'Image Generation',
-    provider: 'Flux Pro / Gemini Flash Image',
-    createdAt: '1 hour ago',
-    preview: 'High resolution 16:9 thumbnail with neon lighting and clean typography overlay.',
-    tags: ['Thumbnail', 'Design', 'YouTube'],
-  },
-  {
-    id: 'gen-4',
-    title: 'Automated 5-Node Content Repurposing Workflow',
-    type: 'Automation Flow',
-    provider: 'Lumora Orchestrator',
-    createdAt: '2 hours ago',
-    preview: 'Blog post -> LinkedIn Carousel + Twitter Thread + YouTube Short Script + Newsletter Summary.',
-    tags: ['Automation', 'n8n', 'Workflow'],
   },
 ];
 
@@ -331,72 +197,6 @@ export const initialAIAgents: AIAgent[] = [
     tasksCompleted: 980,
     accuracy: '94.8%',
   },
-];
-
-export const initialWorkflowNodes: WorkflowNode[] = [
-  {
-    id: 'node-1',
-    type: 'trigger',
-    title: 'New Blog Post Published',
-    description: 'Triggers whenever an article is published on WordPress/Ghost',
-    icon: 'zap',
-    position: { x: 50, y: 150 },
-    status: 'success',
-  },
-  {
-    id: 'node-2',
-    type: 'agent',
-    title: 'Repurposing Agent',
-    description: 'Splits article into key takeaways & quotes',
-    icon: 'bot',
-    position: { x: 320, y: 150 },
-    status: 'success',
-  },
-  {
-    id: 'node-3',
-    type: 'generate',
-    title: 'Generate LinkedIn Carousel & Thread',
-    description: 'Applies Brand Brain tone & design system',
-    icon: 'sparkles',
-    position: { x: 600, y: 80 },
-    status: 'success',
-  },
-  {
-    id: 'node-4',
-    type: 'generate',
-    title: 'Create Voiceover & Video Script',
-    description: 'Uses ElevenLabs voice clone & Veo 3.1 video prompts',
-    icon: 'mic',
-    position: { x: 600, y: 240 },
-    status: 'idle',
-  },
-  {
-    id: 'node-5',
-    type: 'review',
-    title: 'Slack Manager Approval',
-    description: 'Sends preview card to #content-approval channel',
-    icon: 'check-circle-2',
-    position: { x: 900, y: 150 },
-    status: 'idle',
-  },
-  {
-    id: 'node-6',
-    type: 'publish',
-    title: 'Auto Publish & Schedule',
-    description: 'Posts to LinkedIn, Twitter/X & YouTube Shorts',
-    icon: 'send',
-    position: { x: 1180, y: 150 },
-    status: 'idle',
-  },
-];
-
-export const initialWorkflowEdges: WorkflowEdge[] = [
-  { id: 'e1-2', source: 'node-1', target: 'node-2' },
-  { id: 'e2-3', source: 'node-2', target: 'node-3', label: 'Text Branch' },
-  { id: 'e2-4', source: 'node-2', target: 'node-4', label: 'Media Branch' },
-  { id: 'e3-5', source: 'node-3', target: 'node-5' },
-  { id: 'e4-5', source: 'node-4', target: 'node-5' },
-  { id: 'e5-6', source: 'node-5', target: 'node-6', label: 'When Approved' },
 ];
 
 export const initialIntegrations: IntegrationItem[] = [

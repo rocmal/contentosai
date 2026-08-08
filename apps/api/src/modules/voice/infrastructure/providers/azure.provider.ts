@@ -4,7 +4,15 @@ import {
   IVoiceProvider,
   VoiceGenerationRequest,
   VoiceGenerationResult,
+  VoiceInfo,
 } from '../../domain/interfaces/voice-provider.interface';
+
+interface AzureVoice {
+  ShortName: string;
+  DisplayName: string;
+  Locale: string;
+  Gender: string;
+}
 
 @Injectable()
 export class AzureProvider implements IVoiceProvider {
@@ -13,9 +21,17 @@ export class AzureProvider implements IVoiceProvider {
 
   constructor(private readonly configService: ConfigService) {}
 
+  private get apiKey(): string {
+    return this.configService.get<string>('ai.voice.azure.apiKey') ?? '';
+  }
+
+  private get region(): string {
+    return this.configService.get<string>('ai.voice.azure.region') ?? 'eastus';
+  }
+
   async generateSpeech(request: VoiceGenerationRequest): Promise<VoiceGenerationResult> {
-    const apiKey = this.configService.get<string>('ai.voice.azure.apiKey') ?? '';
-    const region = this.configService.get<string>('ai.voice.azure.region') ?? 'eastus';
+    const apiKey = this.apiKey;
+    const region = this.region;
     if (!apiKey) {
       throw new ServiceUnavailableException('Azure voice generation is not configured');
     }
@@ -48,6 +64,32 @@ export class AzureProvider implements IVoiceProvider {
       mimeType: 'audio/mpeg',
       audioBase64: audioBuffer.toString('base64'),
     };
+  }
+
+  async listVoices(): Promise<VoiceInfo[]> {
+    if (!this.apiKey) {
+      return [];
+    }
+
+    const response = await fetch(
+      `https://${this.region}.tts.speech.microsoft.com/cognitiveservices/voices/list`,
+      { headers: { 'Ocp-Apim-Subscription-Key': this.apiKey } },
+    );
+    if (!response.ok) {
+      return [];
+    }
+
+    const body = (await response.json()) as AzureVoice[];
+    return body.map((voice) => ({
+      id: voice.ShortName,
+      name: voice.DisplayName,
+      locale: voice.Locale,
+      gender: voice.Gender,
+    }));
+  }
+
+  async healthCheck(): Promise<boolean> {
+    return !!this.apiKey;
   }
 
   private escapeSsml(text: string): string {

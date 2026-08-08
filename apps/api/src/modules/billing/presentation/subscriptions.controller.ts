@@ -3,10 +3,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
-import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { SubscriptionsService } from '../application/services/subscriptions.service';
 import { CreateSubscriptionDto } from '../application/dto/create-subscription.dto';
 import { UpdateSubscriptionDto } from '../application/dto/update-subscription.dto';
+import { ListSubscriptionsQueryDto } from '../application/dto/list-subscriptions-query.dto';
 import { SubscriptionResponseDto } from '../application/dto/subscription-response.dto';
 
 @ApiTags('billing')
@@ -28,13 +28,14 @@ export class SubscriptionsController {
 
   @Get()
   @RequirePermissions('billing.read')
-  @ApiOperation({ summary: 'List subscriptions' })
-  async findAll(@Query() query: PaginationQueryDto) {
+  @ApiOperation({ summary: 'List subscriptions (pass organizationId to scope to one tenant)' })
+  async findAll(@Query() query: ListSubscriptionsQueryDto) {
     const result = await this.subscriptionsService.findAll({
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+      filters: query.organizationId ? { organizationId: query.organizationId } : undefined,
     });
     return {
       items: result.items.map((subscription) => new SubscriptionResponseDto(subscription)),

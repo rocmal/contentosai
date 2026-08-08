@@ -1,19 +1,29 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import helmet from 'helmet';
 import compression from 'compression';
+import { join } from 'path';
 import { AppModule } from './app.module';
 import { setupSwagger } from '@common/swagger/swagger.config';
 import { AllExceptionsFilter } from '@common/filters/all-exceptions.filter';
 import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
 
   const config = app.get(ConfigService);
   app.useLogger(app.get(Logger));
+
+  // LocalStorageProvider.getUrl() hands out "{APP_URL}/storage/uploads/{key}"
+  // for every uploaded asset (see local-storage.provider.ts) - that path has
+  // to actually be served, or every consumer of an uploaded file's URL
+  // (e.g. Meta's Graph API fetching a video to publish) gets a 404.
+  app.useStaticAssets(join(process.cwd(), config.get<string>('storage.local.path') ?? 'storage', 'uploads'), {
+    prefix: '/storage/uploads/',
+  });
 
   // API_PREFIX is authored as "/api/v1" (see .env). The trailing version segment
   // is peeled off and handed to Nest's URI versioning instead of being baked into
@@ -30,7 +40,7 @@ async function bootstrap(): Promise<void> {
   app.use(helmet());
   app.use(compression());
   app.enableCors({
-    origin: config.get<boolean>('app.isProduction') ? config.get<string>('app.url') : true,
+    origin: config.get<boolean>('app.isProduction') ? config.get<string>('app.frontendUrl') : true,
     credentials: true,
   });
 
@@ -43,7 +53,10 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalInterceptors(new TransformInterceptor());
+  // Reflector has no dependencies of its own, so it's safe to instantiate
+  // directly here rather than pulling TransformInterceptor into DI via
+  // APP_INTERCEPTOR just for this one constructor argument.
+  app.useGlobalInterceptors(new TransformInterceptor(new Reflector()));
 
   setupSwagger(app);
 

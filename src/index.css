@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+/* Browsers default <button> to cursor: default (a plain arrow), and
+   Tailwind's Preflight deliberately doesn't override that - so every
+   button in the app was missing the pointer/hand hover cursor a user
+   expects on a clickable element. Fixed globally here instead of adding
+   cursor-pointer to every individual button className. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}

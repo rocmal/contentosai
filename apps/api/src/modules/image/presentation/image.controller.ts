@@ -2,6 +2,7 @@ import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { ImageService } from '../application/services/image.service';
 import { GenerateImageDto } from '../application/dto/generate-image.dto';
 
@@ -14,8 +15,8 @@ export class ImageController {
   @Post('generate')
   @RequirePermissions('image.generate')
   @ApiOperation({ summary: 'Generate an image with the selected provider' })
-  async generate(@Body() dto: GenerateImageDto, @CurrentUser('id') userId: string) {
-    return this.imageService.generateImage(dto, userId);
+  async generate(@Body() dto: GenerateImageDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.imageService.generateImage(dto, user);
   }
 
   @Get('providers')

@@ -1,5 +1,14 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsString, IsUUID, IsUrl, Min, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsUrl,
+  Min,
+  MaxLength,
+} from 'class-validator';
 import { MediaAssetType } from '../../domain/entities/media-asset.entity';
 
 export class CreateMediaAssetDto {
@@ -38,4 +47,27 @@ export class CreateMediaAssetDto {
   @ApiProperty({ enum: MediaAssetType })
   @IsEnum(MediaAssetType)
   type!: MediaAssetType;
+
+  @ApiPropertyOptional({ description: 'Generation prompt (images) or spoken text (audio)' })
+  @IsOptional()
+  @IsString()
+  prompt?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  provider?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  model?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  voiceId?: string;
 }

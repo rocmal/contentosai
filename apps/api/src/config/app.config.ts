@@ -6,6 +6,7 @@ export default registerAs('app', () => ({
   port: parseInt(process.env.APP_PORT ?? '3000', 10),
   host: process.env.APP_HOST ?? 'localhost',
   url: process.env.APP_URL ?? 'http://localhost:3000',
+  frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
   apiPrefix: process.env.API_PREFIX ?? '/api/v1',
   isProduction: process.env.APP_ENV === 'production',
   isDevelopment: process.env.APP_ENV === 'development',

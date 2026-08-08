@@ -7,6 +7,14 @@ import { RolesService } from '@modules/roles/application/services/roles.service'
 import { UserStatus } from '@modules/users/domain/entities/user.entity';
 import { IPasswordHasher } from '@shared/security/password-hasher.interface';
 import { IOrganizationMembersRepository } from '@modules/organizations/domain/repositories/organization-member-repository.interface';
+import { IOrganizationsRepository } from '@modules/organizations/domain/repositories/organization-repository.interface';
+import { OrganizationStatus } from '@modules/organizations/domain/entities/organization.entity';
+import { IWorkspacesRepository } from '@modules/workspaces/domain/repositories/workspace-repository.interface';
+import { WorkspaceStatus } from '@modules/workspaces/domain/entities/workspace.entity';
+import { IRolesRepository } from '@modules/roles/domain/repositories/role-repository.interface';
+import { ISubscriptionsRepository } from '@modules/billing/domain/repositories/subscription-repository.interface';
+import { SubscriptionStatus } from '@modules/billing/domain/entities/subscription.entity';
+import { CreditsService } from '@modules/credits/application/services/credits.service';
 import { IRefreshTokensRepository } from '../../domain/repositories/refresh-token-repository.interface';
 import { IEmailVerificationTokensRepository } from '../../domain/repositories/email-verification-token-repository.interface';
 import { IPasswordResetTokensRepository } from '../../domain/repositories/password-reset-token-repository.interface';
@@ -18,6 +26,11 @@ describe('AuthService', () => {
   let tokenService: jest.Mocked<TokenService>;
   let passwordHasher: jest.Mocked<IPasswordHasher>;
   let organizationMembersRepository: jest.Mocked<IOrganizationMembersRepository>;
+  let organizationsRepository: jest.Mocked<IOrganizationsRepository>;
+  let workspacesRepository: jest.Mocked<IWorkspacesRepository>;
+  let rolesRepository: jest.Mocked<IRolesRepository>;
+  let subscriptionsRepository: jest.Mocked<ISubscriptionsRepository>;
+  let creditsService: jest.Mocked<CreditsService>;
   let refreshTokensRepository: jest.Mocked<IRefreshTokensRepository>;
   let emailVerificationTokensRepository: jest.Mocked<IEmailVerificationTokensRepository>;
   let passwordResetTokensRepository: jest.Mocked<IPasswordResetTokensRepository>;
@@ -67,7 +80,38 @@ describe('AuthService', () => {
     passwordHasher = { hash: jest.fn(), compare: jest.fn() };
     organizationMembersRepository = {
       listByUser: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
     } as unknown as jest.Mocked<IOrganizationMembersRepository>;
+    workspacesRepository = {
+      listByOrganization: jest.fn().mockResolvedValue([]),
+      create: jest.fn(),
+    } as unknown as jest.Mocked<IWorkspacesRepository>;
+    organizationsRepository = {
+      findBySlug: jest.fn().mockResolvedValue(null),
+      create: jest.fn(),
+    } as unknown as jest.Mocked<IOrganizationsRepository>;
+    rolesRepository = {
+      findBySlug: jest.fn().mockResolvedValue({
+        id: 'role-super-admin',
+        organizationId: null,
+        name: 'Super Admin',
+        slug: 'super-admin',
+        description: null,
+        isSystem: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        createdBy: null,
+        updatedBy: null,
+        version: 0,
+      }),
+    } as unknown as jest.Mocked<IRolesRepository>;
+    subscriptionsRepository = {
+      create: jest.fn(),
+    } as unknown as jest.Mocked<ISubscriptionsRepository>;
+    creditsService = {
+      grantInitial: jest.fn(),
+    } as unknown as jest.Mocked<CreditsService>;
     refreshTokensRepository = {
       create: jest.fn(),
       findByTokenHash: jest.fn(),
@@ -91,8 +135,13 @@ describe('AuthService', () => {
       rolesService,
       tokenService,
       eventEmitter,
+      creditsService,
       passwordHasher,
       organizationMembersRepository,
+      organizationsRepository,
+      workspacesRepository,
+      rolesRepository,
+      subscriptionsRepository,
       refreshTokensRepository,
       emailVerificationTokensRepository,
       passwordResetTokensRepository,
@@ -148,7 +197,7 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    it('creates the user, requests email verification and issues tokens', async () => {
+    beforeEach(() => {
       usersService.create.mockResolvedValue({
         id: activeUser.id,
         email: activeUser.email,
@@ -166,7 +215,37 @@ describe('AuthService', () => {
         updatedBy: null,
         version: 0,
       });
+      organizationsRepository.create.mockResolvedValue({
+        id: 'org-1',
+        name: "Jane's Workspace",
+        slug: 'jane-abc123',
+        ownerId: activeUser.id,
+        status: OrganizationStatus.ACTIVE,
+        description: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        createdBy: activeUser.id,
+        updatedBy: activeUser.id,
+        version: 0,
+      });
+      workspacesRepository.create.mockResolvedValue({
+        id: 'workspace-1',
+        organizationId: 'org-1',
+        name: 'Default',
+        slug: 'default',
+        description: null,
+        status: WorkspaceStatus.ACTIVE,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        createdBy: activeUser.id,
+        updatedBy: activeUser.id,
+        version: 0,
+      });
+    });
 
+    it('creates the user, requests email verification and issues tokens', async () => {
       const result = await authService.register({
         email: activeUser.email,
         password: 'a-strong-password',
@@ -181,6 +260,74 @@ describe('AuthService', () => {
         expect.objectContaining({ userId: activeUser.id }),
       );
       expect(result.accessToken).toBe('access-token');
+    });
+
+    it('provisions a personal organization, workspace, membership, subscription and initial credit grant', async () => {
+      await authService.register({
+        email: activeUser.email,
+        password: 'a-strong-password',
+        firstName: 'Jane',
+        lastName: 'Doe',
+      });
+
+      expect(rolesRepository.findBySlug).toHaveBeenCalledWith(null, 'super-admin');
+      expect(organizationsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Jane's Workspace", ownerId: activeUser.id }),
+        activeUser.id,
+      );
+      expect(workspacesRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ organizationId: 'org-1', slug: 'default' }),
+        activeUser.id,
+      );
+      expect(organizationMembersRepository.create).toHaveBeenCalledWith(
+        { organizationId: 'org-1', userId: activeUser.id, roleId: 'role-super-admin' },
+        activeUser.id,
+      );
+      expect(subscriptionsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ organizationId: 'org-1', plan: 'starter', status: SubscriptionStatus.TRIALING }),
+        activeUser.id,
+      );
+      expect(creditsService.grantInitial).toHaveBeenCalledWith('org-1', 'workspace-1', 'starter', activeUser.id);
+    });
+
+    it('does not fail registration when the initial credit grant errors', async () => {
+      creditsService.grantInitial.mockRejectedValue(new Error('db unavailable'));
+
+      const result = await authService.register({
+        email: activeUser.email,
+        password: 'a-strong-password',
+        firstName: 'Jane',
+        lastName: 'Doe',
+      });
+
+      expect(result.accessToken).toBe('access-token');
+    });
+
+    it('retries with a new slug when the first one collides', async () => {
+      organizationsRepository.findBySlug.mockResolvedValueOnce({
+        id: 'org-existing',
+        name: 'Someone Else',
+        slug: 'jane-existing',
+        ownerId: 'other-user',
+        status: OrganizationStatus.ACTIVE,
+        description: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        createdBy: null,
+        updatedBy: null,
+        version: 0,
+      });
+
+      await authService.register({
+        email: activeUser.email,
+        password: 'a-strong-password',
+        firstName: 'Jane',
+        lastName: 'Doe',
+      });
+
+      expect(organizationsRepository.findBySlug).toHaveBeenCalledTimes(2);
+      expect(organizationsRepository.create).toHaveBeenCalledTimes(1);
     });
   });
 });

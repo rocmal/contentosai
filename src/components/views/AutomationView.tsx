@@ -1,49 +1,76 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Loader2, Plus, Trash2, Zap } from 'lucide-react';
+import { ViewType } from '../../types';
 import {
-  ArrowRight,
-  Bot,
-  Brain,
-  CheckCircle2,
-  Clock,
-  Layers,
-  Play,
-  Plus,
-  Send,
-  Sparkles,
-  Zap,
-} from 'lucide-react';
-import { ViewType, WorkflowNode } from '../../types';
+  AutomationWorkflow,
+  AutomationWorkflowStatus,
+  createAutomationWorkflow,
+  deleteAutomationWorkflow,
+  listAutomationWorkflows,
+  updateAutomationWorkflow,
+} from '../../lib/api';
 
 interface AutomationViewProps {
-  nodes: WorkflowNode[];
   onNavigate: (view: ViewType) => void;
 }
 
-export const AutomationView: React.FC<AutomationViewProps> = ({ nodes: initialNodes, onNavigate }) => {
-  const [nodes, setNodes] = useState<WorkflowNode[]>(initialNodes);
-  const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState<string[]>([]);
+export const AutomationView: React.FC<AutomationViewProps> = () => {
+  const [workflows, setWorkflows] = useState<AutomationWorkflow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleRunWorkflow = () => {
-    setIsRunning(true);
-    setLogs(['🚀 Starting Lumora Automated Workflow Execution...']);
+  const [showCreate, setShowCreate] = useState(false);
+  const [name, setName] = useState('');
+  const [trigger, setTrigger] = useState('content.approved');
+  const [submitting, setSubmitting] = useState(false);
 
-    setTimeout(() => {
-      setLogs((prev) => [...prev, '⚡ [1/4] Trigger: RSS Trend feed pulled 3 viral AI topics']);
-    }, 800);
+  const load = async () => {
+    setError(null);
+    try {
+      setWorkflows(await listAutomationWorkflows());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load workflows');
+    }
+  };
 
-    setTimeout(() => {
-      setLogs((prev) => [...prev, '🧠 [2/4] Brand Brain: Injected tone pillars & product guidelines']);
-    }, 1600);
+  useEffect(() => {
+    load();
+  }, []);
 
-    setTimeout(() => {
-      setLogs((prev) => [...prev, '✨ [3/4] Gemini 3.6: Generated LinkedIn Post & YouTube Short script']);
-    }, 2400);
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await createAutomationWorkflow({ name, trigger });
+      setName('');
+      setShowCreate(false);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create workflow');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-    setTimeout(() => {
-      setLogs((prev) => [...prev, '✅ [4/4] Publish: Scheduled 2 posts to Content Calendar']);
-      setIsRunning(false);
-    }, 3200);
+  const handleToggleStatus = async (wf: AutomationWorkflow) => {
+    const next: AutomationWorkflowStatus = wf.status === 'active' ? 'inactive' : 'active';
+    setWorkflows((prev) => prev?.map((w) => (w.id === wf.id ? { ...w, status: next } : w)) ?? prev);
+    try {
+      await updateAutomationWorkflow(wf.id, { status: next });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update workflow');
+      await load();
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setWorkflows((prev) => prev?.filter((w) => w.id !== id) ?? prev);
+    try {
+      await deleteAutomationWorkflow(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete workflow');
+      await load();
+    }
   };
 
   return (
@@ -56,67 +83,107 @@ export const AutomationView: React.FC<AutomationViewProps> = ({ nodes: initialNo
               <Zap className="w-5 h-5" />
             </span>
             <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-              n8n-Inspired Workflow Automation Canvas
+              Automation Workflows
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Build autonomous background workflows connecting AI models, Brand Brain, and publishing channels.
+            Define event triggers your team wants to automate. Execution isn't built yet - this
+            registers the rule so it's ready once it is.
           </p>
         </div>
 
         <button
-          onClick={handleRunWorkflow}
-          disabled={isRunning}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50"
+          onClick={() => setShowCreate((v) => !v)}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 active:scale-95 transition-all"
         >
-          <Play className={`w-4 h-4 fill-current ${isRunning ? 'animate-spin' : ''}`} />
-          <span>{isRunning ? 'Running Workflow...' : 'Execute Test Workflow'}</span>
+          <Plus className="w-4 h-4" />
+          <span>New Workflow</span>
         </button>
       </div>
 
-      {/* Visual Canvas Board */}
-      <div className="p-6 md:p-8 rounded-2xl bg-slate-950 border border-slate-800 space-y-6 shadow-2xl relative overflow-hidden min-h-[420px]">
-        {/* Subtle grid dots background */}
-        <div className="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px] opacity-30 pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-2">
-          {nodes.map((node, index) => (
-            <React.Fragment key={node.id}>
-              <div className="w-full md:w-56 p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-blue-500 transition-all shadow-lg space-y-2 group">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-900/50 text-blue-300">
-                    {node.type}
-                  </span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                </div>
-                <h4 className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">
-                  {node.title}
-                </h4>
-                <p className="text-[11px] text-slate-400 line-clamp-2">
-                  {node.description}
-                </p>
-              </div>
-
-              {index < nodes.length - 1 && (
-                <div className="hidden md:flex items-center justify-center text-slate-600">
-                  <ArrowRight className="w-5 h-5 text-blue-500 animate-pulse" />
-                </div>
-              )}
-            </React.Fragment>
-          ))}
+      {error && (
+        <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 text-xs text-red-600 dark:text-red-400">
+          {error}
         </div>
-      </div>
+      )}
 
-      {/* Execution Terminal Logs Output */}
-      {logs.length > 0 && (
-        <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 text-xs font-mono text-emerald-400 space-y-2 shadow-xl">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-slate-400">
-            <span>Workflow Execution Terminal Log</span>
-            <span>Status: {isRunning ? 'EXECUTING' : 'SUCCESS'}</span>
+      {showCreate && (
+        <form
+          onSubmit={handleCreate}
+          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">Name</label>
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Auto-publish approved posts"
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">Trigger event</label>
+              <input
+                type="text"
+                required
+                value={trigger}
+                onChange={(e) => setTrigger(e.target.value)}
+                placeholder="content.approved"
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+            </div>
           </div>
-          {logs.map((log, i) => (
-            <div key={i} className="animate-in fade-in leading-relaxed">
-              {log}
+          <button
+            type="submit"
+            disabled={submitting}
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-2 shadow-sm disabled:opacity-50"
+          >
+            {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Create workflow
+          </button>
+        </form>
+      )}
+
+      {workflows === null ? (
+        <div className="flex items-center justify-center py-16 text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin" />
+        </div>
+      ) : workflows.length === 0 ? (
+        <div className="p-10 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
+          No workflows yet. Create one to define an automation trigger.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {workflows.map((wf) => (
+            <div
+              key={wf.id}
+              className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => handleToggleStatus(wf)}
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded ${
+                    wf.status === 'active'
+                      ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {wf.status}
+                </button>
+                <button
+                  onClick={() => handleDelete(wf.id)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">{wf.name}</h3>
+              <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+                trigger: {wf.trigger}
+              </p>
             </div>
           ))}
         </div>

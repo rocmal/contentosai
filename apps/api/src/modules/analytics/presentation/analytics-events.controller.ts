@@ -3,10 +3,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
-import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { AnalyticsEventsService } from '../application/services/analytics-events.service';
 import { CreateAnalyticsEventDto } from '../application/dto/create-analytics-event.dto';
 import { UpdateAnalyticsEventDto } from '../application/dto/update-analytics-event.dto';
+import { ListAnalyticsEventsQueryDto } from '../application/dto/list-analytics-events-query.dto';
 import { AnalyticsEventResponseDto } from '../application/dto/analytics-event-response.dto';
 
 @ApiTags('analytics')
@@ -28,13 +28,18 @@ export class AnalyticsEventsController {
 
   @Get()
   @RequirePermissions('analytics.read')
-  @ApiOperation({ summary: 'List analytics events' })
-  async findAll(@Query() query: PaginationQueryDto) {
+  @ApiOperation({ summary: 'List analytics events (pass organizationId/workspaceId to scope to one tenant)' })
+  async findAll(@Query() query: ListAnalyticsEventsQueryDto) {
+    const filters: Record<string, string> = {};
+    if (query.organizationId) filters.organizationId = query.organizationId;
+    if (query.workspaceId) filters.workspaceId = query.workspaceId;
+
     const result = await this.analyticsEventsService.findAll({
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+      filters: Object.keys(filters).length ? filters : undefined,
     });
     return {
       items: result.items.map((analyticsEvent) => new AnalyticsEventResponseDto(analyticsEvent)),

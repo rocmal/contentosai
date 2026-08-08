@@ -17,6 +17,11 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Cloudflare quick tunnels (used so cloud AI providers like D-ID can
+      // fetch locally-hosted avatar photos) come from a random *.trycloudflare.com
+      // host each run - Vite's host-header check would 403 those otherwise.
+      // lumoraos.local is the XAMPP Apache reverse-proxy alias for local dev.
+      allowedHosts: ['.trycloudflare.com', 'lumoraos.local'],
     },
   };
 });

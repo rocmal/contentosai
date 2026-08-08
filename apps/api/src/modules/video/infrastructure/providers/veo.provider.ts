@@ -16,7 +16,12 @@ interface VeoOperationResponse {
 @Injectable()
 export class VeoProvider implements IVideoProvider {
   readonly name = 'veo';
-  private readonly defaultModel = 'veo-2.0-generate-001';
+  // veo-2.0-generate-001 has been retired; veo-3.1 is the current model
+  // family. Requires a billed Google Cloud project - Veo is not covered by
+  // the Gemini API's free tier even though the model itself is listable/
+  // callable with a plain API key (confirmed: returns 429 RESOURCE_EXHAUSTED
+  // without billing enabled, not a 404/403).
+  private readonly defaultModel = 'veo-3.1-fast-generate-preview';
 
   constructor(private readonly configService: ConfigService) {}
 

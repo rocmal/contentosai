@@ -27,6 +27,8 @@ import { ContentModule } from '@modules/content/content.module';
 import { AiModule } from '@modules/ai/ai.module';
 import { ImageModule } from '@modules/image/image.module';
 import { VideoModule } from '@modules/video/video.module';
+import { CharacterModule } from '@modules/character/character.module';
+import { AvatarsModule } from '@modules/avatars/avatars.module';
 import { VoiceModule } from '@modules/voice/voice.module';
 import { StorageModule } from '@modules/storage/storage.module';
 import { BrandModule } from '@modules/brand/brand.module';
@@ -37,7 +39,10 @@ import { PublishingModule } from '@modules/publishing/publishing.module';
 import { CalendarModule } from '@modules/calendar/calendar.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { BillingModule } from '@modules/billing/billing.module';
+import { CreditsModule } from '@modules/credits/credits.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
+import { VideoTemplatesModule } from '@modules/video-templates/video-templates.module';
+import { VoiceTemplatesModule } from '@modules/voice-templates/voice-templates.module';
 import { AuditModule } from '@modules/audit/audit.module';
 import { SettingsModule } from '@modules/settings/settings.module';
 import { HealthModule } from '@modules/health/health.module';
@@ -79,6 +84,8 @@ import { QueuesModule } from '@queues/queues.module';
     AiModule,
     ImageModule,
     VideoModule,
+    CharacterModule,
+    AvatarsModule,
     VoiceModule,
     StorageModule,
 
@@ -93,7 +100,10 @@ import { QueuesModule } from '@queues/queues.module';
     CalendarModule,
     NotificationsModule,
     BillingModule,
+    CreditsModule,
     IntegrationsModule,
+    VideoTemplatesModule,
+    VoiceTemplatesModule,
     AuditModule,
     SettingsModule,
 

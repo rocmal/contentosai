@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BarChart3,
   Bot,
@@ -12,16 +12,20 @@ import {
   Image,
   Layers,
   LayoutDashboard,
+  LogOut,
   Mic,
   Megaphone,
   Settings,
   Sparkles,
   Store,
   Users,
+  UserRound,
   Video,
   Zap,
 } from 'lucide-react';
 import { ViewType } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { getMyCreditWallet, CreditWallet } from '../lib/api';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -36,22 +40,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
 }) => {
+  const { user, logout } = useAuth();
+  const [wallet, setWallet] = useState<CreditWallet | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMyCreditWallet()
+      .then((w) => {
+        if (!cancelled) setWallet(w);
+      })
+      .catch(() => {
+        // No wallet yet (or a transient error) - the card just doesn't render, no broken placeholder shown.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const mainNav: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'ai-studio', label: 'AI Studio', icon: Sparkles },
     { id: 'brand-brain', label: 'Brand Brain', icon: Brain },
     { id: 'projects', label: 'Projects', icon: FolderKanban },
     { id: 'campaigns', label: 'Campaigns', icon: Megaphone },
+    { id: 'calendar', label: 'Calendar', icon: Calendar },
   ];
 
   const creationNav: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'video-studio', label: 'Video Studio', icon: Video },
     { id: 'image-studio', label: 'Image Studio', icon: Image },
     { id: 'voice-studio', label: 'Voice Studio', icon: Mic },
+    { id: 'character-studio', label: 'Character Studio', icon: UserRound },
   ];
 
   const managementNav: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'team', label: 'Team', icon: Users },
+    { id: 'integrations', label: 'Integrations', icon: Layers },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'help', label: 'Help & Tutorial', icon: HelpCircle },
   ];
@@ -178,35 +202,63 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
 
-        {/* Pro Plan Card & User Profile Footer */}
+        {/* Credit Balance & User Profile Footer */}
         <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
-          {/* Pro Plan Card matching screenshot */}
-          <div className="p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/60 space-y-2">
-            <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-700 dark:text-blue-300">
-              <Zap className="w-3.5 h-3.5 text-blue-600 fill-current" />
-              <span>PRO PLAN</span>
-            </div>
-            <div className="w-full bg-blue-200 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-full rounded-full w-[75%]" />
-            </div>
-            <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-              75% of generation credits used
-            </p>
-          </div>
+          {/* Credit balance card - real wallet data, only renders once loaded */}
+          {wallet && (
+            <button
+              onClick={() => handleNavClick('profile')}
+              className="w-full text-left p-3 rounded-2xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/60 space-y-2 hover:border-blue-300 dark:hover:border-blue-800 transition-colors"
+            >
+              <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-700 dark:text-blue-300">
+                <Zap className="w-3.5 h-3.5 text-blue-600 fill-current" />
+                <span>{wallet.balance === null ? 'UNLIMITED PLAN' : 'CREDITS'}</span>
+              </div>
+              {wallet.balance !== null && (
+                <>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">
+                    {wallet.balance.toLocaleString()} remaining
+                  </p>
+                  <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                    View usage &amp; plan details
+                  </p>
+                </>
+              )}
+            </button>
+          )}
 
           {/* User Profile */}
           <div className="flex items-center gap-2.5 p-1">
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80"
-              alt="Alex Rivera"
-              className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700"
-            />
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                Alex Rivera
-              </p>
-              <p className="text-[10px] text-slate-400 truncate">Pro Plan</p>
-            </div>
+            <button
+              onClick={() => handleNavClick('profile')}
+              className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
+              title="View profile"
+            >
+              {user?.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.email}
+                  className="w-8 h-8 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold border border-slate-200 dark:border-slate-700 shrink-0">
+                  {(user?.firstName?.[0] ?? user?.email?.[0] ?? '?').toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  {user ? `${user.firstName} ${user.lastName}`.trim() || user.email : 'Guest'}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">{user?.email ?? 'Not signed in'}</p>
+              </div>
+            </button>
+            <button
+              onClick={() => logout()}
+              title="Sign out"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors shrink-0"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </aside>

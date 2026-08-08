@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   BookOpen,
   Bot,
@@ -16,7 +16,6 @@ import {
   Search,
   Sparkles,
   Video,
-  Volume2,
   Zap,
 } from 'lucide-react';
 import { ViewType } from '../../types';
@@ -37,41 +36,55 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>('faq-1');
 
   // Video Tutorial Player State
-  const [isPlaying, setIsPlaying] = useState(false);
   const [selectedChapter, setSelectedChapter] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const videoChapters = [
     {
       time: '00:00',
+      seconds: 0,
       title: 'Platform Overview & Dashboard',
       description: 'Introduction to Lumora Content OS and navigation layout.',
       targetView: 'dashboard' as ViewType,
     },
     {
-      time: '01:45',
+      time: '00:12',
+      seconds: 12.5,
       title: 'Configuring Brand Brain',
       description: 'Setting mission, swatches, voice tone, and auto-extractor.',
       targetView: 'brand-brain' as ViewType,
     },
     {
-      time: '03:30',
+      time: '00:22',
+      seconds: 21.7,
       title: 'AI Studio 6-Step Content Wizard',
       description: 'Generating posts, blogs, and scripts with zero prompt engineering.',
       targetView: 'ai-studio' as ViewType,
     },
     {
-      time: '05:50',
+      time: '00:33',
+      seconds: 32.5,
       title: 'Video Studio & Veo 3.1 AI B-Roll',
       description: 'Timeline editing, vocal synthesis, and scene composition.',
       targetView: 'video-studio' as ViewType,
     },
     {
-      time: '08:15',
+      time: '00:43',
+      seconds: 42.9,
       title: 'Autonomous AI Agents & Workflows',
       description: 'Automating SEO, competitor tracking, and social publishing.',
       targetView: 'ai-agents' as ViewType,
     },
   ];
+
+  const seekToChapter = (idx: number) => {
+    setSelectedChapter(idx);
+    const video = videoRef.current;
+    if (video) {
+      video.currentTime = videoChapters[idx].seconds;
+      void video.play();
+    }
+  };
 
   const quickGuides = [
     {
@@ -105,6 +118,14 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
       icon: Bot,
       color: 'bg-purple-500/10 text-purple-600',
       view: 'ai-agents' as ViewType,
+    },
+    {
+      id: 'g5',
+      title: 'Connect Instagram & Facebook Publishing',
+      desc: 'Step-by-step Meta Developer App setup so Video Studio can auto-post to your accounts.',
+      icon: Zap,
+      color: 'bg-pink-500/10 text-pink-600',
+      view: 'integrations' as ViewType,
     },
   ];
 
@@ -209,77 +230,46 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
             </div>
             <div>
               <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                Official Platform YouTube Tutorial
+                Official Platform Video Walkthrough
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                10-Minute comprehensive video walkthrough for new creators.
+                Narrated video tour of the dashboard, Brand Brain, AI Studio, Video Studio, and AI Agents.
               </p>
             </div>
           </div>
 
           <span className="text-[11px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg self-start sm:self-auto">
-            1080p HD • 10m 15s
+            720p HD • 1m 11s
           </span>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Simulated Video Canvas / Embedded Player */}
-          <div className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 aspect-video flex flex-col justify-between p-4 group">
-            {/* Background Thumbnail Image */}
-            <img
-              src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1200&auto=format&fit=crop&q=80"
-              alt="YouTube Tutorial"
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                isPlaying ? 'opacity-40' : 'opacity-70'
-              }`}
+          {/* Main Video Canvas / Player */}
+          <div className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 aspect-video group">
+            <video
+              ref={videoRef}
+              src="/videos/lumora-tutorial.mp4"
+              controls
+              preload="metadata"
+              className="absolute inset-0 w-full h-full object-cover"
+              onTimeUpdate={(e) => {
+                const t = e.currentTarget.currentTime;
+                let idx = 0;
+                videoChapters.forEach((ch, i) => {
+                  if (t >= ch.seconds) idx = i;
+                });
+                setSelectedChapter(idx);
+              }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
 
-            {/* Video Top Controls Overlay */}
-            <div className="relative z-10 flex justify-between items-center text-white">
+            {/* Top Controls Overlay */}
+            <div className="absolute top-3 left-3 right-3 z-10 flex justify-between items-center text-white pointer-events-none">
               <span className="text-xs font-bold bg-red-600 px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
-                <Play className="w-3 h-3 fill-current" /> YOUTUBE TUTORIAL
+                <Play className="w-3 h-3 fill-current" /> PLATFORM WALKTHROUGH
               </span>
               <span className="text-xs font-mono bg-black/60 backdrop-blur-md px-2 py-0.5 rounded">
                 Chapter {selectedChapter + 1}: {videoChapters[selectedChapter].time}
               </span>
-            </div>
-
-            {/* Center Play Button Overlay */}
-            <div className="relative z-10 my-auto flex flex-col items-center justify-center space-y-2">
-              <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="w-16 h-16 rounded-full bg-red-600 hover:bg-red-500 text-white flex items-center justify-center shadow-xl shadow-red-600/40 hover:scale-105 active:scale-95 transition-all"
-              >
-                {isPlaying ? (
-                  <span className="font-bold text-lg">❚❚</span>
-                ) : (
-                  <Play className="w-8 h-8 ml-1 fill-current" />
-                )}
-              </button>
-              <p className="text-xs font-bold text-white drop-shadow-md">
-                {isPlaying ? 'Playing Tutorial Simulation...' : 'Click to Watch Video Guide'}
-              </p>
-            </div>
-
-            {/* Video Player Bottom Timeline Controls */}
-            <div className="relative z-10 space-y-2 text-white">
-              <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden cursor-pointer">
-                <div
-                  className="bg-red-600 h-full rounded-full transition-all duration-300"
-                  style={{ width: `${((selectedChapter + 1) / videoChapters.length) * 100}%` }}
-                />
-              </div>
-
-              <div className="flex justify-between items-center text-[11px] font-mono text-slate-300">
-                <span>{videoChapters[selectedChapter].time} / 10:15</span>
-                <div className="flex items-center gap-3">
-                  <Volume2 className="w-3.5 h-3.5 cursor-pointer" />
-                  <span className="text-[10px] uppercase font-bold text-slate-400">
-                    Gemini 3.6 Flash Voiceover
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -293,10 +283,7 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
               {videoChapters.map((ch, idx) => (
                 <div
                   key={idx}
-                  onClick={() => {
-                    setSelectedChapter(idx);
-                    setIsPlaying(true);
-                  }}
+                  onClick={() => seekToChapter(idx)}
                   className={`p-3 rounded-xl border transition-all cursor-pointer ${
                     selectedChapter === idx
                       ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/60 shadow-xs'
@@ -328,12 +315,12 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
             </div>
 
             <a
-              href="https://youtube.com"
+              href="/videos/lumora-tutorial.mp4"
               target="_blank"
               rel="noreferrer"
               className="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
             >
-              <span>Watch on YouTube</span>
+              <span>Open in New Tab</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>

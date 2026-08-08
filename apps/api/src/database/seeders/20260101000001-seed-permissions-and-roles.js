@@ -35,6 +35,7 @@ const PERMISSIONS = [
   ...['create', 'read', 'update', 'delete'].map((action) => ({ module: 'notifications', action })),
   ...['create', 'read', 'update', 'delete'].map((action) => ({ module: 'billing', action })),
   ...['create', 'read', 'update', 'delete'].map((action) => ({ module: 'integrations', action })),
+  ...['create', 'read', 'update', 'delete'].map((action) => ({ module: 'video-templates', action })),
   { module: 'audit', action: 'read' },
   ...['read', 'update', 'delete'].map((action) => ({ module: 'settings', action })),
 ];
@@ -52,6 +53,8 @@ const READ_ONLY_MEMBER_MODULES = [
   'calendar',
   'notifications',
   'settings',
+  'integrations',
+  'video-templates',
 ];
 
 function titleCase(value) {
@@ -129,9 +132,25 @@ module.exports = {
     const memberPermissionIds = permissionRows.filter(
       (permission) =>
         (READ_ONLY_MEMBER_MODULES.includes(permission.module) && permission.slug.endsWith('.read')) ||
-        ['ai.generate', 'image.generate', 'video.generate', 'voice.generate', 'storage.upload'].includes(
-          permission.slug,
-        ),
+        [
+          'ai.generate',
+          'image.generate',
+          'video.generate',
+          'voice.generate',
+          'storage.upload',
+          // Scheduled/automated social posting (Video Studio "Schedule Post"):
+          // members can create the video's Content record, connect their own
+          // Facebook/Instagram account, and create/cancel their own scheduled
+          // publishing jobs.
+          'content.create',
+          'integrations.create',
+          'publishing.create',
+          'publishing.delete',
+          // Save-as-template (Video Studio result screen): members can save
+          // their own private/team templates and remove their own later.
+          'video-templates.create',
+          'video-templates.delete',
+        ].includes(permission.slug),
     );
 
     const memberRolePermissions = memberPermissionIds.map((permission) => ({

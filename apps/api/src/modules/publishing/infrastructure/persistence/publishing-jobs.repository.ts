@@ -35,6 +35,7 @@ export class PublishingJobsRepository
       scheduledAt: plain.scheduledAt,
       publishedAt: plain.publishedAt,
       externalPostId: plain.externalPostId,
+      permalink: plain.permalink,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       deletedAt: plain.deletedAt,
