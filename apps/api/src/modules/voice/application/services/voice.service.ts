@@ -48,6 +48,7 @@ export class VoiceService {
       provider.name,
       dto.model,
       dto.voiceId,
+      dto.languageCode,
       dto.text,
     ]);
 
@@ -81,6 +82,7 @@ export class VoiceService {
         text: dto.text,
         voiceId: dto.voiceId,
         model: dto.model,
+        languageCode: dto.languageCode,
       });
     } catch (err) {
       if (canCharge) {

@@ -7,6 +7,7 @@ import { ElevenLabsProvider } from './infrastructure/providers/elevenlabs.provid
 import { CartesiaProvider } from './infrastructure/providers/cartesia.provider';
 import { AzureProvider } from './infrastructure/providers/azure.provider';
 import { PiperProvider } from './infrastructure/providers/piper.provider';
+import { SarvamVoiceProvider } from './infrastructure/providers/sarvam.provider';
 import { VoiceProviderFactory } from './infrastructure/voice-provider.factory';
 import { VoiceService } from './application/services/voice.service';
 import { VoiceController } from './presentation/voice.controller';
@@ -20,6 +21,7 @@ import { VoiceController } from './presentation/voice.controller';
     CartesiaProvider,
     AzureProvider,
     PiperProvider,
+    SarvamVoiceProvider,
     VoiceProviderFactory,
     VoiceService,
   ],

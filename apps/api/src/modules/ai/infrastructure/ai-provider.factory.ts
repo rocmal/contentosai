@@ -5,6 +5,7 @@ import { OpenAIProvider } from './providers/openai.provider';
 import { GeminiProvider } from './providers/gemini.provider';
 import { ClaudeProvider } from './providers/claude.provider';
 import { OpenRouterProvider } from './providers/openrouter.provider';
+import { SarvamProvider } from './providers/sarvam.provider';
 
 /**
  * Single point of provider selection. Application services ask the factory
@@ -21,12 +22,14 @@ export class AIProviderFactory {
     geminiProvider: GeminiProvider,
     claudeProvider: ClaudeProvider,
     openRouterProvider: OpenRouterProvider,
+    sarvamProvider: SarvamProvider,
   ) {
     this.providers = new Map<string, IAIProvider>([
       [openAIProvider.name, openAIProvider],
       [geminiProvider.name, geminiProvider],
       [claudeProvider.name, claudeProvider],
       [openRouterProvider.name, openRouterProvider],
+      [sarvamProvider.name, sarvamProvider],
     ]);
   }
 

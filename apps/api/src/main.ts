@@ -17,12 +17,37 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService);
   app.useLogger(app.get(Logger));
 
+  // Registered before useStaticAssets below - Express/Nest middleware runs
+  // in registration order, and useStaticAssets fully handles matching
+  // requests itself. If CORS were registered after it, every response from
+  // /storage/uploads/* would skip the CORS middleware entirely and never
+  // get an Access-Control-Allow-Origin header, breaking any consumer that
+  // loads an uploaded file with crossOrigin="anonymous" (e.g. the video
+  // compositor, which needs that to export a canvas containing the image).
+  app.use(helmet());
+  app.use(compression());
+  app.enableCors({
+    origin: config.get<boolean>('app.isProduction') ? config.get<string>('app.frontendUrl') : true,
+    credentials: true,
+  });
+
   // LocalStorageProvider.getUrl() hands out "{APP_URL}/storage/uploads/{key}"
   // for every uploaded asset (see local-storage.provider.ts) - that path has
   // to actually be served, or every consumer of an uploaded file's URL
   // (e.g. Meta's Graph API fetching a video to publish) gets a 404.
   app.useStaticAssets(join(process.cwd(), config.get<string>('storage.local.path') ?? 'storage', 'uploads'), {
     prefix: '/storage/uploads/',
+    setHeaders: (res) => {
+      // helmet()'s default Cross-Origin-Resource-Policy: same-origin blocks
+      // cross-origin loads of this response independently of the CORS
+      // headers above - browsers enforce it before ever checking
+      // Access-Control-Allow-Origin. This route is intentionally public and
+      // cross-origin-embeddable by design (canvas exports via
+      // crossOrigin="anonymous", external platforms like Meta's Graph API
+      // fetching published media), so it needs an explicit opt-out here
+      // rather than weakening CORP for the rest of the API.
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
   });
 
   // API_PREFIX is authored as "/api/v1" (see .env). The trailing version segment
@@ -36,13 +61,6 @@ async function bootstrap(): Promise<void> {
 
   app.setGlobalPrefix(basePrefix);
   app.enableVersioning({ type: VersioningType.URI, defaultVersion });
-
-  app.use(helmet());
-  app.use(compression());
-  app.enableCors({
-    origin: config.get<boolean>('app.isProduction') ? config.get<string>('app.frontendUrl') : true,
-    credentials: true,
-  });
 
   app.useGlobalPipes(
     new ValidationPipe({

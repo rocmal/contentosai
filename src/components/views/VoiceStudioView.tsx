@@ -14,6 +14,8 @@ import { ViewType } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import * as api from '../../lib/api';
 import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
+import { SarvamVoiceSelect } from '../SarvamVoiceSelect';
+import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG, sarvamVoiceSampleUrl } from '../../lib/sarvamVoices';
 
 interface VoiceStudioViewProps {
   onNavigate: (view: ViewType) => void;
@@ -25,7 +27,15 @@ const PROVIDER_INFO: Record<api.VoiceProvider, { name: string; description: stri
   cartesia: { name: 'Cartesia', description: 'Low-latency, deep narration' },
   azure: { name: 'Azure Speech', description: 'Enterprise-grade neural TTS' },
   piper: { name: 'Piper (offline)', description: 'Fully offline fallback - no internet or account needed' },
+  sarvam: { name: 'Sarvam AI', description: '44 voices across 11 Indian languages' },
 };
+
+// TEMPORARY: keeping pure Indian-accent voices only for now - Sarvam is the
+// only provider actually built for Indian accents, the rest are generic/
+// Western TTS. Nothing removed from the backend or api.VOICE_PROVIDERS, so
+// restoring the full list later is just switching this back to
+// `api.VOICE_PROVIDERS`.
+const VISIBLE_VOICE_PROVIDERS: readonly api.VoiceProvider[] = ['sarvam'];
 
 type Language = 'en' | 'hi';
 
@@ -41,16 +51,30 @@ const PIPER_VOICE_BY_LANGUAGE: Record<Language, string> = {
   hi: 'hi_IN-priyamvada-medium',
 };
 
+// Sarvam takes a BCP-47 language_code rather than swapping voiceId per
+// language - both en-IN and hi-IN are covered by every bulbul:v3 speaker.
+const SARVAM_LANGUAGE_CODE: Record<Language, string> = {
+  en: 'en-IN',
+  hi: 'hi-IN',
+};
+
+type Gender = 'female' | 'male';
+
+const GENDER_LABELS: Record<Gender, string> = { female: 'Female', male: 'Male' };
+
 export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [text, setText] = useState(
     "Welcome to Lumora — the AI Content Operating System designed for high-growth tech teams. Scale your multi-channel marketing with a unified Brand Memory."
   );
-  // Defaults to the free local-dev provider (no key required); Azure/
-  // ElevenLabs/Cartesia remain one dropdown selection away.
-  const [provider, setProvider] = useState<api.VoiceProvider>('edge');
-  const [language, setLanguage] = useState<Language>('en');
+  // Sarvam is the only provider actually built for Indian accents - the
+  // rest (Edge/ElevenLabs/Cartesia/Azure/Piper) are generic/Western TTS.
+  const [provider, setProvider] = useState<api.VoiceProvider>('sarvam');
+  const [language, setLanguage] = useState<Language>('hi');
+  const [gender, setGender] = useState<Gender>('female');
   const [voiceId, setVoiceId] = useState('');
+  const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const [speed, setSpeed] = useState(1.0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -77,10 +101,31 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
     }
   };
 
+  // Plays a pre-generated local sample (see scripts/generate-sarvam-voice-
+  // samples.mjs) - no API call, so auditioning voices is instant and free.
+  const handlePreviewVoice = (id: string) => {
+    previewAudioRef.current?.pause();
+    if (previewingVoiceId === id) {
+      setPreviewingVoiceId(null);
+      previewAudioRef.current = null;
+      return;
+    }
+    const audio = new Audio(sarvamVoiceSampleUrl(id, language));
+    audio.addEventListener('ended', () => setPreviewingVoiceId(null));
+    audio.play().catch(() => setPreviewingVoiceId(null));
+    previewAudioRef.current = audio;
+    setPreviewingVoiceId(id);
+  };
+
   const handleSelectProvider = (p: api.VoiceProvider) => {
     setProvider(p);
     if (p === 'piper') {
       setVoiceId(PIPER_VOICE_BY_LANGUAGE[language]);
+    } else if (p === 'sarvam') {
+      // Reset rather than carry over another provider's voiceId (e.g.
+      // "en-US-AriaNeural" typed for Azure) - Sarvam's dropdown defaults to
+      // "Auto" (Gender-based) until the user explicitly picks a voice.
+      setVoiceId('');
     }
   };
 
@@ -89,10 +134,23 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
     setError(null);
     setOutOfCredits(false);
     try {
+      // The Voice dropdown writes a specific catalog id into voiceId - look
+      // up its model there. If nothing's picked (still on "Auto"), fall
+      // back to the Gender toggle's confirmed bulbul:v2 default.
+      let sarvamVoiceId: string | undefined;
+      let sarvamModel: string | undefined;
+      if (provider === 'sarvam') {
+        const picked = voiceId.trim() ? SARVAM_VOICE_CATALOG.find((v) => v.id === voiceId.trim()) : undefined;
+        const fallback = voiceId.trim() ? null : SARVAM_VOICE_BY_GENDER[gender];
+        sarvamVoiceId = picked?.id ?? fallback?.voiceId ?? (voiceId.trim() || undefined);
+        sarvamModel = picked?.model ?? fallback?.model;
+      }
       const result = await api.generateSpeech({
         text,
         provider,
-        voiceId: voiceId.trim() || undefined,
+        voiceId: provider === 'sarvam' ? sarvamVoiceId : voiceId.trim() || undefined,
+        model: sarvamModel,
+        languageCode: provider === 'sarvam' ? SARVAM_LANGUAGE_CODE[language] : undefined,
       });
       setAudioUrl((previous) => {
         if (previous) URL.revokeObjectURL(previous);
@@ -185,7 +243,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Voice Provider
           </h3>
-          {api.VOICE_PROVIDERS.map((p) => (
+          {VISIBLE_VOICE_PROVIDERS.map((p) => (
             <div
               key={p}
               onClick={() => handleSelectProvider(p)}
@@ -224,25 +282,89 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                 </button>
               ))}
             </div>
-            {provider !== 'piper' && (
+            {provider !== 'piper' && provider !== 'sarvam' && (
               <p className="text-[10px] text-slate-500 mt-1">
-                Only Piper auto-selects a voice per language right now - set the Voice ID below for other providers.
+                Only Piper/Sarvam auto-select a voice per language right now - set the Voice ID below for other providers.
               </p>
             )}
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
-              Voice ID (optional)
-            </label>
-            <input
-              type="text"
-              value={voiceId}
-              onChange={(e) => setVoiceId(e.target.value)}
-              placeholder="e.g. en-US-AriaNeural - provider default used if empty"
-              className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-            />
-          </div>
+          {provider === 'sarvam' && (
+            <>
+              <div>
+                <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+                  Voice Gender
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(Object.keys(GENDER_LABELS) as Gender[]).map((g) => (
+                    <button
+                      key={g}
+                      onClick={() => setGender(g)}
+                      className={`py-2 rounded-xl border text-xs font-bold transition-all ${
+                        gender === g
+                          ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {GENDER_LABELS[g]}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Used when Voice below is left on "Auto" - {SARVAM_VOICE_BY_GENDER[gender].voiceId} (bulbul:v2),
+                  Sarvam's only model with a documented gender per voice.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+                  Voice
+                </label>
+                <div className="flex gap-1.5">
+                  <div className="flex-1 min-w-0">
+                    <SarvamVoiceSelect
+                      value={voiceId}
+                      onChange={setVoiceId}
+                      previewingVoiceId={previewingVoiceId}
+                      onPreview={handlePreviewVoice}
+                      genderFilter={gender}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handlePreviewVoice(voiceId.trim() || SARVAM_VOICE_BY_GENDER[gender].voiceId)}
+                    title="Preview the current selection (plays a local sample, no API call)"
+                    className="shrink-0 w-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-colors"
+                  >
+                    {previewingVoiceId === (voiceId.trim() || SARVAM_VOICE_BY_GENDER[gender].voiceId) ? (
+                      <Pause className="w-3.5 h-3.5" />
+                    ) : (
+                      <Play className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  {SARVAM_VOICE_CATALOG.length} voices, all confirmed working live in both English and Hindi. Preview
+                  plays a pre-generated local sample - no API call.
+                </p>
+              </div>
+            </>
+          )}
+
+          {provider !== 'sarvam' && (
+            <div>
+              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+                Voice ID (optional)
+              </label>
+              <input
+                type="text"
+                value={voiceId}
+                onChange={(e) => setVoiceId(e.target.value)}
+                placeholder="e.g. en-US-AriaNeural - provider default used if empty"
+                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+            </div>
+          )}
 
           {voiceTemplates.length > 0 && (
             <div>

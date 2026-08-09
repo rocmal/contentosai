@@ -7,19 +7,23 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Bookmark,
   Copy,
+  Crop,
   Download,
   Film,
+  FolderOpen,
   GripVertical,
-  Image as ImageIcon,
   Layers,
   LayoutTemplate,
   Loader2,
   Megaphone,
   Mic,
-  Plus,
+  Pause,
+  Play,
   RotateCcw,
   Share2,
   ShoppingBag,
@@ -34,7 +38,17 @@ import {
 } from 'lucide-react';
 import { ViewType } from '../../types';
 import * as api from '../../lib/api';
-import { compositeScenes, compositeTextOntoVideo, SceneInput } from '../../lib/videoCompositor';
+import {
+  compositeScenes,
+  compositeTextOntoVideo,
+  SceneInput,
+  SceneFilterPreset,
+  SceneMotion,
+  SceneTransitionType,
+  OutputAspectRatio,
+} from '../../lib/videoCompositor';
+import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG, sarvamVoiceSampleUrl } from '../../lib/sarvamVoices';
+import { SarvamVoiceSelect } from '../SarvamVoiceSelect';
 import { SchedulePostPanel } from '../SchedulePostPanel';
 import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
 import { useAuth } from '../../contexts/AuthContext';
@@ -210,35 +224,56 @@ type CreateSource = 'prompt' | 'upload' | 'templates' | 'scenes';
 
 interface StudioScene {
   id: string;
-  visualTab: 'templates' | 'upload' | 'ai' | 'gallery';
-  visualUrl: string | null;
-  visualType: 'video' | 'image' | null;
-  aiPrompt: string;
-  aiMode: 'video' | 'image';
-  isGeneratingVisual: boolean;
-  imageDurationSeconds: number;
-  voiceoverText: string;
-  voiceoverAudioUrl: string | null;
-  isGeneratingVoiceover: boolean;
-  error: string | null;
+  visualUrl: string;
+  visualType: 'video' | 'image';
+  /** How long this specific slide shows, in seconds - always a real,
+   * user-editable number (not "auto"), so every scene has independent
+   * control. Video clips are trimmed if longer; the total across all
+   * scenes is scaled down proportionally if it would exceed
+   * MAX_SCENE_TOTAL_SECONDS (see getScaledSceneDurations). */
+  durationSeconds: number;
+  /** 0-100 focal point of the crop-to-fill frame; 50/50 (default) keeps the
+   * source centered. Drives both the live preview (via CSS object-position,
+   * which uses identical semantics) and the exported pixels. */
+  focalXPct: number;
+  focalYPct: number;
+  filter: SceneFilterPreset;
+  /** Only meaningful for image scenes - video scenes ignore it. */
+  motion: SceneMotion;
 }
 
-function createEmptyScene(): StudioScene {
-  return {
-    id: `scene-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    visualTab: 'templates',
-    visualUrl: null,
-    visualType: null,
-    aiPrompt: '',
-    aiMode: 'video',
-    isGeneratingVisual: false,
-    imageDurationSeconds: 4,
-    voiceoverText: '',
-    voiceoverAudioUrl: null,
-    isGeneratingVoiceover: false,
-    error: null,
-  };
-}
+const MAX_SCENE_TOTAL_SECONDS = 30;
+const DEFAULT_SCENE_SECONDS = 4;
+
+const SCENE_ASPECT_RATIO_OPTIONS: { id: OutputAspectRatio; label: string }[] = [
+  { id: '16:9', label: '16:9 Landscape' },
+  { id: '9:16', label: '9:16 Vertical' },
+  { id: '1:1', label: '1:1 Square' },
+];
+
+const SCENE_TRANSITION_OPTIONS: { id: SceneTransitionType; label: string }[] = [
+  { id: 'none', label: 'Cut' },
+  { id: 'fade', label: 'Fade' },
+  { id: 'slide', label: 'Slide' },
+];
+
+const SCENE_FILTER_OPTIONS: { id: SceneFilterPreset; label: string }[] = [
+  { id: 'none', label: 'No filter' },
+  { id: 'bw', label: 'B&W' },
+  { id: 'sepia', label: 'Sepia' },
+  { id: 'vivid', label: 'Vivid' },
+  { id: 'warm', label: 'Warm' },
+  { id: 'cool', label: 'Cool' },
+  { id: 'fade', label: 'Faded' },
+];
+
+type NarrationLanguage = 'en' | 'hi';
+type NarrationGender = 'female' | 'male';
+
+const NARRATION_LANGUAGE_LABELS: Record<NarrationLanguage, string> = { en: 'English', hi: 'हिंदी Hindi' };
+const NARRATION_GENDER_LABELS: Record<NarrationGender, string> = { female: 'Female', male: 'Male' };
+const NARRATION_LANGUAGE_CODE: Record<NarrationLanguage, string> = { en: 'en-IN', hi: 'hi-IN' };
+
 type Step = 'create' | 'generating' | 'edit' | 'compositing' | 'result';
 type ShareStatus = 'idle' | 'sharing' | 'shared' | 'copied' | 'unsupported';
 
@@ -270,18 +305,41 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // native resolution), making dragged text land in the wrong spot on export.
   const [sourceVideoNaturalAspect, setSourceVideoNaturalAspect] = useState<number | null>(null);
 
-  // "Scene Builder" - multiple scenes (clip or image + optional voiceover),
-  // combined into one continuous video via compositeScenes(), in whatever
-  // order they appear in this array.
-  const [scenes, setScenes] = useState<StudioScene[]>(() => [createEmptyScene()]);
+  // "Scene Builder" - multiple uploaded images/clips, narrated by a single
+  // voice prompt for the whole video, combined via compositeScenes() in
+  // whatever order they appear in this array.
+  const [scenes, setScenes] = useState<StudioScene[]>([]);
   const [draggedSceneId, setDraggedSceneId] = useState<string | null>(null);
   const [dragOverSceneId, setDragOverSceneId] = useState<string | null>(null);
+  // Which scene the sidebar PREVIEW panel is currently showing - clamped to
+  // the current scene count on every read (rather than in a useEffect) so it
+  // can never point past the end after a scene is removed/reordered.
+  const [previewSceneIndex, setPreviewSceneIndex] = useState(0);
+  // Advanced options that apply to the whole Scene Builder output.
+  const [sceneAspectRatio, setSceneAspectRatio] = useState<OutputAspectRatio>('16:9');
+  const [sceneTransition, setSceneTransition] = useState<SceneTransitionType>('none');
+  // Which scene's inline crop/reposition editor is open, if any - only one
+  // at a time to keep the scene list from growing unbounded.
+  const [cropEditingSceneId, setCropEditingSceneId] = useState<string | null>(null);
+  const [isUploadingScenes, setIsUploadingScenes] = useState(false);
+  const [galleryUsage, setGalleryUsage] = useState<api.GalleryUsage | null>(null);
+  const [isGalleryPickerOpen, setIsGalleryPickerOpen] = useState(false);
+  const [isLoadingGalleryPicker, setIsLoadingGalleryPicker] = useState(false);
+  const [galleryPickerAssets, setGalleryPickerAssets] = useState<api.MediaAsset[]>([]);
+  const [selectedGalleryIds, setSelectedGalleryIds] = useState<Set<string>>(new Set());
+  const [narrationText, setNarrationText] = useState('');
+  const [narrationLanguage, setNarrationLanguage] = useState<NarrationLanguage>('hi');
+  const [narrationGender, setNarrationGender] = useState<NarrationGender>('female');
+  const [narrationVoiceId, setNarrationVoiceId] = useState('');
+  const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
+  const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  // Free "does this flow/pace well?" preview - uses the local voice sample
+  // instead of real narration, so it never calls the paid Sarvam API (unlike
+  // Generate Video, which reserves credits for the actual narration text).
+  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
+  const [isPreviewingVideo, setIsPreviewingVideo] = useState(false);
 
-  // Reusable gallery - every image/voice generation is auto-saved server
-  // side, so past ones can be picked here instead of regenerating (and
-  // regenerating the exact same prompt again is itself cached server-side).
-  const [galleryImages, setGalleryImages] = useState<api.MediaAsset[]>([]);
-  const [galleryVoiceClips, setGalleryVoiceClips] = useState<api.MediaAsset[]>([]);
   const [videoTemplates, setVideoTemplates] = useState<api.VideoTemplate[]>([]);
 
   // Save-as-template (from the result screen)
@@ -329,18 +387,38 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const overlayPreviewWidthPx = overlayPreviewRef.current?.getBoundingClientRect().width ?? DEFAULT_PREVIEW_WIDTH_PX;
   const overlayPreviewFontSizePx = Math.max(12, Math.round(overlayPreviewWidthPx / overlayFontScale));
 
-  // The Scene Builder's canvas is always a fixed 1280x720 (16:9) regardless
-  // of what the individual scene clips look like, so it never uses the
-  // measured natural aspect - only the single-clip prompt/upload/template
-  // path (which composites onto a canvas sized to the source clip's own
-  // resolution) benefits from it.
+  // Before a clip exists, the preview box shape is just a best guess from
+  // whatever was picked (sceneAspectRatio for Scene Builder, aspectRatio for
+  // prompt/upload/template). Once a real <video> loads (edit/result steps),
+  // its measured natural aspect takes over as authoritative - the canvas
+  // compositor always exports at the clip's true resolution, so this keeps
+  // dragged text landing in the right spot on export for both paths.
   const displayAspectRatio =
-    source === 'scenes' ? ASPECT_RATIO_NUMERIC['16:9'] : sourceVideoNaturalAspect ?? ASPECT_RATIO_NUMERIC[aspectRatio];
+    sourceVideoNaturalAspect ??
+    (source === 'scenes' ? ASPECT_RATIO_NUMERIC[sceneAspectRatio] : ASPECT_RATIO_NUMERIC[aspectRatio]);
+
+  // Each scene has its own duration (see StudioScene.durationSeconds) - the
+  // video's total length is just their sum, scaled down proportionally if
+  // it would exceed MAX_SCENE_TOTAL_SECONDS (see getScaledSceneDurations).
+  // Narration (if any) still plays under the result regardless of how it
+  // compares to this total - it may run short or get cut off.
+  const sceneRawEstimatedSeconds = scenes.reduce((sum, s) => sum + s.durationSeconds, 0);
+  const sceneCappedEstimatedSeconds = Math.max(1, Math.min(sceneRawEstimatedSeconds, MAX_SCENE_TOTAL_SECONDS));
+  const sceneEstimateExceedsMax = sceneRawEstimatedSeconds > MAX_SCENE_TOTAL_SECONDS;
+  const sceneDurationScale = sceneRawEstimatedSeconds > 0 ? sceneCappedEstimatedSeconds / sceneRawEstimatedSeconds : 1;
+  const clampedPreviewSceneIndex = Math.min(previewSceneIndex, Math.max(0, scenes.length - 1));
+  const previewScene = scenes[clampedPreviewSceneIndex];
+
+  /** Each scene's actual composited duration - equal to its own
+   * durationSeconds unless the raw sum exceeds the 30s cap, in which case
+   * every scene is scaled down by the same factor so relative pacing (e.g.
+   * "this slide is 2x that one") is preserved rather than truncating the
+   * tail scenes outright. */
+  const getScaledSceneDurations = (): number[] => scenes.map((s) => s.durationSeconds * sceneDurationScale);
 
   useEffect(() => {
-    api.listMyGallery('image').then(setGalleryImages).catch(() => undefined);
-    api.listMyGallery('audio').then(setGalleryVoiceClips).catch(() => undefined);
     api.listVideoTemplates().then(setVideoTemplates).catch(() => undefined);
+    api.getGalleryUsage().then(setGalleryUsage).catch(() => undefined);
   }, []);
 
   const resetAll = () => {
@@ -357,7 +435,19 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setFinalVideoUrl(null);
     setHasOverlay(false);
     setShareStatus('idle');
-    setScenes([createEmptyScene()]);
+    setScenes([]);
+    setPreviewSceneIndex(0);
+    setSceneAspectRatio('16:9');
+    setSceneTransition('none');
+    setCropEditingSceneId(null);
+    setIsGalleryPickerOpen(false);
+    setSelectedGalleryIds(new Set());
+    setNarrationText('');
+    setNarrationVoiceId('');
+    setPreviewVideoUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setDraggedSceneId(null);
     setDragOverSceneId(null);
     setShowSaveTemplatePanel(false);
@@ -367,18 +457,11 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   };
 
   // ---------------------------------------------------------------------
-  // Scene Builder: per-scene visual (template/upload/AI) + voiceover, then
-  // combine everything into one video.
+  // Scene Builder: upload multiple images/clips at once, narrate the whole
+  // video with a single voice prompt, then generate one combined video.
   // ---------------------------------------------------------------------
 
-  const updateScene = (id: string, patch: Partial<StudioScene>) => {
-    setScenes((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
-  };
-
-  const handleAddScene = () => setScenes((prev) => [...prev, createEmptyScene()]);
-
-  const handleRemoveScene = (id: string) =>
-    setScenes((prev) => (prev.length > 1 ? prev.filter((s) => s.id !== id) : prev));
+  const handleRemoveScene = (id: string) => setScenes((prev) => prev.filter((s) => s.id !== id));
 
   const handleMoveScene = (id: string, direction: 'up' | 'down') => {
     setScenes((prev) => {
@@ -411,94 +494,272 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setDragOverSceneId(null);
   };
 
-  const handleScenePickTemplate = (id: string, template: StockTemplate) => {
-    updateScene(id, { visualUrl: template.url, visualType: 'video', error: null });
-  };
+  const createScene = (visualUrl: string, visualType: 'video' | 'image'): StudioScene => ({
+    id: `scene-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    visualUrl,
+    visualType,
+    durationSeconds: DEFAULT_SCENE_SECONDS,
+    focalXPct: 50,
+    focalYPct: 50,
+    filter: 'none',
+    // Opt-in only - a new scene should look exactly like the source image/
+    // clip until the user explicitly turns an effect on.
+    motion: 'none',
+  });
 
-  const handleScenePickGalleryImage = (id: string, asset: api.MediaAsset) => {
-    updateScene(id, { visualUrl: asset.url, visualType: 'image', error: null });
-  };
-
-  const handleScenePickVoiceClip = (id: string, asset: api.MediaAsset) => {
-    updateScene(id, { voiceoverText: asset.prompt ?? '', voiceoverAudioUrl: asset.url, error: null });
-  };
-
-  const handleSceneFileUpload = (id: string, file: File) => {
-    const isImage = file.type.startsWith('image/');
-    updateScene(id, { visualUrl: URL.createObjectURL(file), visualType: isImage ? 'image' : 'video', error: null });
-  };
-
-  const handleSceneGenerateAIVisual = async (id: string) => {
-    const scene = scenes.find((s) => s.id === id);
-    if (!scene || !scene.aiPrompt.trim()) return;
-
-    updateScene(id, { isGeneratingVisual: true, error: null });
+  /** Actually persists each file to the gallery (via /media/upload) rather
+   * than a local URL.createObjectURL blob - so it's reusable later through
+   * "Choose from Gallery" and counts against the shared 100 image/video cap.
+   * Uploads sequentially so a mid-batch quota rejection (409) stops cleanly
+   * with whatever succeeded before it kept, rather than firing every
+   * request in parallel and untangling partial failures after the fact. */
+  const handleScenesFileUpload = async (files: FileList | null) => {
+    const list = Array.from(files ?? []);
+    if (list.length === 0) return;
+    setError(null);
+    setIsUploadingScenes(true);
     try {
-      if (scene.aiMode === 'video') {
-        const job = await api.generateVideo({ prompt: scene.aiPrompt, provider: 'mock', durationSeconds: 5 });
-        const final = await api.pollVideoJob('mock', job.jobId);
-        if (final.status === 'completed' && final.videoUrl) {
-          updateScene(id, { visualUrl: final.videoUrl, visualType: 'video' });
-        } else {
-          updateScene(id, { error: 'Could not generate this clip. Try again.' });
-        }
-      } else {
-        const result = await api.generateImage({ prompt: scene.aiPrompt, provider: 'stability' });
-        if (result.images[0]) {
-          updateScene(id, { visualUrl: result.images[0], visualType: 'image' });
-        } else {
-          updateScene(id, { error: 'Could not generate this image. Try again.' });
-        }
+      for (const file of list) {
+        const asset = await api.uploadToGallery(file);
+        const newScene = createScene(asset.url, asset.type === 'video' ? 'video' : 'image');
+        setScenes((prev) => [...prev, newScene]);
+        setGalleryUsage((prev) => (prev ? { ...prev, count: prev.count + 1 } : prev));
       }
     } catch (err) {
-      updateScene(id, { error: err instanceof api.ApiError ? err.message : 'Generation failed. Try again.' });
+      setError(err instanceof api.ApiError ? err.message : "Couldn't upload one of your files. Try again.");
     } finally {
-      updateScene(id, { isGeneratingVisual: false });
+      setIsUploadingScenes(false);
     }
   };
 
-  const handleSceneGenerateVoiceover = async (id: string) => {
-    const scene = scenes.find((s) => s.id === id);
-    if (!scene || !scene.voiceoverText.trim()) return;
-
-    updateScene(id, { isGeneratingVoiceover: true, error: null });
+  const handleOpenGalleryPicker = async () => {
+    setIsGalleryPickerOpen(true);
+    setSelectedGalleryIds(new Set());
+    setIsLoadingGalleryPicker(true);
     try {
-      const { audioUrl } = await api.generateSpeech({ text: scene.voiceoverText });
-      updateScene(id, { voiceoverAudioUrl: audioUrl });
-    } catch (err) {
-      updateScene(id, {
-        error: err instanceof api.ApiError ? err.message : 'Voiceover generation failed. Try again.',
-      });
+      const [images, videos] = await Promise.all([
+        api.listMyGallery('image', 100),
+        api.listMyGallery('video', 100),
+      ]);
+      setGalleryPickerAssets([...images, ...videos]);
+    } catch {
+      setGalleryPickerAssets([]);
     } finally {
-      updateScene(id, { isGeneratingVoiceover: false });
+      setIsLoadingGalleryPicker(false);
     }
   };
 
-  const handleCombineScenes = async () => {
-    if (scenes.some((s) => !s.visualUrl || !s.visualType)) {
-      setError('Every scene needs a clip or image before you can combine them.');
+  const handleToggleGallerySelect = (id: string) => {
+    setSelectedGalleryIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleAddSelectedFromGallery = () => {
+    const picked = galleryPickerAssets.filter((asset) => selectedGalleryIds.has(asset.id));
+    const newScenes = picked.map((asset) => createScene(asset.url, asset.type === 'video' ? 'video' : 'image'));
+    setScenes((prev) => [...prev, ...newScenes]);
+    setIsGalleryPickerOpen(false);
+  };
+
+  const handleSceneDurationChange = (id: string, value: string) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return;
+    setScenes((prev) => prev.map((s) => (s.id === id ? { ...s, durationSeconds: parsed } : s)));
+  };
+
+  const handleSceneFilterChange = (id: string, filter: SceneFilterPreset) => {
+    setScenes((prev) => prev.map((s) => (s.id === id ? { ...s, filter } : s)));
+  };
+
+  const handleSceneMotionToggle = (id: string) => {
+    setScenes((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, motion: s.motion === 'kenburns' ? 'none' : 'kenburns' } : s)),
+    );
+  };
+
+  // Drives both the crop editor's crosshair and the exported crop (see
+  // SceneInput.focalXPct/YPct) - held-drag reposition, using the same 0-100
+  // "object-position" semantics the live preview renders with via CSS, so
+  // what's shown while dragging matches what gets exported exactly.
+  const handleSceneFocalDrag = (id: string) => (e: React.PointerEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPct = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+    const yPct = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+    setScenes((prev) => prev.map((s) => (s.id === id ? { ...s, focalXPct: xPct, focalYPct: yPct } : s)));
+  };
+
+  // Plays a pre-generated local sample (see scripts/generate-sarvam-voice-
+  // samples.mjs) - no API call, so auditioning voices is instant and free.
+  const handlePreviewVoice = (id: string) => {
+    previewAudioRef.current?.pause();
+    if (previewingVoiceId === id) {
+      setPreviewingVoiceId(null);
+      previewAudioRef.current = null;
+      return;
+    }
+    const audio = new Audio(sarvamVoiceSampleUrl(id, narrationLanguage));
+    audio.addEventListener('ended', () => setPreviewingVoiceId(null));
+    audio.play().catch(() => setPreviewingVoiceId(null));
+    previewAudioRef.current = audio;
+    setPreviewingVoiceId(id);
+  };
+
+  // Same generic text-generation endpoint/pattern as Character Studio's
+  // "Improve with AI"/"Generate with AI" script button (see
+  // CharacterStudioView.tsx's handleImproveScript) - reworded for a
+  // narrated slideshow instead of a talking-avatar script, and capped
+  // shorter to fit Scene Builder's 30s ceiling.
+  const handleGenerateNarration = async () => {
+    setIsGeneratingNarration(true);
+    setError(null);
+    try {
+      const result = await api.generateText(
+        narrationText.trim()
+          ? {
+              prompt: narrationText.trim(),
+              systemPrompt:
+                'You are a scriptwriter for short narrated slideshow videos (images/clips ' +
+                "shown in sequence with voiceover). Rewrite the user's draft so it sounds " +
+                'natural when read aloud: fix grammar, tighten the flow, keep it engaging, ' +
+                'and preserve the core message. It must fit in under 30 seconds spoken ' +
+                '(roughly 60-75 words max). Reply with only the narration text - no ' +
+                'quotes, no preamble, no explanation.',
+            }
+          : {
+              prompt: 'Write a short narration for a slideshow video.',
+              systemPrompt:
+                'You are a scriptwriter for short narrated slideshow videos (images/clips ' +
+                'shown in sequence with voiceover). Write a natural, engaging narration ' +
+                'under 30 seconds spoken (roughly 40-70 words), suitable as a generic ' +
+                'starting point the user will edit. Reply with only the narration text - ' +
+                'no quotes, no preamble, no explanation.',
+            },
+      );
+      setNarrationText(result.text.trim());
+    } catch (err) {
+      setError(err instanceof api.ApiError ? err.message : 'Could not reach the Lumora API. Please try again.');
+    } finally {
+      setIsGeneratingNarration(false);
+    }
+  };
+
+  /** Zero-credit preview: composites the real scenes at the estimated pace,
+   * but stands in the selected voice's local sample instead of generating
+   * the actual narration - so it never calls the paid Sarvam API. Stays on
+   * the create step (doesn't touch `step`/`compositeProgress`, which are
+   * reserved for the real Generate flow) so you can keep adjusting scenes. */
+  const handlePreviewSceneVideo = async () => {
+    if (scenes.length === 0) {
+      setError('Upload at least one image or clip first.');
       return;
     }
 
     setError(null);
+    setIsPreviewingVideo(true);
+    try {
+      const pickedVoice = narrationVoiceId
+        ? SARVAM_VOICE_CATALOG.find((v) => v.id === narrationVoiceId)
+        : undefined;
+      const previewVoiceId = pickedVoice?.id ?? SARVAM_VOICE_BY_GENDER[narrationGender].voiceId;
+
+      const scaledDurations = getScaledSceneDurations();
+      const sceneInputs: SceneInput[] = scenes.map((s, i) => ({
+        visualUrl: s.visualUrl,
+        visualType: s.visualType,
+        durationSeconds: scaledDurations[i],
+        focalXPct: s.focalXPct,
+        focalYPct: s.focalYPct,
+        filter: s.filter,
+        motion: s.motion,
+      }));
+      const { blob } = await compositeScenes(sceneInputs, undefined, {
+        globalAudioUrl: narrationText.trim() ? sarvamVoiceSampleUrl(previewVoiceId, narrationLanguage) : null,
+        aspectRatio: sceneAspectRatio,
+        transition: sceneTransition,
+      });
+      setPreviewVideoUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return URL.createObjectURL(blob);
+      });
+    } catch (err) {
+      setError(err instanceof Error ? `Couldn't build preview: ${err.message}` : "Couldn't build preview.");
+    } finally {
+      setIsPreviewingVideo(false);
+    }
+  };
+
+  const handleGenerateSceneVideo = async () => {
+    if (scenes.length === 0) {
+      setError('Upload at least one image or clip first.');
+      return;
+    }
+
+    setError(null);
+    setPreviewVideoUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setStep('compositing');
     setCompositeProgress(0);
     try {
-      const sceneInputs: SceneInput[] = scenes.map((s) => ({
-        visualUrl: s.visualUrl!,
-        visualType: s.visualType!,
-        imageDurationSeconds: s.imageDurationSeconds,
-        voiceoverAudioUrl: s.voiceoverAudioUrl,
+      let globalAudioUrl: string | null = null;
+
+      if (narrationText.trim()) {
+        setProgressLabel('Generating narration...');
+        const pickedVoice = narrationVoiceId
+          ? SARVAM_VOICE_CATALOG.find((v) => v.id === narrationVoiceId)
+          : undefined;
+        const fallbackVoice = pickedVoice ? null : SARVAM_VOICE_BY_GENDER[narrationGender];
+        const { audioUrl } = await api.generateSpeech({
+          text: narrationText.trim(),
+          provider: 'sarvam',
+          voiceId: pickedVoice?.id ?? fallbackVoice?.voiceId,
+          model: pickedVoice?.model ?? fallbackVoice?.model,
+          languageCode: NARRATION_LANGUAGE_CODE[narrationLanguage],
+        });
+        globalAudioUrl = audioUrl;
+      }
+
+      setProgressLabel('Combining your scenes...');
+      const scaledDurations = getScaledSceneDurations();
+      const sceneInputs: SceneInput[] = scenes.map((s, i) => ({
+        visualUrl: s.visualUrl,
+        visualType: s.visualType,
+        durationSeconds: scaledDurations[i],
+        focalXPct: s.focalXPct,
+        focalYPct: s.focalYPct,
+        filter: s.filter,
+        motion: s.motion,
       }));
-      const { blob, mimeType } = await compositeScenes(sceneInputs, setCompositeProgress);
-      setAspectRatio('16:9');
-      setFinalVideoUrl(URL.createObjectURL(blob));
-      setFinalMimeType(mimeType);
-      setHasOverlay(false);
-      setStep('result');
+      const { blob } = await compositeScenes(sceneInputs, setCompositeProgress, {
+        globalAudioUrl,
+        aspectRatio: sceneAspectRatio,
+        transition: sceneTransition,
+      });
+      // Route into the same text-overlay editor the prompt/upload/template
+      // flows use (compositeTextOntoVideo in videoCompositor.ts) instead of
+      // finishing directly - it works on any source video, blob URLs are
+      // always same-origin so the canvas export won't be CORS-blocked. The
+      // 'edit' step's preview box picks up the real shape from
+      // sourceVideoNaturalAspect (see displayAspectRatio) once the exported
+      // video's own metadata loads, so no aspectRatio state needs setting.
+      setSourceVideoNaturalAspect(null);
+      setSourceVideoUrl(URL.createObjectURL(blob));
+      setStep('edit');
     } catch (err) {
       setError(
-        err instanceof Error ? `Couldn't combine your scenes: ${err.message}` : "Couldn't combine your scenes.",
+        err instanceof api.ApiError
+          ? err.message
+          : err instanceof Error
+            ? `Couldn't generate your video: ${err.message}`
+            : "Couldn't generate your video.",
       );
       setStep('create');
     }
@@ -671,6 +932,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     }
 
     setError(null);
+    setProgressLabel('Rendering your text overlay...');
     setStep('compositing');
     setCompositeProgress(0);
 
@@ -1039,318 +1301,524 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Build your video scene by scene
+                  Upload images/clips, narrate the whole video, generate
                 </h3>
                 <span className="text-[10px] text-slate-400">
-                  {scenes.length} scene{scenes.length > 1 ? 's' : ''}
+                  {scenes.length} scene{scenes.length === 1 ? '' : 's'}
                 </span>
               </div>
 
-              {scenes.map((scene, index) => (
-                <div
-                  key={scene.id}
-                  draggable
-                  onDragStart={() => setDraggedSceneId(scene.id)}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    if (dragOverSceneId !== scene.id) setDragOverSceneId(scene.id);
-                  }}
-                  onDrop={() => handleSceneDrop(scene.id)}
-                  onDragEnd={handleSceneDragEnd}
-                  className={`p-4 rounded-2xl bg-white dark:bg-slate-900 border shadow-sm space-y-3.5 transition-all ${
-                    draggedSceneId === scene.id
-                      ? 'opacity-40 border-blue-400 dark:border-blue-600'
-                      : dragOverSceneId === scene.id && draggedSceneId && draggedSceneId !== scene.id
-                        ? 'border-blue-500 ring-2 ring-blue-500/30'
-                        : 'border-slate-200 dark:border-slate-800'
-                  }`}
-                >
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5">
+                    Shape
+                  </span>
+                  {SCENE_ASPECT_RATIO_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setSceneAspectRatio(opt.id)}
+                      title={opt.label}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${
+                        sceneAspectRatio === opt.id
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-400'
+                      }`}
+                    >
+                      {opt.id}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mr-0.5">
+                    Transition
+                  </span>
+                  {SCENE_TRANSITION_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setSceneTransition(opt.id)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors ${
+                        sceneTransition === opt.id
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-400'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex gap-2">
+                  <input
+                    type="file"
+                    accept="video/*,image/*"
+                    multiple
+                    id="scenes-multi-upload"
+                    className="hidden"
+                    disabled={isUploadingScenes}
+                    onChange={(e) => {
+                      void handleScenesFileUpload(e.target.files);
+                      e.target.value = '';
+                    }}
+                  />
+                  <label
+                    htmlFor="scenes-multi-upload"
+                    className={`flex-1 py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-500 hover:text-blue-600 text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
+                      isUploadingScenes ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+                    }`}
+                  >
+                    {isUploadingScenes ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4" />
+                    )}
+                    <span>{isUploadingScenes ? 'Uploading...' : 'Upload images or clips'}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleOpenGalleryPicker}
+                    disabled={isUploadingScenes}
+                    className="flex-1 py-3 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-500 hover:text-blue-600 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FolderOpen className="w-4 h-4" /> Choose from Gallery
+                  </button>
+                </div>
+                {galleryUsage && (
+                  <p
+                    className={`text-[10px] text-right ${
+                      galleryUsage.count >= galleryUsage.max
+                        ? 'text-red-500 dark:text-red-400 font-semibold'
+                        : 'text-slate-400'
+                    }`}
+                  >
+                    {galleryUsage.count}/{galleryUsage.max} images/clips used
+                  </p>
+                )}
+              </div>
+
+              {isGalleryPickerOpen && (
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        title="Drag to reorder"
-                        className="cursor-grab active:cursor-grabbing text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400"
-                      >
-                        <GripVertical className="w-4 h-4" />
-                      </span>
-                      <span className="text-xs font-extrabold text-slate-900 dark:text-white">
-                        Scene {index + 1}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-0.5">
-                      <button
-                        type="button"
-                        onClick={() => handleMoveScene(scene.id, 'up')}
-                        disabled={index === 0}
-                        title="Move up"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:bg-transparent transition-colors"
-                      >
-                        <ChevronUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleMoveScene(scene.id, 'down')}
-                        disabled={index === scenes.length - 1}
-                        title="Move down"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:bg-transparent transition-colors"
-                      >
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      </button>
-                      {scenes.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveScene(scene.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Choose from Gallery
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsGalleryPickerOpen(false)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
 
-                  <div className="flex gap-3">
-                    <div className="w-24 h-16 rounded-lg overflow-hidden bg-slate-950 border border-slate-200 dark:border-slate-800 shrink-0 flex items-center justify-center">
-                      {scene.visualUrl ? (
-                        scene.visualType === 'video' ? (
-                          <video src={scene.visualUrl} muted className="w-full h-full object-cover" />
-                        ) : (
-                          <img src={scene.visualUrl} alt="" className="w-full h-full object-cover" />
-                        )
-                      ) : (
-                        <Film className="w-5 h-5 text-slate-700" />
-                      )}
+                  {isLoadingGalleryPicker ? (
+                    <div className="flex items-center justify-center py-10 text-slate-400">
+                      <Loader2 className="w-5 h-5 animate-spin" />
                     </div>
-
-                    <div className="flex-1 min-w-0 space-y-2.5">
-                      <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 w-fit">
-                        {(
-                          [
-                            { id: 'templates', label: 'Templates' },
-                            { id: 'upload', label: 'Upload' },
-                            { id: 'ai', label: 'AI Generate' },
-                            { id: 'gallery', label: 'My Gallery' },
-                          ] as const
-                        ).map((tab) => (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => updateScene(scene.id, { visualTab: tab.id })}
-                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                              scene.visualTab === tab.id
-                                ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xs'
-                                : 'text-slate-500 dark:text-slate-400'
-                            }`}
-                          >
-                            {tab.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {scene.visualTab === 'templates' && (
-                        <div className="grid grid-cols-2 gap-1.5">
-                          {STOCK_TEMPLATES.map((t) => (
+                  ) : galleryPickerAssets.length === 0 ? (
+                    <p className="py-8 text-center text-[11px] text-slate-400">
+                      No images or clips yet - upload some first.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto">
+                        {galleryPickerAssets.map((asset) => {
+                          const isSelected = selectedGalleryIds.has(asset.id);
+                          return (
                             <button
-                              key={t.id}
                               type="button"
-                              onClick={() => handleScenePickTemplate(scene.id, t)}
-                              className={`text-[10px] font-semibold px-2 py-1.5 rounded-lg border transition-all ${
-                                scene.visualUrl === t.url
-                                  ? 'border-blue-600 text-blue-600 bg-blue-50/50 dark:bg-blue-900/30'
-                                  : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                              key={asset.id}
+                              onClick={() => handleToggleGallerySelect(asset.id)}
+                              title={asset.fileName}
+                              className={`relative aspect-video rounded-lg overflow-hidden bg-slate-950 border-2 transition-all ${
+                                isSelected ? 'border-blue-600' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-700'
                               }`}
                             >
-                              {t.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-
-                      {scene.visualTab === 'upload' && (
-                        <div>
-                          <input
-                            type="file"
-                            accept="video/*,image/*"
-                            id={`scene-upload-${scene.id}`}
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleSceneFileUpload(scene.id, file);
-                            }}
-                          />
-                          <label
-                            htmlFor={`scene-upload-${scene.id}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-bold cursor-pointer transition-colors"
-                          >
-                            <Upload className="w-3 h-3" /> Choose clip or image
-                          </label>
-                        </div>
-                      )}
-
-                      {scene.visualTab === 'ai' && (
-                        <div className="space-y-1.5">
-                          <div className="flex gap-1">
-                            {(
-                              [
-                                { id: 'video', label: 'Video clip', icon: Film },
-                                { id: 'image', label: 'Image', icon: ImageIcon },
-                              ] as const
-                            ).map((mode) => (
-                              <button
-                                key={mode.id}
-                                type="button"
-                                onClick={() => updateScene(scene.id, { aiMode: mode.id })}
-                                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${
-                                  scene.aiMode === mode.id
-                                    ? 'border-blue-600 text-blue-600 bg-blue-50/50 dark:bg-blue-900/30'
-                                    : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
-                                }`}
-                              >
-                                <mode.icon className="w-3 h-3" /> {mode.label}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="flex gap-1.5">
-                            <input
-                              type="text"
-                              value={scene.aiPrompt}
-                              onChange={(e) => updateScene(scene.id, { aiPrompt: e.target.value })}
-                              placeholder="Describe this scene..."
-                              className="flex-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleSceneGenerateAIVisual(scene.id)}
-                              disabled={scene.isGeneratingVisual || !scene.aiPrompt.trim()}
-                              className="px-2.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50 flex items-center justify-center transition-all"
-                            >
-                              {scene.isGeneratingVisual ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              {asset.type === 'video' ? (
+                                <video src={asset.url} muted className="w-full h-full object-cover" />
                               ) : (
-                                <Wand2 className="w-3.5 h-3.5" />
+                                <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                              )}
+                              {isSelected && (
+                                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                                  <Check className="w-2.5 h-2.5" />
+                                </span>
                               )}
                             </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {scene.visualTab === 'gallery' && (
-                        <div className="space-y-1">
-                          {(galleryImages?.length ?? 0) === 0 ? (
-                            <p className="text-[10px] text-slate-400">
-                              No saved images yet - generate one with AI or Image Studio first.
-                            </p>
-                          ) : (
-                            <div className="grid grid-cols-4 gap-1.5 max-h-24 overflow-y-auto">
-                              {galleryImages.map((asset) => (
-                                <button
-                                  key={asset.id}
-                                  type="button"
-                                  title={asset.prompt ?? asset.fileName}
-                                  onClick={() => handleScenePickGalleryImage(scene.id, asset)}
-                                  className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                                    scene.visualUrl === asset.url ? 'border-blue-600' : 'border-transparent'
-                                  }`}
-                                >
-                                  <img src={asset.url} alt="" className="w-full h-full object-cover" />
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {scene.visualType === 'image' && (
-                        <div className="flex items-center gap-1.5">
-                          <label className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                            Hold for
-                          </label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={20}
-                            value={scene.imageDurationSeconds}
-                            onChange={(e) =>
-                              updateScene(scene.id, { imageDurationSeconds: Number(e.target.value) || 4 })
-                            }
-                            className="w-14 text-[11px] px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none"
-                          />
-                          <span className="text-[10px] text-slate-400">seconds</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      <Mic className="w-3 h-3" /> Voiceover (optional)
-                    </div>
-                    <div className="flex gap-1.5">
-                      <input
-                        type="text"
-                        value={scene.voiceoverText}
-                        onChange={(e) =>
-                          updateScene(scene.id, { voiceoverText: e.target.value, voiceoverAudioUrl: null })
-                        }
-                        placeholder="What should the narrator say for this scene?"
-                        className="flex-1 text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                      />
+                          );
+                        })}
+                      </div>
                       <button
                         type="button"
-                        onClick={() => handleSceneGenerateVoiceover(scene.id)}
-                        disabled={scene.isGeneratingVoiceover || !scene.voiceoverText.trim()}
-                        className="px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold disabled:opacity-50 flex items-center gap-1 transition-all"
+                        onClick={handleAddSelectedFromGallery}
+                        disabled={selectedGalleryIds.size === 0}
+                        className="w-full py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {scene.isGeneratingVoiceover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Generate'}
+                        Add {selectedGalleryIds.size || ''} selected
                       </button>
-                    </div>
-                    {scene.voiceoverAudioUrl && (
-                      // eslint-disable-next-line jsx-a11y/media-has-caption
-                      <audio src={scene.voiceoverAudioUrl} controls className="w-full h-8" />
-                    )}
-                    {(galleryVoiceClips?.length ?? 0) > 0 && (
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
-                          Or reuse a past clip
-                        </p>
-                        <div className="flex flex-wrap gap-1">
-                          {galleryVoiceClips.slice(0, 6).map((asset) => (
-                            <button
-                              key={asset.id}
-                              type="button"
-                              onClick={() => handleScenePickVoiceClip(scene.id, asset)}
-                              title={asset.prompt ?? ''}
-                              className="max-w-[7rem] truncate px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                            >
-                              {asset.prompt || asset.fileName}
-                            </button>
-                          ))}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {scenes.length > 0 && (
+                <div className="space-y-2">
+                  {scenes.map((scene, index) => (
+                    <div
+                      key={scene.id}
+                      draggable
+                      onClick={() => setPreviewSceneIndex(index)}
+                      onDragStart={() => setDraggedSceneId(scene.id)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (dragOverSceneId !== scene.id) setDragOverSceneId(scene.id);
+                      }}
+                      onDrop={() => handleSceneDrop(scene.id)}
+                      onDragEnd={handleSceneDragEnd}
+                      title="Click to preview this scene"
+                      className={`rounded-xl bg-white dark:bg-slate-900 border shadow-xs cursor-pointer transition-all ${
+                        draggedSceneId === scene.id
+                          ? 'opacity-40 border-blue-400 dark:border-blue-600'
+                          : dragOverSceneId === scene.id && draggedSceneId && draggedSceneId !== scene.id
+                            ? 'border-blue-500 ring-2 ring-blue-500/30'
+                            : clampedPreviewSceneIndex === index
+                              ? 'border-blue-400 dark:border-blue-600 ring-1 ring-blue-400/40'
+                              : 'border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      <div className="p-2.5 flex items-center gap-3">
+                        <span
+                          title="Drag to reorder"
+                          className="cursor-grab active:cursor-grabbing text-slate-300 dark:text-slate-600 hover:text-slate-500 dark:hover:text-slate-400 shrink-0"
+                        >
+                          <GripVertical className="w-4 h-4" />
+                        </span>
+
+                        <div className="w-16 h-11 rounded-lg overflow-hidden bg-slate-950 border border-slate-200 dark:border-slate-800 shrink-0 flex items-center justify-center">
+                          {scene.visualType === 'video' ? (
+                            <video
+                              src={scene.visualUrl}
+                              muted
+                              className="w-full h-full"
+                              style={{
+                                objectFit: 'cover',
+                                objectPosition: `${scene.focalXPct}% ${scene.focalYPct}%`,
+                              }}
+                            />
+                          ) : (
+                            <img
+                              src={scene.visualUrl}
+                              alt=""
+                              className="w-full h-full"
+                              style={{
+                                objectFit: 'cover',
+                                objectPosition: `${scene.focalXPct}% ${scene.focalYPct}%`,
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        <span className="flex-1 min-w-0 text-xs font-bold text-slate-900 dark:text-white">
+                          Scene {index + 1}
+                        </span>
+
+                        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="number"
+                            min={0.5}
+                            step={0.5}
+                            value={scene.durationSeconds}
+                            onChange={(e) => handleSceneDurationChange(scene.id, e.target.value)}
+                            title="Seconds this slide shows"
+                            className="w-14 text-[11px] px-1.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                          />
+                          <span className="text-[10px] text-slate-400">s</span>
+                        </div>
+
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveScene(scene.id, 'up');
+                            }}
+                            disabled={index === 0}
+                            title="Move up"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:bg-transparent transition-colors"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveScene(scene.id, 'down');
+                            }}
+                            disabled={index === scenes.length - 1}
+                            title="Move down"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:bg-transparent transition-colors"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveScene(scene.id);
+                            }}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  {scene.error && <p className="text-[10px] text-red-500 dark:text-red-400">{scene.error}</p>}
+                      <div
+                        className="px-2.5 pb-2.5 pl-[3.75rem] flex items-center gap-1.5 flex-wrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <select
+                          value={scene.filter}
+                          onChange={(e) => handleSceneFilterChange(scene.id, e.target.value as SceneFilterPreset)}
+                          title="Color filter"
+                          className="text-[10px] px-1.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500"
+                        >
+                          {SCENE_FILTER_OPTIONS.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        {scene.visualType === 'image' && (
+                          <button
+                            type="button"
+                            onClick={() => handleSceneMotionToggle(scene.id)}
+                            title="Slow pan/zoom instead of a static hold"
+                            className={`text-[10px] px-2 py-1 rounded-lg border font-semibold transition-colors ${
+                              scene.motion === 'kenburns'
+                                ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+                                : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
+                            }`}
+                          >
+                            Ken Burns
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setCropEditingSceneId((prev) => (prev === scene.id ? null : scene.id))}
+                          title="Choose what stays in frame"
+                          className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border font-semibold transition-colors ${
+                            cropEditingSceneId === scene.id
+                              ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+                              : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
+                          }`}
+                        >
+                          <Crop className="w-3 h-3" /> Crop
+                        </button>
+                      </div>
+
+                      {cropEditingSceneId === scene.id && (
+                        <div className="px-2.5 pb-3" onClick={(e) => e.stopPropagation()}>
+                          <div
+                            className="relative w-full max-w-[220px] mx-auto rounded-lg overflow-hidden bg-slate-950 border border-slate-200 dark:border-slate-800 cursor-crosshair select-none touch-none"
+                            style={{ aspectRatio: ASPECT_RATIO_NUMERIC[sceneAspectRatio] }}
+                            onPointerDown={handleSceneFocalDrag(scene.id)}
+                            onPointerMove={(e) => {
+                              if (e.buttons === 1) handleSceneFocalDrag(scene.id)(e);
+                            }}
+                          >
+                            {scene.visualType === 'video' ? (
+                              <video
+                                src={scene.visualUrl}
+                                muted
+                                className="w-full h-full pointer-events-none"
+                                style={{
+                                  objectFit: 'cover',
+                                  objectPosition: `${scene.focalXPct}% ${scene.focalYPct}%`,
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src={scene.visualUrl}
+                                alt=""
+                                className="w-full h-full pointer-events-none"
+                                style={{
+                                  objectFit: 'cover',
+                                  objectPosition: `${scene.focalXPct}% ${scene.focalYPct}%`,
+                                }}
+                              />
+                            )}
+                            <div
+                              className="absolute w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white shadow pointer-events-none"
+                              style={{
+                                left: `${scene.focalXPct}%`,
+                                top: `${scene.focalYPct}%`,
+                                transform: 'translate(-50%, -50%)',
+                              }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-slate-400 text-center mt-1">
+                            Drag to choose what stays in frame
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
 
-              <button
-                type="button"
-                onClick={handleAddScene}
-                className="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-500 hover:text-blue-600 text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
-              >
-                <Plus className="w-4 h-4" /> Add Scene
-              </button>
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    <Mic className="w-3 h-3" /> Narration (optional)
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleGenerateNarration}
+                    disabled={isGeneratingNarration}
+                    title={narrationText.trim() ? 'Improve this narration with AI' : 'Generate a narration with AI'}
+                    className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
+                  >
+                    {isGeneratingNarration ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Wand2 className="w-3 h-3" />
+                    )}
+                    <span>{narrationText.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
+                  </button>
+                </div>
+                <textarea
+                  rows={3}
+                  value={narrationText}
+                  onChange={(e) => setNarrationText(e.target.value)}
+                  placeholder="What should the narrator say across this whole video?"
+                  className="w-full text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                />
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80">
+                    {(Object.keys(NARRATION_LANGUAGE_LABELS) as NarrationLanguage[]).map((lang) => (
+                      <button
+                        key={lang}
+                        type="button"
+                        onClick={() => setNarrationLanguage(lang)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                          narrationLanguage === lang
+                            ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xs'
+                            : 'text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        {NARRATION_LANGUAGE_LABELS[lang]}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80">
+                    {(Object.keys(NARRATION_GENDER_LABELS) as NarrationGender[]).map((g) => (
+                      <button
+                        key={g}
+                        type="button"
+                        onClick={() => setNarrationGender(g)}
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                          narrationGender === g
+                            ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xs'
+                            : 'text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        {NARRATION_GENDER_LABELS[g]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                  <div className="flex-1 min-w-0">
+                    <SarvamVoiceSelect
+                      value={narrationVoiceId}
+                      onChange={setNarrationVoiceId}
+                      previewingVoiceId={previewingVoiceId}
+                      onPreview={handlePreviewVoice}
+                      genderFilter={narrationGender}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handlePreviewVoice(narrationVoiceId || SARVAM_VOICE_BY_GENDER[narrationGender].voiceId)
+                    }
+                    title="Preview the current selection (plays a local sample, no API call)"
+                    className="shrink-0 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-colors"
+                  >
+                    {previewingVoiceId === (narrationVoiceId || SARVAM_VOICE_BY_GENDER[narrationGender].voiceId) ? (
+                      <Pause className="w-3.5 h-3.5" />
+                    ) : (
+                      <Play className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
 
-              <button
-                onClick={handleCombineScenes}
-                disabled={scenes.some((s) => !s.visualUrl)}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-[0.99] transition-all disabled:opacity-50"
-              >
-                <Layers className="w-4 h-4" />
-                <span>
-                  Combine {scenes.length} Scene{scenes.length > 1 ? 's' : ''} & Create Video
-                </span>
-              </button>
+                {scenes.length > 0 && (
+                  <p className={`text-[10px] ${sceneEstimateExceedsMax ? 'text-red-500 dark:text-red-400' : 'text-slate-400'}`}>
+                    ~{sceneCappedEstimatedSeconds}s video total ({MAX_SCENE_TOTAL_SECONDS}s max
+                    {sceneEstimateExceedsMax ? ' - slides scaled down to fit' : ''})
+                    {narrationText.trim() && <> - narration may be cut off or end before the video does</>}
+                    . Set each slide's length below.
+                  </p>
+                )}
+              </div>
+
+              {previewVideoUrl && (
+                <div className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      Preview (placeholder voice sample)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        URL.revokeObjectURL(previewVideoUrl);
+                        setPreviewVideoUrl(null);
+                      }}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video src={previewVideoUrl} controls autoPlay className="w-full rounded-xl bg-slate-950" />
+                  <p className="text-[10px] text-slate-400">
+                    Free - uses a sample of the selected voice, not your actual narration text. Click Generate Video
+                    for the real thing.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handlePreviewSceneVideo}
+                  disabled={scenes.length === 0 || isPreviewingVideo}
+                  title="Free - previews pacing and voice using a local sample, no API call"
+                  className="flex-1 py-3.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-500 hover:text-blue-600 font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {isPreviewingVideo ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4" />
+                  )}
+                  <span>Preview (free)</span>
+                </button>
+                <button
+                  onClick={handleGenerateSceneVideo}
+                  disabled={scenes.length === 0}
+                  className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-[0.99] transition-all disabled:opacity-50"
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Generate Video</span>
+                </button>
+              </div>
             </div>
           )}
 
@@ -1368,7 +1836,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Preview</h3>
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-2.5">
             <div
-              className={`w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center ${previewAspectClass}`}
+              className={`relative w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center ${previewAspectClass}`}
             >
               {source === 'prompt' && (
                 <div className="flex flex-col items-center gap-2 text-slate-600 p-4 text-center">
@@ -1393,12 +1861,43 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                 </div>
               )}
               {source === 'scenes' &&
-                (scenes[0]?.visualUrl ? (
-                  scenes[0].visualType === 'video' ? (
-                    <video src={scenes[0].visualUrl} muted loop autoPlay className="w-full h-full object-cover" />
-                  ) : (
-                    <img src={scenes[0].visualUrl} alt="" className="w-full h-full object-cover" />
-                  )
+                (previewScene ? (
+                  <>
+                    {previewScene.visualType === 'video' ? (
+                      <video
+                        key={previewScene.id}
+                        src={previewScene.visualUrl}
+                        muted
+                        loop
+                        autoPlay
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <img src={previewScene.visualUrl} alt="" className="w-full h-full object-cover" />
+                    )}
+                    {scenes.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewSceneIndex((clampedPreviewSceneIndex - 1 + scenes.length) % scenes.length)
+                          }
+                          title="Previous scene"
+                          className="absolute left-1.5 top-1/2 -translate-y-1/2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewSceneIndex((clampedPreviewSceneIndex + 1) % scenes.length)}
+                          title="Next scene"
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </>
                 ) : (
                   <div className="flex flex-col items-center gap-2 text-slate-600 p-4 text-center">
                     <Layers className="w-7 h-7" />
@@ -1410,7 +1909,9 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
             </div>
             <p className="text-[10px] text-slate-400 text-center">
               {source === 'prompt' && `${stylePreset.aspectRatio} · ${stylePreset.durationSeconds}s`}
-              {source === 'scenes' && scenes.length > 0 && `Scene 1 of ${scenes.length}`}
+              {source === 'scenes' &&
+                scenes.length > 0 &&
+                `Scene ${clampedPreviewSceneIndex + 1} of ${scenes.length}`}
             </p>
           </div>
         </div>
@@ -1665,7 +2166,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
           <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
           <div className="w-full max-w-xs">
             <p className="text-sm font-bold text-slate-900 dark:text-white">
-              {source === 'scenes' ? 'Combining your scenes...' : 'Rendering your text overlay...'}
+              {progressLabel || 'Rendering your text overlay...'}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 mb-3">
               You'll briefly hear the clip's audio while it renders - this is normal.
@@ -1756,7 +2257,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
           <SchedulePostPanel
             finalVideoUrl={finalVideoUrl}
-            defaultCaption={overlayText.trim() || prompt.trim()}
+            defaultCaption={source === 'scenes' ? narrationText.trim() : overlayText.trim() || prompt.trim()}
             onNavigate={onNavigate}
           />
 

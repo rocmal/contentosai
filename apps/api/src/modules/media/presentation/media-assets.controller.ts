@@ -1,20 +1,42 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  ParseFilePipeBuilder,
+  Patch,
+  Post,
+  Query,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
-import { MediaAssetsService } from '../application/services/media-assets.service';
+import { StorageService } from '@modules/storage/application/services/storage.service';
+import { MediaAssetsService, MAX_GALLERY_MEDIA_PER_USER } from '../application/services/media-assets.service';
+import { MediaAssetType } from '../domain/entities/media-asset.entity';
 import { CreateMediaAssetDto } from '../application/dto/create-media-asset.dto';
 import { UpdateMediaAssetDto } from '../application/dto/update-media-asset.dto';
 import { MediaAssetResponseDto } from '../application/dto/media-asset-response.dto';
 import { FindMyGalleryQueryDto } from '../application/dto/find-my-gallery-query.dto';
 
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+
 @ApiTags('media')
 @ApiBearerAuth('access-token')
 @Controller({ path: 'media', version: '1' })
 export class MediaAssetsController {
-  constructor(private readonly mediaAssetsService: MediaAssetsService) {}
+  constructor(
+    private readonly mediaAssetsService: MediaAssetsService,
+    private readonly storageService: StorageService,
+  ) {}
 
   @Post()
   @RequirePermissions('media.create')
@@ -55,6 +77,54 @@ export class MediaAssetsController {
       items: result.items.map((mediaAsset) => new MediaAssetResponseDto(mediaAsset)),
       meta: result.meta,
     };
+  }
+
+  @Get('gallery-usage')
+  @RequirePermissions('media.read')
+  @ApiOperation({ summary: "The current user's image/video gallery count against the shared cap" })
+  async getGalleryUsage(@CurrentUser('id') userId: string): Promise<{ count: number; max: number }> {
+    const count = await this.mediaAssetsService.countGalleryMedia(userId);
+    return { count, max: MAX_GALLERY_MEDIA_PER_USER };
+  }
+
+  @Post('upload')
+  @RequirePermissions('media.create')
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload an image or video clip directly into the gallery' })
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadToGallery(
+    @UploadedFile(new ParseFilePipeBuilder().addMaxSizeValidator({ maxSize: MAX_UPLOAD_BYTES }).build())
+    file: Express.Multer.File,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MediaAssetResponseDto> {
+    if (!user.organizationId || !user.workspaceId) {
+      throw new BadRequestException('An active organization and workspace are required to upload to your gallery');
+    }
+    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
+      throw new BadRequestException('Only images and video clips can be added to the gallery');
+    }
+
+    const type = file.mimetype.startsWith('image/') ? MediaAssetType.IMAGE : MediaAssetType.VIDEO;
+    const stored = await this.storageService.uploadFile(file, 'gallery');
+    const mediaAsset = await this.mediaAssetsService.saveGenerated(
+      {
+        organizationId: user.organizationId,
+        workspaceId: user.workspaceId,
+        fileName: file.originalname,
+        storageKey: stored.key,
+        url: stored.url,
+        mimeType: file.mimetype,
+        sizeBytes: file.size,
+        type,
+        prompt: null,
+        provider: null,
+        model: null,
+        voiceId: null,
+        cacheKeyHash: null,
+      },
+      user.id,
+    );
+    return new MediaAssetResponseDto(mediaAsset);
   }
 
   @Get(':id')

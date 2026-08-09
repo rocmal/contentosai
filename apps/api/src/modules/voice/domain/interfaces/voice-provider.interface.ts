@@ -2,6 +2,9 @@ export interface VoiceGenerationRequest {
   text: string;
   voiceId?: string;
   model?: string;
+  /** BCP-47 language code (e.g. "hi-IN") - only meaningful for providers with
+   * multi-language voices (currently Sarvam); ignored by the rest. */
+  languageCode?: string;
 }
 
 export interface VoiceGenerationResult {

@@ -197,6 +197,11 @@ export async function compositeTextOntoVideo(
 // instead of a single clip + text overlay.
 // ---------------------------------------------------------------------------
 
+export type SceneFilterPreset = 'none' | 'bw' | 'sepia' | 'vivid' | 'warm' | 'cool' | 'fade';
+export type SceneMotion = 'none' | 'kenburns';
+export type SceneTransitionType = 'none' | 'fade' | 'slide';
+export type OutputAspectRatio = '16:9' | '9:16' | '1:1';
+
 export interface SceneInput {
   visualUrl: string;
   visualType: 'video' | 'image';
@@ -207,11 +212,60 @@ export interface SceneInput {
    * generateSpeech) - when present, this replaces the clip's own audio and
    * the scene's duration is trimmed/extended to match the narration. */
   voiceoverAudioUrl?: string | null;
+  /** Explicit duration for this scene, in seconds - takes priority over
+   * imageDurationSeconds and the clip's natural/audio-driven length. Video
+   * clips longer than this are trimmed (the draw loop advances to the next
+   * scene once elapsed >= duration regardless of whether the clip itself
+   * ended); clips shorter than this just hold their last frame, which
+   * drawImage already does on a paused/ended video for free. Used by Scene
+   * Builder's per-slide duration controls. */
+  durationSeconds?: number;
+  /** 0-100 focal point of the crop-to-fill frame; 50/50 (default) keeps the
+   * source centered. Mirrors CSS object-position semantics so the same
+   * numbers drive both the live UI preview (via object-position) and the
+   * exported pixels here. */
+  focalXPct?: number;
+  focalYPct?: number;
+  /** Baked into the recorded pixels via canvas `filter`, not just a UI
+   * overlay that disappears on export. */
+  filter?: SceneFilterPreset;
+  /** Image scenes only - a slow pan/zoom instead of a static hold. */
+  motion?: SceneMotion;
 }
 
 const DEFAULT_IMAGE_DURATION_SECONDS = 4;
-const OUTPUT_WIDTH = 1280;
-const OUTPUT_HEIGHT = 720;
+const TRANSITION_SECONDS = 0.6;
+
+const ASPECT_RATIO_DIMENSIONS: Record<OutputAspectRatio, { width: number; height: number }> = {
+  '16:9': { width: 1280, height: 720 },
+  '9:16': { width: 720, height: 1280 },
+  '1:1': { width: 720, height: 720 },
+};
+
+const FILTER_CSS: Record<SceneFilterPreset, string> = {
+  none: 'none',
+  bw: 'grayscale(1) contrast(1.05)',
+  sepia: 'sepia(0.75) contrast(1.05)',
+  vivid: 'saturate(1.5) contrast(1.1)',
+  warm: 'sepia(0.25) saturate(1.25) brightness(1.03)',
+  cool: 'saturate(1.15) hue-rotate(-8deg) brightness(1.02)',
+  fade: 'contrast(0.85) brightness(1.08) saturate(0.85)',
+};
+
+/** Loads just enough of an audio URL to read its duration - used to turn a
+ * freshly-generated narration clip's length into the video's total length. */
+export function loadAudioDuration(url: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+    audio.addEventListener('loadedmetadata', () => resolve(audio.duration), { once: true });
+    audio.addEventListener(
+      'error',
+      () => reject(new Error('Could not read narration audio duration.')),
+      { once: true },
+    );
+    audio.src = url;
+  });
+}
 
 async function loadSceneVideo(url: string): Promise<HTMLVideoElement> {
   const video = document.createElement('video');
@@ -256,35 +310,148 @@ async function decodeSceneAudio(url: string, audioContext: AudioContext): Promis
   }
 }
 
-/** Draws a frame "cover"-fit (crop-to-fill) into the fixed output canvas -
- * scenes can mix differently-shaped clips/images without letterboxing. */
+interface DrawSceneFrameOptions {
+  focalXPct?: number;
+  focalYPct?: number;
+  /** >1 zooms in past a plain cover-fit - used by the Ken Burns effect. */
+  extraScale?: number;
+  filter?: string;
+  alpha?: number;
+}
+
+/** Computes the cover-fit (crop-to-fill) rect for drawImage, honoring an
+ * optional focal point (0-100, 50=centered, same semantics as CSS
+ * object-position) and extra zoom scale - scenes can mix differently-shaped
+ * clips/images without letterboxing, while still letting the crop be
+ * re-aimed instead of always symmetric. */
+function computeCoverRect(
+  canvasWidth: number,
+  canvasHeight: number,
+  sourceWidth: number,
+  sourceHeight: number,
+  focalXPct: number,
+  focalYPct: number,
+  extraScale: number,
+): { dx: number; dy: number; dw: number; dh: number } {
+  const canvasRatio = canvasWidth / canvasHeight;
+  const sourceRatio = sourceWidth / sourceHeight || canvasRatio;
+
+  let drawWidth = canvasWidth;
+  let drawHeight = canvasHeight;
+  if (sourceRatio > canvasRatio) {
+    drawHeight = canvasHeight;
+    drawWidth = canvasHeight * sourceRatio;
+  } else {
+    drawWidth = canvasWidth;
+    drawHeight = canvasWidth / sourceRatio;
+  }
+  drawWidth *= extraScale;
+  drawHeight *= extraScale;
+
+  const maxOffsetX = Math.max(0, drawWidth - canvasWidth);
+  const maxOffsetY = Math.max(0, drawHeight - canvasHeight);
+
+  return {
+    dx: -((focalXPct / 100) * maxOffsetX),
+    dy: -((focalYPct / 100) * maxOffsetY),
+    dw: drawWidth,
+    dh: drawHeight,
+  };
+}
+
+/** Draws a frame "cover"-fit (crop-to-fill) into the output canvas - scenes
+ * can mix differently-shaped clips/images without letterboxing. */
 function drawSceneFrame(
   ctx: CanvasRenderingContext2D,
   source: CanvasImageSource,
   sourceWidth: number,
   sourceHeight: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  options?: DrawSceneFrameOptions,
 ): void {
-  const canvasRatio = OUTPUT_WIDTH / OUTPUT_HEIGHT;
-  const sourceRatio = sourceWidth / sourceHeight || canvasRatio;
+  const { dx, dy, dw, dh } = computeCoverRect(
+    canvasWidth,
+    canvasHeight,
+    sourceWidth,
+    sourceHeight,
+    options?.focalXPct ?? 50,
+    options?.focalYPct ?? 50,
+    options?.extraScale ?? 1,
+  );
 
-  let drawWidth = OUTPUT_WIDTH;
-  let drawHeight = OUTPUT_HEIGHT;
-  if (sourceRatio > canvasRatio) {
-    drawHeight = OUTPUT_HEIGHT;
-    drawWidth = OUTPUT_HEIGHT * sourceRatio;
-  } else {
-    drawWidth = OUTPUT_WIDTH;
-    drawHeight = OUTPUT_WIDTH / sourceRatio;
+  ctx.save();
+  ctx.globalAlpha = options?.alpha ?? 1;
+  ctx.filter = options?.filter ?? 'none';
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  ctx.drawImage(source, dx, dy, dw, dh);
+  ctx.restore();
+}
+
+interface TransitionFrameSource {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  options?: DrawSceneFrameOptions;
+}
+
+/** Draws the tail-end blend between the current scene and the next one -
+ * `fade` crossfades both frames in place, `slide` pushes the current frame
+ * out while the next slides in from the right. Both purely overlay the
+ * existing per-scene duration window (see transitionDurations in
+ * compositeScenes) rather than extending it, so audio scheduling is
+ * unaffected. */
+function drawSceneTransition(
+  ctx: CanvasRenderingContext2D,
+  canvasWidth: number,
+  canvasHeight: number,
+  current: TransitionFrameSource,
+  next: TransitionFrameSource,
+  t: number,
+  type: 'fade' | 'slide',
+): void {
+  if (type === 'fade') {
+    drawSceneFrame(ctx, current.source, current.width, current.height, canvasWidth, canvasHeight, current.options);
+    drawSceneFrame(ctx, next.source, next.width, next.height, canvasWidth, canvasHeight, {
+      ...next.options,
+      alpha: t,
+    });
+    return;
   }
 
-  ctx.fillStyle = '#000000';
-  ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  ctx.drawImage(source, (OUTPUT_WIDTH - drawWidth) / 2, (OUTPUT_HEIGHT - drawHeight) / 2, drawWidth, drawHeight);
+  ctx.save();
+  ctx.translate(-t * canvasWidth, 0);
+  drawSceneFrame(ctx, current.source, current.width, current.height, canvasWidth, canvasHeight, current.options);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate((1 - t) * canvasWidth, 0);
+  drawSceneFrame(ctx, next.source, next.width, next.height, canvasWidth, canvasHeight, next.options);
+  ctx.restore();
+}
+
+export interface CompositeScenesOptions {
+  /** Single narration track for the whole output, decoded and scheduled
+   * once at t=0 instead of per-scene audio. Scene clips' own audio is never
+   * decoded in this mode (loadSceneVideo already creates them muted, so
+   * nothing further is needed to exclude it from the recording). */
+  globalAudioUrl?: string | null;
+  /** Output frame shape - defaults to 16:9 landscape (1280x720, the
+   * original fixed size). 9:16/1:1 exist for Reels/Shorts/TikTok and square
+   * feeds. */
+  aspectRatio?: OutputAspectRatio;
+  /** Blend between consecutive scenes instead of a hard cut. Defaults to
+   * 'none'. Duration is fixed (TRANSITION_SECONDS) and auto-capped to half
+   * of whichever neighboring scene is shorter, so a transition can never eat
+   * a whole short scene. */
+  transition?: SceneTransitionType;
 }
 
 export async function compositeScenes(
   scenes: SceneInput[],
   onProgress?: (fraction: number) => void,
+  options?: CompositeScenesOptions,
 ): Promise<CompositeResult> {
   if (scenes.length === 0) {
     throw new Error('Add at least one scene first.');
@@ -305,22 +472,41 @@ export async function compositeScenes(
     // Preload every scene up front - scene counts here are small (a
     // handful), so this keeps the record loop below simple and glitch-free
     // rather than loading media mid-recording.
+    const useGlobalAudio = options?.globalAudioUrl != null;
+
     for (const scene of scenes) {
       const visual =
         scene.visualType === 'video' ? await loadSceneVideo(scene.visualUrl) : await loadSceneImage(scene.visualUrl);
       loadedVisuals.push(visual);
 
-      const audioBuffer = scene.voiceoverAudioUrl
-        ? await decodeSceneAudio(scene.voiceoverAudioUrl, audioContext)
-        : scene.visualType === 'video'
-          ? await decodeSceneAudio(scene.visualUrl, audioContext)
-          : null;
+      const audioBuffer = useGlobalAudio
+        ? null
+        : scene.voiceoverAudioUrl
+          ? await decodeSceneAudio(scene.voiceoverAudioUrl, audioContext)
+          : scene.visualType === 'video'
+            ? await decodeSceneAudio(scene.visualUrl, audioContext)
+            : null;
       audioBuffers.push(audioBuffer);
 
       const naturalDuration =
         visual instanceof HTMLVideoElement ? visual.duration : scene.imageDurationSeconds ?? DEFAULT_IMAGE_DURATION_SECONDS;
-      durations.push(Math.max(audioBuffer?.duration ?? naturalDuration, 0.5));
+      durations.push(
+        scene.durationSeconds ?? Math.max(audioBuffer?.duration ?? naturalDuration, 0.5),
+      );
     }
+
+    // Decoded up front (not after recorder.start()) so it can be scheduled
+    // synchronously at the exact recording-start instant - decoding after
+    // starting would push the narration's actual start time later by
+    // however long the fetch/decode takes, permanently desyncing it from
+    // the visuals (AudioBufferSourceNode.start() with a past `when` plays
+    // immediately, it does not retroactively catch up).
+    const globalAudioBuffer = options?.globalAudioUrl
+      ? await decodeSceneAudio(options.globalAudioUrl, audioContext)
+      : null;
+
+    const { width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT } = ASPECT_RATIO_DIMENSIONS[options?.aspectRatio ?? '16:9'];
+    const transitionType = options?.transition ?? 'none';
 
     const canvas = document.createElement('canvas');
     canvas.width = OUTPUT_WIDTH;
@@ -346,6 +532,40 @@ export async function compositeScenes(
 
     const totalDuration = durations.reduce((sum, d) => sum + d, 0);
 
+    // Capped to half of whichever neighboring scene is shorter, so a
+    // transition can never eat a whole short scene.
+    const transitionDurations = scenes.map((_, index) =>
+      transitionType === 'none' || index >= scenes.length - 1
+        ? 0
+        : Math.min(TRANSITION_SECONDS, durations[index] / 2, durations[index + 1] / 2),
+    );
+
+    const getVisualDims = (index: number): { width: number; height: number } => {
+      const visual = loadedVisuals[index];
+      return visual instanceof HTMLVideoElement
+        ? { width: visual.videoWidth, height: visual.videoHeight }
+        : { width: visual.naturalWidth, height: visual.naturalHeight };
+    };
+
+    // Ken Burns direction alternates by scene index purely for visual
+    // variety across a slideshow, not user-configurable.
+    const getSceneDrawOptions = (index: number, progressInScene: number): DrawSceneFrameOptions => {
+      const scene = scenes[index];
+      let extraScale = 1;
+      if (scene.visualType === 'image' && scene.motion === 'kenburns') {
+        const zoomIn = index % 2 === 0;
+        const startScale = zoomIn ? 1.0 : 1.15;
+        const endScale = zoomIn ? 1.15 : 1.0;
+        extraScale = startScale + (endScale - startScale) * Math.min(1, progressInScene);
+      }
+      return {
+        focalXPct: scene.focalXPct ?? 50,
+        focalYPct: scene.focalYPct ?? 50,
+        filter: FILTER_CSS[scene.filter ?? 'none'],
+        extraScale,
+      };
+    };
+
     return await new Promise<CompositeResult>((resolve, reject) => {
       recorder.onerror = () => reject(new Error('Recording the composited video failed.'));
       recorder.onstop = () => {
@@ -356,32 +576,60 @@ export async function compositeScenes(
       recorder.start();
       const recordingStartTime = audioContext.currentTime;
 
-      // Schedule every scene's audio up front at its absolute offset -
-      // decoupled entirely from the visual draw loop below, which just has
-      // to stay paced with real elapsed time to remain in sync.
-      let audioCursor = 0;
-      audioBuffers.forEach((buffer, index) => {
-        if (buffer) {
-          const bufferSource = audioContext.createBufferSource();
-          bufferSource.buffer = buffer;
-          bufferSource.connect(destination);
-          bufferSource.start(recordingStartTime + audioCursor);
-        }
-        audioCursor += durations[index];
-      });
+      // Schedule audio decoupled entirely from the visual draw loop below,
+      // which just has to stay paced with real elapsed time to remain in
+      // sync. Two modes: one narration track spanning the whole output
+      // (globalAudioBuffer), or each scene's own audio at its absolute
+      // offset. Both buffers were decoded during preload, above, so
+      // scheduling here is synchronous - no await between recorder.start()
+      // and start(recordingStartTime).
+      if (globalAudioBuffer) {
+        const bufferSource = audioContext.createBufferSource();
+        bufferSource.buffer = globalAudioBuffer;
+        bufferSource.connect(destination);
+        bufferSource.start(recordingStartTime);
+      } else {
+        let audioCursor = 0;
+        audioBuffers.forEach((buffer, index) => {
+          if (buffer) {
+            const bufferSource = audioContext.createBufferSource();
+            bufferSource.buffer = buffer;
+            bufferSource.connect(destination);
+            bufferSource.start(recordingStartTime + audioCursor);
+          }
+          audioCursor += durations[index];
+        });
+      }
 
       let sceneIndex = 0;
       let sceneStartedAt = performance.now();
-      const firstVisual = loadedVisuals[0];
-      if (firstVisual instanceof HTMLVideoElement) {
-        firstVisual.currentTime = 0;
-        firstVisual.play().catch(() => undefined);
-      }
+      // Tracks which scene index has had currentTime reset + play() called
+      // - lets a scene's video be "primed" early (during the previous
+      // scene's transition window) without being reset again when the hard
+      // boundary is crossed a moment later.
+      let primedIndex = -1;
+      const primeVisual = (index: number) => {
+        if (index === primedIndex) return;
+        const visual = loadedVisuals[index];
+        if (visual instanceof HTMLVideoElement) {
+          visual.currentTime = 0;
+          visual.play().catch(() => undefined);
+        }
+        primedIndex = index;
+      };
+      primeVisual(0);
 
       const drawFrame = () => {
-        const elapsedInScene = (performance.now() - sceneStartedAt) / 1000;
+        let elapsedInScene = (performance.now() - sceneStartedAt) / 1000;
+        let duration = durations[sceneIndex];
+        let hasNext = sceneIndex + 1 < scenes.length;
+        let transitionDur = hasNext ? transitionDurations[sceneIndex] : 0;
 
-        if (elapsedInScene >= durations[sceneIndex]) {
+        if (hasNext && transitionDur > 0 && elapsedInScene >= duration - transitionDur) {
+          primeVisual(sceneIndex + 1);
+        }
+
+        if (elapsedInScene >= duration) {
           const finishedVisual = loadedVisuals[sceneIndex];
           if (finishedVisual instanceof HTMLVideoElement) finishedVisual.pause();
           sceneIndex += 1;
@@ -392,23 +640,45 @@ export async function compositeScenes(
           }
 
           sceneStartedAt = performance.now();
-          const nextVisual = loadedVisuals[sceneIndex];
-          if (nextVisual instanceof HTMLVideoElement) {
-            nextVisual.currentTime = 0;
-            nextVisual.play().catch(() => undefined);
-          }
+          primeVisual(sceneIndex);
+
+          elapsedInScene = (performance.now() - sceneStartedAt) / 1000;
+          duration = durations[sceneIndex];
+          hasNext = sceneIndex + 1 < scenes.length;
+          transitionDur = hasNext ? transitionDurations[sceneIndex] : 0;
         }
 
-        const visual = loadedVisuals[sceneIndex];
-        if (visual instanceof HTMLVideoElement) {
-          drawSceneFrame(ctx, visual, visual.videoWidth, visual.videoHeight);
+        const currentDims = getVisualDims(sceneIndex);
+        const currentProgress = duration > 0 ? elapsedInScene / duration : 1;
+        const currentOptions = getSceneDrawOptions(sceneIndex, currentProgress);
+
+        if (hasNext && transitionDur > 0 && elapsedInScene >= duration - transitionDur) {
+          const t = Math.min(1, Math.max(0, (elapsedInScene - (duration - transitionDur)) / transitionDur));
+          const nextDims = getVisualDims(sceneIndex + 1);
+          const nextOptions = getSceneDrawOptions(sceneIndex + 1, 0);
+          drawSceneTransition(
+            ctx,
+            OUTPUT_WIDTH,
+            OUTPUT_HEIGHT,
+            { source: loadedVisuals[sceneIndex], width: currentDims.width, height: currentDims.height, options: currentOptions },
+            { source: loadedVisuals[sceneIndex + 1], width: nextDims.width, height: nextDims.height, options: nextOptions },
+            t,
+            transitionType === 'slide' ? 'slide' : 'fade',
+          );
         } else {
-          drawSceneFrame(ctx, visual, visual.naturalWidth, visual.naturalHeight);
+          drawSceneFrame(
+            ctx,
+            loadedVisuals[sceneIndex],
+            currentDims.width,
+            currentDims.height,
+            OUTPUT_WIDTH,
+            OUTPUT_HEIGHT,
+            currentOptions,
+          );
         }
 
         const elapsedBeforeScene = durations.slice(0, sceneIndex).reduce((sum, d) => sum + d, 0);
-        const elapsedTotal =
-          elapsedBeforeScene + Math.min((performance.now() - sceneStartedAt) / 1000, durations[sceneIndex]);
+        const elapsedTotal = elapsedBeforeScene + Math.min(elapsedInScene, duration);
         onProgress?.(Math.min(0.99, elapsedTotal / totalDuration));
 
         requestAnimationFrame(drawFrame);

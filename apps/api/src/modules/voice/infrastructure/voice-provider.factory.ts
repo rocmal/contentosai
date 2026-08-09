@@ -6,6 +6,7 @@ import { ElevenLabsProvider } from './providers/elevenlabs.provider';
 import { CartesiaProvider } from './providers/cartesia.provider';
 import { AzureProvider } from './providers/azure.provider';
 import { PiperProvider } from './providers/piper.provider';
+import { SarvamVoiceProvider } from './providers/sarvam.provider';
 
 @Injectable()
 export class VoiceProviderFactory {
@@ -18,6 +19,7 @@ export class VoiceProviderFactory {
     cartesiaProvider: CartesiaProvider,
     azureProvider: AzureProvider,
     piperProvider: PiperProvider,
+    sarvamVoiceProvider: SarvamVoiceProvider,
   ) {
     this.providers = new Map<string, IVoiceProvider>([
       [edgeTTSProvider.name, edgeTTSProvider],
@@ -25,6 +27,7 @@ export class VoiceProviderFactory {
       [cartesiaProvider.name, cartesiaProvider],
       [azureProvider.name, azureProvider],
       [piperProvider.name, piperProvider],
+      [sarvamVoiceProvider.name, sarvamVoiceProvider],
     ]);
   }
 

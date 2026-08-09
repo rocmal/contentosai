@@ -315,7 +315,14 @@ const SocialPublishingConnect: React.FC = () => {
     api
       .getSocialConnectionStatus()
       .then(setStatus)
-      .catch(() => setStatus({ facebook: { connected: false }, instagram: { connected: false } }))
+      .catch(() =>
+        setStatus({
+          facebook: { connected: false },
+          instagram: { connected: false },
+          linkedin: { connected: false },
+          youtube: { connected: false },
+        }),
+      )
       .finally(() => setIsLoadingStatus(false));
   }, []);
 

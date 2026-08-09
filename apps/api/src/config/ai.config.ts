@@ -6,6 +6,7 @@ export default registerAs('ai', () => ({
   gemini: { apiKey: process.env.GEMINI_API_KEY ?? '' },
   claude: { apiKey: process.env.CLAUDE_API_KEY ?? '' },
   openrouter: { apiKey: process.env.OPENROUTER_API_KEY ?? '' },
+  sarvam: { apiKey: process.env.SARVAM_API_KEY ?? '' },
   video: {
     veo: { apiKey: process.env.VEO_API_KEY ?? '' },
     runway: { apiKey: process.env.RUNWAY_API_KEY ?? '' },
@@ -49,6 +50,9 @@ export default registerAs('ai', () => ({
     edge: {},
     elevenlabs: { apiKey: process.env.ELEVENLABS_API_KEY ?? '' },
     cartesia: { apiKey: process.env.CARTESIA_API_KEY ?? '' },
+    // Same key as ai.sarvam.apiKey above - one Sarvam account covers both
+    // Chat Completions and Text-to-Speech.
+    sarvam: { apiKey: process.env.SARVAM_API_KEY ?? '' },
     azure: {
       apiKey: process.env.AZURE_SPEECH_KEY ?? '',
       region: process.env.AZURE_SPEECH_REGION ?? 'eastus',

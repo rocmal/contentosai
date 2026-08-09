@@ -65,6 +65,7 @@ export const envValidationSchema = Joi.object({
   GEMINI_API_KEY: Joi.string().allow('').default(''),
   CLAUDE_API_KEY: Joi.string().allow('').default(''),
   OPENROUTER_API_KEY: Joi.string().allow('').default(''),
+  SARVAM_API_KEY: Joi.string().allow('').default(''),
 
   // Video providers
   VEO_API_KEY: Joi.string().allow('').default(''),

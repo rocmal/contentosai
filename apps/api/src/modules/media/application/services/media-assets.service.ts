@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FindAllOptions, PaginatedResult } from '@shared/interfaces/base-repository.interface';
 import { MediaAsset, MediaAssetType } from '../../domain/entities/media-asset.entity';
@@ -10,6 +10,29 @@ import {
 import { CreateMediaAssetDto } from '../dto/create-media-asset.dto';
 import { UpdateMediaAssetDto } from '../dto/update-media-asset.dto';
 import { MediaAssetCreatedEvent } from '../events/media-asset-created.event';
+
+/** 409 Conflict - the user already has MAX_GALLERY_MEDIA_PER_USER images/
+ * videos. Thrown before the asset is persisted, same "check-then-throw"
+ * shape as credits.service.ts's InsufficientCreditsException. */
+export class GalleryLimitExceededException extends HttpException {
+  constructor(max: number) {
+    super(
+      {
+        statusCode: HttpStatus.CONFLICT,
+        message: `You've reached the ${max} image/video limit. Delete something from your gallery to make room.`,
+        error: 'Gallery Limit Exceeded',
+      },
+      HttpStatus.CONFLICT,
+    );
+  }
+}
+
+/** Applies to images + videos combined, not audio/documents - storage abuse
+ * is a visual-media-size concern, and this is the single choke point every
+ * image/video creation path already calls (Image Studio, Video Studio's
+ * AI-generate, Character Studio, and the gallery upload endpoint), so
+ * enforcing it here covers all of them at once. */
+export const MAX_GALLERY_MEDIA_PER_USER = 100;
 
 @Injectable()
 export class MediaAssetsService {
@@ -69,9 +92,31 @@ export class MediaAssetsService {
     return this.mediaAssetsRepository.findOne({ createdBy: userId, cacheKeyHash });
   }
 
+  /** This user's total image+video count, regardless of workspace - used to
+   * enforce MAX_GALLERY_MEDIA_PER_USER. Two equality-filtered counts rather
+   * than one Op.in filter, matching the scalar-filter shape already used
+   * elsewhere in this codebase (e.g. findOne({workspaceId, provider,
+   * status})) instead of relying on a Sequelize operator-object filter. */
+  async countGalleryMedia(userId: string): Promise<number> {
+    const [images, videos] = await Promise.all([
+      this.mediaAssetsRepository.count({ createdBy: userId, type: MediaAssetType.IMAGE }),
+      this.mediaAssetsRepository.count({ createdBy: userId, type: MediaAssetType.VIDEO }),
+    ]);
+    return images + videos;
+  }
+
   /** Persists a freshly-generated (already uploaded to storage) image/audio
-   * result into the gallery, doubling as this user's generation cache. */
+   * result into the gallery, doubling as this user's generation cache.
+   * Enforces MAX_GALLERY_MEDIA_PER_USER for image/video types only - the
+   * single choke point every image/video creation path already calls. */
   async saveGenerated(data: CreateMediaAssetData, actorId?: string): Promise<MediaAsset> {
+    if (actorId && (data.type === MediaAssetType.IMAGE || data.type === MediaAssetType.VIDEO)) {
+      const count = await this.countGalleryMedia(actorId);
+      if (count >= MAX_GALLERY_MEDIA_PER_USER) {
+        throw new GalleryLimitExceededException(MAX_GALLERY_MEDIA_PER_USER);
+      }
+    }
+
     const mediaAsset = await this.mediaAssetsRepository.create(data, actorId);
     this.eventEmitter.emit(
       'media.created',

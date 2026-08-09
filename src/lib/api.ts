@@ -826,7 +826,7 @@ export async function generateImage(input: {
 
 // "edge" (Microsoft Edge TTS) needs no account/key/billing, so it's the
 // backend's default (VOICE_PROVIDER=edge) and listed first here.
-export const VOICE_PROVIDERS = ['edge', 'elevenlabs', 'cartesia', 'azure', 'piper'] as const;
+export const VOICE_PROVIDERS = ['edge', 'elevenlabs', 'cartesia', 'azure', 'piper', 'sarvam'] as const;
 export type VoiceProvider = (typeof VOICE_PROVIDERS)[number];
 
 export interface VoiceGenerationResult {
@@ -841,6 +841,8 @@ export async function generateSpeech(input: {
   provider?: VoiceProvider;
   voiceId?: string;
   model?: string;
+  /** BCP-47 code (e.g. "hi-IN") - only used by multi-language providers (currently Sarvam). */
+  languageCode?: string;
 }): Promise<VoiceGenerationResult> {
   const blob = await apiRequestBlob('/voice/generate', {
     method: 'POST',
@@ -1360,6 +1362,27 @@ export async function listMyGallery(type?: MediaAssetType, limit = 40): Promise<
 
 export function deleteMediaAsset(id: string): Promise<{ deleted: boolean }> {
   return apiRequest(`/media/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export interface GalleryUsage {
+  count: number;
+  max: number;
+}
+
+/** The current user's combined image+video count against the shared
+ * MAX_GALLERY_MEDIA_PER_USER cap (audio/documents don't count toward it). */
+export function getGalleryUsage(): Promise<GalleryUsage> {
+  return apiRequest('/media/gallery-usage');
+}
+
+/** Uploads an image/video clip directly into the user's gallery (unlike
+ * uploadImageFile/uploadVideoBlob above, which just stash a file in storage
+ * for a third-party API to fetch - this one creates a real, reusable
+ * MediaAsset and counts against the gallery cap). */
+export async function uploadToGallery(file: File): Promise<MediaAsset> {
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+  return apiRequest<MediaAsset>('/media/upload', { method: 'POST', body: formData });
 }
 
 // ---------------------------------------------------------------------------
