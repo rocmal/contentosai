@@ -1,0 +1,54 @@
+# FALLBACK reverse-proxy option for https://lumoraos.in - only use this if
+# the WHM Include Editor / userdata vhost route (deploy/apache/lumoraos.in.conf)
+# isn't available to you. Use ONE of the two, never both - they configure
+# the same proxying two different ways and will fight each other.
+#
+# STATUS as of 2026-08-12: deployed and currently returns a 500 on this
+# specific VPS. Confirmed (by fully removing these rules and re-testing)
+# that the rules themselves are the cause, not something else on the site.
+# This box turned out to be running LiteSpeed Web Server, not stock
+# Apache (see deploy/apache/lumoraos.in.conf's header for how that was
+# found) - LiteSpeed has its own proxy implementation, so "enable
+# mod_proxy" may not be the right fix. Root/server-log access is needed
+# to get the precise error and correct fix - don't assume the note below
+# about EasyApache4 applies as-is until that's confirmed.
+#
+# mod_rewrite's [P] (proxy) flag needs mod_proxy + mod_proxy_http loaded
+# server-wide on stock Apache (WHM > EasyApache 4, root-only - see
+# deploy/README.md), but unlike ProxyPass, RewriteRule ... [P] is
+# normally allowed from .htaccess under cPanel's default "AllowOverride
+# FileInfo" for a domain's docroot, so deploying this file itself needs
+# no root access - just copy/rsync it to /home/lumoosr/public_html/.htaccess.
+#
+# Deploy: append (don't overwrite - cPanel puts its own PHP-ini directives
+# in this file) to /home/lumoosr/public_html/.htaccess. Back up first -
+# see deploy/README.md, "Do not overwrite unrelated cPanel files".
+
+RewriteEngine On
+
+# /storage/uploads/* and /api/v1/* -> NestJS API container (127.0.0.1:3000).
+# main.ts serves uploaded files from /storage/uploads and everything under
+# API_PREFIX (/api/v1) - see apps/api/src/main.ts.
+RewriteRule ^storage/uploads/(.*)$ http://127.0.0.1:3000/storage/uploads/$1 [P,L]
+RewriteRule ^api/v1/(.*)$          http://127.0.0.1:3000/api/v1/$1 [P,L]
+RewriteRule ^api/v1$               http://127.0.0.1:3000/api/v1 [P,L]
+
+# Everything else (including the web app's own unversioned legacy routes -
+# /api/health, /api/generate, /api/brand-brain/extract, /api/copilot,
+# /api/agents/run - which never collide with /api/v1/*) -> web container
+# (127.0.0.1:3100).
+RewriteRule ^(.*)$ http://127.0.0.1:3100/$1 [P,L]
+
+# ProxyPreserveHost is deliberately NOT set here - unlike ProxyPass,
+# mod_proxy restricts it to "server config, virtual host" context only.
+# Including it in .htaccess (even with full AllowOverride) doesn't just
+# get ignored - it makes the ENTIRE .htaccess file fail to parse, which
+# is why this returned a 500 for every request, including ones that don't
+# match any of the rules above. Confirmed via cPanel's Errors page
+# 2026-08-12: "ProxyPreserveHost not allowed here". Not needed anyway -
+# nothing in this app derives behavior from the proxied Host header
+# (FRONTEND_URL/APP_URL are explicit config, not read from incoming
+# requests). If that ever changes, use the WHM vhost-include method
+# instead (deploy/apache/lumoraos.in.conf), where this directive IS valid.
+RequestHeader set X-Forwarded-Proto "https"
+RequestHeader set X-Forwarded-Port "443"

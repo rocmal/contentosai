@@ -14,6 +14,13 @@ import { TransformInterceptor } from '@common/interceptors/transform.interceptor
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
 
+  // Docker sends SIGTERM on `docker stop` / `compose up -d --no-deps`
+  // (container recreate during a deploy). Without this, Nest never runs
+  // OnModuleDestroy/BeforeApplicationShutdown hooks, so in-flight BullMQ
+  // jobs (src/queues) get killed outright instead of finishing or being
+  // released back to the queue for the next worker to pick up.
+  app.enableShutdownHooks();
+
   const config = app.get(ConfigService);
   app.useLogger(app.get(Logger));
 

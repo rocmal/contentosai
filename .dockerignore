@@ -1,0 +1,24 @@
+# Only the root web app's build context is relevant here - apps/api has its
+# own .dockerignore/Dockerfile and is built independently.
+node_modules
+dist
+apps
+ai-services
+design_handoff_landing_page
+docs
+.git
+.github
+.vscode
+
+*.log
+*.md
+!README.md
+
+.env
+.env.*
+!.env.example
+
+scripts
+docker/
+docker-compose*.yml
+Dockerfile*

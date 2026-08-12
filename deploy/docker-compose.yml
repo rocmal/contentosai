@@ -1,0 +1,89 @@
+# syntax note: this is the PRODUCTION stack - it only runs the two app
+# containers (web + api). MySQL and Redis are NOT containerized here; both
+# already run on the VPS host. Do not add mysql:/redis: services to this
+# file.
+#
+# `api` uses network_mode: host (not the usual host.docker.internal +
+# port-mapping pattern web uses) - verified 2026-08-12: MySQL is already
+# reachable via host.docker.internal (bind-address 0.0.0.0 + correctly
+# firewalled), but Redis is bound to 127.0.0.1 only on this VPS and
+# changing that needs root, which wasn't available. Host networking makes
+# the container share the host's network namespace directly, so
+# 127.0.0.1:6379 inside the container genuinely is the host's Redis - no
+# bind-address change needed. Trade-off: api loses bridge-network
+# isolation and its port mapping (see the api service below) in exchange
+# for not depending on a root-only fix. If Redis's bind-address is fixed
+# later, this can be reverted to the host.docker.internal + ports pattern
+# web still uses - see git history for the prior version of this file.
+#
+# Images are pulled pre-built from GHCR (built + pushed by
+# .github/workflows/deploy.yml) - this file never runs `docker build`, so it
+# has no `build:` sections and works the same on the VPS as anywhere else.
+#
+# Usage on the VPS (see ../deploy/README.md for full runbook):
+#   cd /home/lumoosr/apps/contentosai/deploy
+#   docker compose pull
+#   docker compose up -d --wait
+#
+# Local dev does NOT use this file - use `npm run dev` at the repo root and
+# `npm run start:dev` (or apps/api/docker-compose.yml, which DOES include
+# mysql/redis/minio) inside apps/api instead.
+
+name: contentosai
+
+services:
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/rocmal/contentosai-web}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    env_file:
+      - ../.env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      # Bound to loopback only - Apache (cPanel) reverse-proxies to this
+      # from the outside; nothing should reach it directly over the network.
+      - '127.0.0.1:${WEB_HOST_PORT:-3100}:3000'
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    mem_limit: ${WEB_MEM_LIMIT:-512m}
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/rocmal/contentosai-api}:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - ../apps/api/.env.production
+    environment:
+      # Under host networking, "127.0.0.1" inside the container IS the
+      # VPS's own loopback - no host.docker.internal/host-gateway mapping
+      # needed or possible (extra_hosts + ports: are incompatible with
+      # network_mode: host, intentionally omitted below).
+      DB_HOST: 127.0.0.1
+      REDIS_HOST: 127.0.0.1
+      # Hard-pinned regardless of .env.production: host networking means
+      # whatever address this app binds to is directly reachable on the
+      # VPS's real network interface, not just inside a container's
+      # isolated bridge. Binding 0.0.0.0 here would expose the API
+      # publicly on port 3000, defeating the entire "Docker exposed only
+      # locally, Apache is the only public entry point" requirement. Only
+      # ever loopback for this service.
+      APP_HOST: 127.0.0.1
+    volumes:
+      # Named volume, not a bind mount: avoids host/container UID mismatches
+      # for the non-root `lumora` user (see apps/api/Dockerfile). Only
+      # matters while STORAGE_PROVIDER=local; irrelevant if you switch to
+      # STORAGE_PROVIDER=s3/minio.
+      - api_storage:/app/storage
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    mem_limit: ${API_MEM_LIMIT:-768m}
+
+volumes:
+  api_storage:

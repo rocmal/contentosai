@@ -1,0 +1,8 @@
+# Everything under deploy/ ends up executed or interpreted on the Linux
+# VPS - CRLF line endings there break shell scripts outright (bad
+# interpreter: the shebang line gets a trailing \r) and are pointless
+# noise everywhere else. This overrides core.autocrlf for these paths
+# regardless of the committer's OS/git config.
+*.sh text eol=lf
+deploy/** text eol=lf
+Dockerfile text eol=lf

@@ -1,0 +1,213 @@
+name: Deploy (Docker)
+
+# Builds and deploys the two Dockerized apps in this repo (root web app +
+# apps/api NestJS backend) to the GoDaddy cPanel VPS, behind Apache as an
+# HTTPS reverse proxy - see deploy/README.md for the full architecture and
+# one-time server setup this pipeline assumes is already done.
+#
+# `main` is this repo's production branch (it's also the only branch that
+# exists as of this writing) - every push to it deploys automatically.
+# Trigger manually via "Run workflow" for either a normal redeploy of the
+# current main, or - by filling in rollback_to - to redeploy an existing,
+# already-built image tag without rebuilding anything (rollback path).
+#
+# .env.production and apps/api/.env.production (real secrets) are NEVER
+# read, generated, or transmitted by this workflow - they're created once,
+# by hand, directly on the server (see deploy/README.md). Only application
+# code and the deploy/ orchestration files move through CI.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      rollback_to:
+        description: 'Existing image tag (short git SHA) to redeploy as-is, skipping build - leave empty for a normal deploy of the current commit'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/contentosai-web
+  API_IMAGE: ghcr.io/${{ github.repository_owner }}/contentosai-api
+  DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/home/lumoosr/apps/contentosai' }}
+  APP_ORIGIN: ${{ vars.APP_ORIGIN || 'https://lumoraos.in' }}
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      is_rollback: ${{ steps.vars.outputs.is_rollback }}
+    steps:
+      - id: vars
+        run: |
+          if [ -n "${{ github.event.inputs.rollback_to }}" ]; then
+            echo "tag=${{ github.event.inputs.rollback_to }}" >> "$GITHUB_OUTPUT"
+            echo "is_rollback=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+            echo "is_rollback=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test-api:
+    needs: prepare
+    if: needs.prepare.outputs.is_rollback == 'false'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: lumora_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: test
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: root
+      DB_NAME: lumora_test
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: apps/api/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run db:migrate
+      - run: npm test -- --coverage
+      - run: npm run test:integration
+      - run: npm run test:e2e
+
+  test-web:
+    needs: prepare
+    if: needs.prepare.outputs.is_rollback == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+        env:
+          VITE_API_URL: ${{ env.APP_ORIGIN }}
+
+  build-and-push:
+    needs: [prepare, test-api, test-web]
+    if: needs.prepare.outputs.is_rollback == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          build-args: |
+            VITE_API_URL=${{ env.APP_ORIGIN }}
+          tags: |
+            ${{ env.WEB_IMAGE }}:${{ needs.prepare.outputs.tag }}
+            ${{ env.WEB_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build & push api image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:${{ needs.prepare.outputs.tag }}
+            ${{ env.API_IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: [prepare, build-and-push]
+    if: |
+      always() &&
+      needs.prepare.result == 'success' &&
+      (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ env.APP_ORIGIN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync deploy/ to the VPS (never touches deploy/.env or app secrets)
+        uses: burnett01/rsync-deployments@7.0.1
+        with:
+          switches: -avzr --delete --exclude=.env
+          path: deploy/
+          remote_path: ${{ env.DEPLOY_PATH }}/deploy/
+          remote_host: ${{ secrets.VPS_SSH_HOST }}
+          remote_port: ${{ secrets.VPS_SSH_PORT }}
+          remote_user: ${{ secrets.VPS_SSH_USERNAME }}
+          remote_key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+
+      - name: Pull, migrate, recreate (with automatic rollback on failure)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          username: ${{ secrets.VPS_SSH_USERNAME }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          envs: GHCR_PAT,GITHUB_ACTOR,DEPLOY_PATH,IMAGE_TAG
+          script: |
+            set -e
+            echo "$GHCR_PAT" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+            cd "$DEPLOY_PATH/deploy"
+            chmod +x scripts/*.sh
+            ./scripts/remote-deploy.sh "$IMAGE_TAG"
+        env:
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          IMAGE_TAG: ${{ needs.prepare.outputs.tag }}
+
+      - name: End-to-end health check through the public domain
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS "${{ env.APP_ORIGIN }}/api/health" && \
+               curl -fsS "${{ env.APP_ORIGIN }}/api/v1/health"; then
+              echo "Healthy."
+              exit 0
+            fi
+            echo "Not healthy yet, retrying in 5s ($i/10)..."
+            sleep 5
+          done
+          echo "Deployment did not become healthy through ${{ env.APP_ORIGIN }} in time." >&2
+          exit 1
