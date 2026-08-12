@@ -18,6 +18,7 @@ describe('VoiceProviderFactory', () => {
   const cartesia = fakeProvider('cartesia');
   const azure = fakeProvider('azure');
   const piper = fakeProvider('piper');
+  const sarvam = fakeProvider('sarvam');
 
   function buildFactory(defaultProvider: string | undefined) {
     const configService = {
@@ -31,13 +32,14 @@ describe('VoiceProviderFactory', () => {
       cartesia as never,
       azure as never,
       piper as never,
+      sarvam as never,
     );
   }
 
   it('lists every registered provider, edge included', () => {
     const factory = buildFactory('edge');
     expect(factory.listProviders().sort()).toEqual(
-      ['azure', 'cartesia', 'edge', 'elevenlabs', 'piper'].sort(),
+      ['azure', 'cartesia', 'edge', 'elevenlabs', 'piper', 'sarvam'].sort(),
     );
   });
 
