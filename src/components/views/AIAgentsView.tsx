@@ -13,7 +13,7 @@ export const AIAgentsView: React.FC<AIAgentsViewProps> = ({ agents: initialAgent
 
   const toggleAgent = (id: string) => {
     setAgents(
-      agents.map((a) => (a.id === id ? { ...a, status: a.status === 'active' ? 'idle' : 'active' } : a))
+      agents.map((a) => (a.id === id ? { ...a, status: a.status === 'Active' ? 'Idle' : 'Active' } : a))
     );
   };
 
@@ -68,7 +68,7 @@ export const AIAgentsView: React.FC<AIAgentsViewProps> = ({ agents: initialAgent
                   <button
                     onClick={() => toggleAgent(agent.id)}
                     className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      agent.status === 'active'
+                      agent.status === 'Active'
                         ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
                         : 'bg-slate-100 text-slate-500 dark:bg-slate-800'
                     }`}
@@ -85,7 +85,7 @@ export const AIAgentsView: React.FC<AIAgentsViewProps> = ({ agents: initialAgent
 
                 <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-[11px] text-slate-600 dark:text-slate-300 mt-3 space-y-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase block">Last Task</span>
-                  <p className="font-medium line-clamp-1">{agent.lastTask}</p>
+                  <p className="font-medium line-clamp-1">{agent.currentTask}</p>
                 </div>
               </div>
 

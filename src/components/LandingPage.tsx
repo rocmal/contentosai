@@ -10,6 +10,7 @@ import {
   UserRound,
   Video,
   X,
+  type LucideIcon,
 } from 'lucide-react';
 import { Logo, Wordmark } from './Logo';
 import { PRICING_PLANS, formatPlanPrice, BillingCycle } from '../lib/pricingPlans';
@@ -26,7 +27,7 @@ const NAV_LINKS = [
   { href: '#faq', label: 'FAQ' },
 ];
 
-const FEATURES: { icon: React.FC<{ className?: string }>; tint: 'blue' | 'indigo' | 'teal'; title: string; desc: string }[] = [
+const FEATURES: { icon: LucideIcon; tint: 'blue' | 'indigo' | 'teal'; title: string; desc: string }[] = [
   { icon: Image, tint: 'blue', title: 'Image Studio', desc: 'Generate on-brand product shots, ad creatives, and social graphics in seconds, then upscale, remove backgrounds, or magic-resize for any platform.' },
   { icon: Mic, tint: 'indigo', title: 'Voice Studio', desc: 'Clone a voice once and generate narration in dozens of languages and tones, or pick from a library of studio-grade voices.' },
   { icon: UserRound, tint: 'teal', title: 'Character Studio', desc: 'Turn a single photo and a script into a talking avatar with accurate lip-sync. No camera, actor, or studio required.' },

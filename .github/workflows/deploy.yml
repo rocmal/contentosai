@@ -159,7 +159,7 @@ jobs:
     if: |
       always() &&
       needs.prepare.result == 'success' &&
-      (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+      (needs.prepare.outputs.is_rollback == 'true' || needs.build-and-push.result == 'success')
     runs-on: ubuntu-latest
     environment:
       name: production
