@@ -3,6 +3,7 @@ import { AlertCircle, Check, CreditCard, Loader2, Sparkles } from 'lucide-react'
 import { ViewType } from '../../types';
 import { PRICING_PLANS, formatPlanPrice, LocalizedRate } from '../../lib/pricingPlans';
 import { detectLikelyCurrency } from '../../lib/currency';
+import { ContactSalesModal } from '../ContactSalesModal';
 import {
   CreditTransaction,
   CreditWallet,
@@ -106,6 +107,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
   const [checkoutStage, setCheckoutStage] = useState<'opening' | 'confirming' | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [localizedRate, setLocalizedRate] = useState<LocalizedRate | null>(null);
+  const [salesModalOpen, setSalesModalOpen] = useState(false);
 
   const refreshBillingState = () => {
     getMySubscription().then(setSubscription).catch(() => setSubscription(null));
@@ -270,12 +272,13 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
                 Active Plan
               </span>
             ) : p.custom ? (
-              <a
-                href={SALES_EMAIL}
+              <button
+                type="button"
+                onClick={() => setSalesModalOpen(true)}
                 className="block text-center w-full py-2.5 rounded-xl font-semibold text-xs bg-blue-600 hover:bg-blue-500 text-white transition-colors"
               >
                 Contact Sales
-              </a>
+              </button>
             ) : (
               <button
                 type="button"
@@ -338,6 +341,8 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
         {localizedRate ? ` (charged in INR - ${localizedRate.currency} shown above is an approximate conversion)` : ''}.
         Need a custom/Enterprise plan or an invoice? Email <a href={SALES_EMAIL} className="underline">sales@lumoraos.in</a>.
       </p>
+
+      <ContactSalesModal isOpen={salesModalOpen} onClose={() => setSalesModalOpen(false)} />
     </div>
   );
 };

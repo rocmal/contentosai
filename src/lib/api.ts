@@ -680,6 +680,28 @@ export async function fetchExchangeRate(currency: string): Promise<{ currency: s
   }
 }
 
+export type CompanySize = '1-10' | '11-50' | '51-200' | '201-500' | '500+';
+
+export interface SalesInquiryInput {
+  fullName: string;
+  workEmail: string;
+  companyName: string;
+  companySize: CompanySize;
+  phone?: string;
+  message: string;
+}
+
+/** Enterprise "Contact Sales" form - reachable pre-login (rawRequest, not
+ * apiRequest), since a visitor evaluating Enterprise on the public landing
+ * page has no account/JWT yet. */
+export function submitSalesInquiry(input: SalesInquiryInput): Promise<{ submitted: boolean }> {
+  return rawRequest<{ submitted: boolean }>('/contact/sales', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Automation workflows
 // ---------------------------------------------------------------------------

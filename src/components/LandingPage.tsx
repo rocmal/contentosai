@@ -13,6 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Logo, Wordmark } from './Logo';
+import { ContactSalesModal } from './ContactSalesModal';
 import { PRICING_PLANS, formatPlanPrice, BillingCycle, LocalizedRate } from '../lib/pricingPlans';
 import { detectLikelyCurrency } from '../lib/currency';
 import { fetchExchangeRate, PurchasablePlan } from '../lib/api';
@@ -101,6 +102,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
   const [faqOpen, setFaqOpen] = useState<number>(-1);
   const [localizedRate, setLocalizedRate] = useState<LocalizedRate | null>(null);
+  const [salesModalOpen, setSalesModalOpen] = useState(false);
 
   useEffect(() => {
     const currency = detectLikelyCurrency();
@@ -367,8 +369,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
                     {plan.credits} · {plan.seats}
                   </p>
                   <a
-                    href={isEnterprise ? SALES_EMAIL : undefined}
-                    onClick={isEnterprise ? undefined : () => onSignupClick(plan.key as PurchasablePlan)}
+                    href={isEnterprise ? '#' : undefined}
+                    onClick={
+                      isEnterprise
+                        ? (e) => {
+                            e.preventDefault();
+                            setSalesModalOpen(true);
+                          }
+                        : () => onSignupClick(plan.key as PurchasablePlan)
+                    }
                     className="text-center w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-[#2563EB] to-[#6366F1] whitespace-nowrap cursor-pointer"
                   >
                     {ctaLabel}
@@ -482,7 +491,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
               Start free trial
             </button>
             <a
-              href={SALES_EMAIL}
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                setSalesModalOpen(true);
+              }}
               className="text-[15px] font-semibold text-white px-7 py-3.5 rounded-xl border border-white/[0.35] whitespace-nowrap shrink-0"
             >
               Talk to sales
@@ -534,6 +547,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
           </div>
         </div>
       </footer>
+
+      <ContactSalesModal isOpen={salesModalOpen} onClose={() => setSalesModalOpen(false)} />
     </div>
   );
 };
