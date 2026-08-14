@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Bell,
-  Check,
+  BellOff,
   Command,
   HelpCircle,
   Moon,
@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { ThemeMode, ViewType } from '../types';
+import { AuthUser } from '../lib/api';
 
 interface HeaderProps {
   currentView: ViewType;
@@ -21,6 +22,7 @@ interface HeaderProps {
   onOpenCommandPalette: () => void;
   onQuickGenerate: () => void;
   onStartTour?: () => void;
+  user: AuthUser | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,14 +33,16 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenCommandPalette,
   onQuickGenerate,
   onStartTour,
+  user,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(3);
 
   const viewTitles: Record<ViewType, { title: string; subtitle: string }> = {
     dashboard: {
       title: 'Dashboard',
-      subtitle: 'Welcome back, Alex. Here is your content performance overview.',
+      subtitle: user?.firstName
+        ? `Welcome back, ${user.firstName}. Here is your content performance overview.`
+        : 'Here is your content performance overview.',
     },
     'ai-studio': {
       title: 'AI Studio Wizard',
@@ -127,30 +131,6 @@ export const Header: React.FC<HeaderProps> = ({
     subtitle: 'AI-Powered Content Operating System',
   };
 
-  const notifications = [
-    {
-      id: 'n1',
-      title: 'Campaign Goals Reached',
-      desc: 'Q3 Enterprise AI Launch hit 800K impressions!',
-      time: '10m ago',
-      unread: true,
-    },
-    {
-      id: 'n2',
-      title: 'New AI Insight Available',
-      desc: 'LinkedIn engagement is +24% higher on video posts this week.',
-      time: '1h ago',
-      unread: true,
-    },
-    {
-      id: 'n3',
-      title: 'Automated Post Published',
-      desc: 'LinkedIn post published successfully by Publishing Agent.',
-      time: '3h ago',
-      unread: true,
-    },
-  ];
-
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 md:px-8 flex items-center justify-between transition-colors">
       {/* Title & Subtitle */}
@@ -224,44 +204,21 @@ export const Header: React.FC<HeaderProps> = ({
             title="Notifications"
           >
             <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-slate-900" />
-            )}
           </button>
 
           {showNotifications && (
             <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
+              <div className="flex items-center pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
                 <span className="text-xs font-semibold text-slate-900 dark:text-white">
                   Notifications
                 </span>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={() => setUnreadCount(0)}
-                    className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                  >
-                    <Check className="w-3 h-3" /> Mark all read
-                  </button>
-                )}
               </div>
 
-              <div className="space-y-2">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer text-left"
-                  >
-                    <div className="flex justify-between items-start">
-                      <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
-                        {n.title}
-                      </p>
-                      <span className="text-[10px] text-slate-400">{n.time}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      {n.desc}
-                    </p>
-                  </div>
-                ))}
+              {/* No notifications backend exists yet - an honest empty state
+                  beats fabricated activity that never reflects anything real. */}
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <BellOff className="w-5 h-5 text-slate-300 dark:text-slate-600" />
+                <p className="text-[11px] text-slate-400">You're all caught up.</p>
               </div>
             </div>
           )}

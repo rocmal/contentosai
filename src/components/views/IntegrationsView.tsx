@@ -580,23 +580,36 @@ const LinkedInYouTubeConnect: React.FC = () => {
   );
 };
 
-export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ onNavigate }) => {
-  const [integrations, setIntegrations] = useState([
-    { id: 'gemini', name: 'Gemini 3.6 Flash API', category: 'AI Engine', connected: true },
-    { id: 'openai', name: 'OpenAI GPT-4o', category: 'AI Engine', connected: true },
-    { id: 'elevenlabs', name: 'ElevenLabs Voice', category: 'Audio Synthesis', connected: true },
-    { id: 'slack', name: 'Slack Notifications', category: 'Operations', connected: false },
-    { id: 'hubspot', name: 'HubSpot CRM', category: 'Lead Gen', connected: false },
-    { id: 'stripe', name: 'Stripe Billing API', category: 'Finance', connected: true },
-  ]);
+// AI engines are server-side API-key configs, not a per-workspace OAuth
+// "connect" - so this is a read-only status (is the key set?) sourced from
+// the AI/Voice provider health checks, not an interactive toggle.
+const AI_ENGINE_ITEMS: { id: string; name: string; category: string; source: 'ai' | 'voice' }[] = [
+  { id: 'gemini', name: 'Gemini', category: 'AI Engine', source: 'ai' },
+  { id: 'openai', name: 'OpenAI GPT', category: 'AI Engine', source: 'ai' },
+  { id: 'elevenlabs', name: 'ElevenLabs Voice', category: 'Audio Synthesis', source: 'voice' },
+];
 
-  const toggle = (id: string) => {
-    setIntegrations(
-      integrations.map((item) =>
-        item.id === id ? { ...item, connected: !item.connected } : item
-      )
-    );
-  };
+// No backend integration exists for any of these yet (no OAuth flow, no
+// provider adapter) - shown as an honest static list rather than a toggle
+// that doesn't actually connect anything.
+const NOT_YET_CONNECTED_ITEMS: { id: string; name: string; category: string }[] = [
+  { id: 'slack', name: 'Slack Notifications', category: 'Operations' },
+  { id: 'hubspot', name: 'HubSpot CRM', category: 'Lead Gen' },
+  { id: 'stripe', name: 'Stripe Billing API', category: 'Finance' },
+];
+
+export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ onNavigate }) => {
+  const [aiStatuses, setAiStatuses] = useState<Record<string, boolean> | null>(null);
+  const [voiceStatuses, setVoiceStatuses] = useState<Record<string, boolean> | null>(null);
+
+  useEffect(() => {
+    api.getAiProviderStatuses()
+      .then((statuses) => setAiStatuses(Object.fromEntries(statuses.map((s) => [s.name, s.available]))))
+      .catch(() => setAiStatuses({}));
+    api.getVoiceProviderStatuses()
+      .then((statuses) => setVoiceStatuses(Object.fromEntries(statuses.map((s) => [s.name, s.available]))))
+      .catch(() => setVoiceStatuses({}));
+  }, []);
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
@@ -620,30 +633,66 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ onNavigate }
 
       <LinkedInYouTubeConnect />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {integrations.map((item) => (
-          <div
-            key={item.id}
-            className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-xs"
-          >
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase">{item.category}</span>
-              <h3 className="text-xs font-bold text-slate-900 dark:text-white">{item.name}</h3>
-            </div>
+      <div className="space-y-2">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          AI Engines - configured on the server
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {AI_ENGINE_ITEMS.map((item) => {
+            const statuses = item.source === 'ai' ? aiStatuses : voiceStatuses;
+            const available = statuses?.[item.id];
+            return (
+              <div
+                key={item.id}
+                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-xs"
+              >
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">{item.category}</span>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-white">{item.name}</h3>
+                </div>
 
-            <button
-              onClick={() => toggle(item.id)}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors ${
-                item.connected
-                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-              }`}
+                <span
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 ${
+                    statuses === null
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      : available
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                        : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                  }`}
+                >
+                  {statuses === null ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Power className="w-3 h-3" />
+                  )}
+                  <span>{statuses === null ? 'Checking...' : available ? 'Configured' : 'Not configured'}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Not Yet Connected
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {NOT_YET_CONNECTED_ITEMS.map((item) => (
+            <div
+              key={item.id}
+              className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 flex items-center justify-between opacity-75"
             >
-              <Power className="w-3 h-3" />
-              <span>{item.connected ? 'Connected' : 'Connect'}</span>
-            </button>
-          </div>
-        ))}
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">{item.category}</span>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white">{item.name}</h3>
+              </div>
+              <span className="px-3 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-400">
+                Coming soon
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -40,6 +40,7 @@ import { CalendarModule } from '@modules/calendar/calendar.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { CreditsModule } from '@modules/credits/credits.module';
+import { CurrencyModule } from '@modules/currency/currency.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { VideoTemplatesModule } from '@modules/video-templates/video-templates.module';
 import { VoiceTemplatesModule } from '@modules/voice-templates/voice-templates.module';
@@ -101,6 +102,7 @@ import { QueuesModule } from '@queues/queues.module';
     NotificationsModule,
     BillingModule,
     CreditsModule,
+    CurrencyModule,
     IntegrationsModule,
     VideoTemplatesModule,
     VoiceTemplatesModule,

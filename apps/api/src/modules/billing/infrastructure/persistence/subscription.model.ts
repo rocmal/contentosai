@@ -20,11 +20,14 @@ export class SubscriptionModel extends BaseModel {
   })
   declare status: SubscriptionStatus;
 
-  @Column({ type: DataType.STRING(255), allowNull: true })
-  declare stripeCustomerId: string | null;
+  @Column({ type: DataType.STRING(50), allowNull: true })
+  declare gatewayProvider: string | null;
 
   @Column({ type: DataType.STRING(255), allowNull: true })
-  declare stripeSubscriptionId: string | null;
+  declare gatewayCustomerId: string | null;
+
+  @Column({ type: DataType.STRING(255), allowNull: true })
+  declare gatewaySubscriptionId: string | null;
 
   @Column({ type: DataType.DATE, allowNull: true })
   declare currentPeriodEnd: Date | null;

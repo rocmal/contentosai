@@ -54,4 +54,8 @@ export class ClaudeProvider extends BaseAIProvider implements IAIProvider {
         : undefined,
     };
   }
+
+  async healthCheck(): Promise<boolean> {
+    return !!this.configService.get<string>('ai.claude.apiKey');
+  }
 }

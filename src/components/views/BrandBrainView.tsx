@@ -10,26 +10,37 @@ import {
   X,
 } from 'lucide-react';
 import { BrandBrain } from '../../types';
-import { saveBrandProfile } from '../../lib/api';
+import { saveBrandProfile, uploadToGallery, ApiError } from '../../lib/api';
 
 interface BrandBrainViewProps {
   brandBrain: BrandBrain;
   onUpdateBrandBrain: (newBrain: BrandBrain) => void;
 }
 
+/** Inline tag input instead of a native prompt() dialog - commits on Enter
+ * or on blur, so adding several tags in a row doesn't need a dialog per
+ * item. */
 function ChipList({
   values,
   onAdd,
   onRemove,
-  addLabel,
+  placeholder,
 }: {
   values: string[];
   onAdd: (value: string) => void;
   onRemove: (index: number) => void;
-  addLabel: string;
+  placeholder: string;
 }) {
+  const [draft, setDraft] = useState('');
+
+  const commit = () => {
+    const v = draft.trim();
+    if (v) onAdd(v);
+    setDraft('');
+  };
+
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1.5 items-center">
       {values.map((v, idx) => (
         <span
           key={`${v}-${idx}`}
@@ -41,15 +52,20 @@ function ChipList({
           </button>
         </span>
       ))}
-      <button
-        onClick={() => {
-          const v = prompt(addLabel);
-          if (v?.trim()) onAdd(v.trim());
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commit();
+          }
         }}
-        className="px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 text-slate-400 hover:text-blue-500 text-xs font-semibold"
-      >
-        +
-      </button>
+        onBlur={commit}
+        placeholder={placeholder}
+        className="min-w-[110px] flex-1 px-2.5 py-1 rounded-full border border-dashed border-slate-300 dark:border-slate-700 bg-transparent text-xs text-slate-600 dark:text-slate-300 outline-none focus:border-blue-500 placeholder:text-slate-400"
+      />
     </div>
   );
 }
@@ -62,6 +78,21 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+
+  const handleLogoFileChange = async (file: File | undefined) => {
+    if (!file) return;
+    setError(null);
+    setIsUploadingLogo(true);
+    try {
+      const asset = await uploadToGallery(file);
+      set('logoUrl', asset.url);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't upload the logo. Try again.");
+    } finally {
+      setIsUploadingLogo(false);
+    }
+  };
 
   const set = <K extends keyof BrandBrain>(key: K, value: BrandBrain[K]) =>
     setFormState((prev) => ({ ...prev, [key]: value }));
@@ -177,26 +208,36 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
             <span>Assets</span>
           </div>
 
-          {/* Logo URL */}
-          <div
-            onClick={() => {
-              const url = prompt('Logo image URL:', formState.logoUrl);
-              if (url != null) set('logoUrl', url.trim());
-            }}
-            className="p-5 rounded-2xl border-2 border-dashed border-blue-200 dark:border-slate-800 hover:border-blue-500/60 bg-blue-50/30 dark:bg-slate-800/40 text-center cursor-pointer transition-colors space-y-1.5"
+          {/* Logo Upload */}
+          <label
+            className={`block p-5 rounded-2xl border-2 border-dashed border-blue-200 dark:border-slate-800 hover:border-blue-500/60 bg-blue-50/30 dark:bg-slate-800/40 text-center transition-colors space-y-1.5 ${
+              isUploadingLogo ? 'opacity-60 cursor-wait' : 'cursor-pointer'
+            }`}
           >
-            {formState.logoUrl ? (
+            <input
+              type="file"
+              accept="image/*"
+              disabled={isUploadingLogo}
+              className="hidden"
+              onChange={(e) => {
+                void handleLogoFileChange(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+            {isUploadingLogo ? (
+              <Loader2 className="w-6 h-6 text-blue-500 mx-auto animate-spin" />
+            ) : formState.logoUrl ? (
               <img src={formState.logoUrl} alt="Brand logo" className="w-10 h-10 rounded-lg object-cover mx-auto" />
             ) : (
               <UploadCloud className="w-6 h-6 text-blue-500 mx-auto" />
             )}
             <p className="text-xs font-bold text-slate-900 dark:text-white">
-              {formState.logoUrl ? 'Change Logo URL' : 'Set Primary Logo URL'}
+              {isUploadingLogo ? 'Uploading...' : formState.logoUrl ? 'Change Logo' : 'Upload Logo'}
             </p>
             <p className="text-[10px] text-slate-400 truncate max-w-[220px] mx-auto">
-              {formState.logoUrl || 'Click to paste an image URL'}
+              {isUploadingLogo ? '' : formState.logoUrl || 'Click to choose an image file'}
             </p>
-          </div>
+          </label>
 
           {/* Primary Colors Swatches */}
           <div className="space-y-1.5">
@@ -216,15 +257,17 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
                   <span className="text-[9px] font-mono text-slate-400">{hex}</span>
                 </div>
               ))}
-              <button
-                onClick={() => {
-                  const hex = prompt('Hex color (e.g. #2563EB):');
-                  if (hex?.trim()) set('brandColors', [...formState.brandColors, hex.trim()]);
-                }}
-                className="w-10 h-10 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-blue-500"
+              <label
+                title="Add a color"
+                className="relative w-10 h-10 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-blue-500 cursor-pointer overflow-hidden"
               >
-                <Plus className="w-4 h-4" />
-              </button>
+                <Plus className="w-4 h-4 pointer-events-none" />
+                <input
+                  type="color"
+                  onChange={(e) => set('brandColors', [...formState.brandColors, e.target.value])}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </label>
             </div>
           </div>
 
@@ -262,7 +305,7 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
               values={formState.toneOfVoice}
               onAdd={(v) => set('toneOfVoice', [...formState.toneOfVoice, v])}
               onRemove={(idx) => set('toneOfVoice', formState.toneOfVoice.filter((_, i) => i !== idx))}
-              addLabel="Enter a tone adjective (e.g. Authoritative):"
+              placeholder="e.g. Authoritative"
             />
           </div>
 
@@ -323,7 +366,7 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
                 values={formState.keywords}
                 onAdd={(v) => set('keywords', [...formState.keywords, v])}
                 onRemove={(idx) => set('keywords', formState.keywords.filter((_, i) => i !== idx))}
-                addLabel="Add keyword..."
+                placeholder="Add keyword"
               />
             </div>
           </div>
@@ -337,7 +380,7 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
               values={formState.competitors}
               onAdd={(v) => set('competitors', [...formState.competitors, v])}
               onRemove={(idx) => set('competitors', formState.competitors.filter((_, i) => i !== idx))}
-              addLabel="Add competitor name..."
+              placeholder="Add competitor"
             />
           </div>
         </div>

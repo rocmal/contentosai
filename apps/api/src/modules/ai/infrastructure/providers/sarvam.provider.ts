@@ -64,4 +64,8 @@ export class SarvamProvider extends BaseAIProvider implements IAIProvider {
         : undefined,
     };
   }
+
+  async healthCheck(): Promise<boolean> {
+    return !!this.configService.get<string>('ai.sarvam.apiKey');
+  }
 }

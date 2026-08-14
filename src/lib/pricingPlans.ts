@@ -75,14 +75,35 @@ export const PRICING_PLANS: PricingPlan[] = [
   },
 ];
 
-export function formatPlanPrice(plan: PricingPlan, billingCycle: BillingCycle) {
+export interface LocalizedRate {
+  /** ISO 4217 code, e.g. "INR" - units of this currency per 1 USD. */
+  currency: string;
+  rate: number;
+}
+
+/** `localized` is optional and purely cosmetic - pass it once
+ * lib/currency.ts's detectLikelyCurrency + api.ts's fetchExchangeRate have
+ * resolved, to show an approximate price in the visitor's currency. Omit it
+ * (or pass `{ currency: 'USD', rate: 1 }`) to keep the exact USD price -
+ * every existing caller that doesn't pass it behaves exactly as before. */
+export function formatPlanPrice(plan: PricingPlan, billingCycle: BillingCycle, localized?: LocalizedRate) {
   if (plan.priceMonthly == null || plan.priceAnnual == null) {
     return { priceDisplay: 'Custom', periodLabel: 'contact us', ctaLabel: 'Contact sales' };
   }
-  const price = billingCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
-  return {
-    priceDisplay: `$${price}`,
-    periodLabel: billingCycle === 'annual' ? '/mo, billed annually' : '/month',
-    ctaLabel: 'Start free trial',
-  };
+  const usdPrice = billingCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
+  const periodLabel = billingCycle === 'annual' ? '/mo, billed annually' : '/month';
+  const ctaLabel = 'Start free trial';
+
+  if (!localized || localized.currency === 'USD' || !localized.rate) {
+    return { priceDisplay: `$${usdPrice}`, periodLabel, ctaLabel };
+  }
+
+  const converted = usdPrice * localized.rate;
+  const priceDisplay = new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: localized.currency,
+    maximumFractionDigits: converted >= 100 ? 0 : 2,
+  }).format(converted);
+
+  return { priceDisplay, periodLabel, ctaLabel };
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   BarChart3,
   Bot,
@@ -13,7 +13,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Logo, Wordmark } from './Logo';
-import { PRICING_PLANS, formatPlanPrice, BillingCycle } from '../lib/pricingPlans';
+import { PRICING_PLANS, formatPlanPrice, BillingCycle, LocalizedRate } from '../lib/pricingPlans';
+import { detectLikelyCurrency } from '../lib/currency';
+import { fetchExchangeRate } from '../lib/api';
 
 interface LandingPageProps {
   onLoginClick: () => void;
@@ -95,6 +97,15 @@ function PillButton({ active, onClick, children }: { active: boolean; onClick: (
 export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignupClick }) => {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
   const [faqOpen, setFaqOpen] = useState<number>(-1);
+  const [localizedRate, setLocalizedRate] = useState<LocalizedRate | null>(null);
+
+  useEffect(() => {
+    const currency = detectLikelyCurrency();
+    if (currency === 'USD') return;
+    fetchExchangeRate(currency).then((rate) => {
+      if (rate.currency !== 'USD') setLocalizedRate(rate);
+    });
+  }, []);
 
   return (
     <div className="bg-[#0B1120] text-[#F8FAFC] min-h-screen overflow-x-hidden font-['Inter',system-ui,-apple-system,sans-serif] antialiased">
@@ -326,7 +337,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
 
           <div className="grid gap-6 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))' }}>
             {PRICING_PLANS.map((plan) => {
-              const { priceDisplay, periodLabel, ctaLabel } = formatPlanPrice(plan, billingCycle);
+              const { priceDisplay, periodLabel, ctaLabel } = formatPlanPrice(plan, billingCycle, localizedRate ?? undefined);
               const isEnterprise = plan.priceMonthly == null;
               return (
                 <div
@@ -374,6 +385,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
 
           <p className="text-center text-[12.5px] text-[#64748B] max-w-[560px] mx-auto mt-10">
             1 credit ≈ 1 image, ~1 minute of AI voice, or ~10 seconds of video. Actual usage varies by model and output resolution.
+            {localizedRate && (
+              <>
+                {' '}Prices shown in {localizedRate.currency} are an approximate conversion - you're charged in INR at checkout.
+              </>
+            )}
           </p>
         </div>
       </section>

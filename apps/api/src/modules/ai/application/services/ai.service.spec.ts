@@ -45,4 +45,26 @@ describe('AiService', () => {
   it('lists every registered provider', () => {
     expect(service.listProviders()).toEqual(['openai', 'gemini', 'claude', 'openrouter']);
   });
+
+  describe('getProviderStatuses', () => {
+    it('runs a health check against every registered provider', async () => {
+      const statuses = await service.getProviderStatuses();
+
+      expect(providerFactory.listProviders).toHaveBeenCalled();
+      expect(statuses).toEqual([
+        { name: 'openai', available: true },
+        { name: 'gemini', available: true },
+        { name: 'claude', available: true },
+        { name: 'openrouter', available: true },
+      ]);
+    });
+
+    it('reflects a provider that is not configured', async () => {
+      mockProvider.healthCheck.mockResolvedValueOnce(false);
+
+      const statuses = await service.getProviderStatuses();
+
+      expect(statuses[0]).toEqual({ name: 'openai', available: false });
+    });
+  });
 });

@@ -132,9 +132,10 @@ export const envValidationSchema = Joi.object({
   // YouTube (video upload publishing - reuses the Google OAuth client)
   YOUTUBE_REDIRECT_URI: Joi.string().allow('').default(''),
 
-  // Stripe
-  STRIPE_SECRET_KEY: Joi.string().allow('').default(''),
-  STRIPE_WEBHOOK_SECRET: Joi.string().allow('').default(''),
+  // Razorpay (billing - primary payment gateway, India-first)
+  RAZORPAY_KEY_ID: Joi.string().allow('').default(''),
+  RAZORPAY_KEY_SECRET: Joi.string().allow('').default(''),
+  RAZORPAY_WEBHOOK_SECRET: Joi.string().allow('').default(''),
 
   // Monitoring / Analytics
   SENTRY_DSN: Joi.string().allow('').default(''),

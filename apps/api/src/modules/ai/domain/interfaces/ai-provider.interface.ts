@@ -27,4 +27,7 @@ export interface AIGenerationResult {
 export interface IAIProvider {
   readonly name: string;
   generateText(request: AIGenerationRequest): Promise<AIGenerationResult>;
+  /** Cheap readiness check - true if the provider is configured (mirrors
+   * IVoiceProvider.healthCheck in the voice module). */
+  healthCheck(): Promise<boolean>;
 }

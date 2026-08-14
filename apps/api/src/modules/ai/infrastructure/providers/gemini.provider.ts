@@ -62,4 +62,8 @@ export class GeminiProvider extends BaseAIProvider implements IAIProvider {
         : undefined,
     };
   }
+
+  async healthCheck(): Promise<boolean> {
+    return !!this.configService.get<string>('ai.gemini.apiKey');
+  }
 }

@@ -1627,7 +1627,14 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                           <div
                             className="relative w-full max-w-[220px] mx-auto rounded-lg overflow-hidden bg-slate-950 border border-slate-200 dark:border-slate-800 cursor-crosshair select-none touch-none"
                             style={{ aspectRatio: ASPECT_RATIO_NUMERIC[sceneAspectRatio] }}
-                            onPointerDown={handleSceneFocalDrag(scene.id)}
+                            onPointerDown={(e) => {
+                              // Keeps pointermove firing on this element even
+                              // once the cursor leaves its ~220px bounds mid-
+                              // drag - without capture, a fast drag near the
+                              // edge silently stops updating the focal point.
+                              e.currentTarget.setPointerCapture(e.pointerId);
+                              handleSceneFocalDrag(scene.id)(e);
+                            }}
                             onPointerMove={(e) => {
                               if (e.buttons === 1) handleSceneFocalDrag(scene.id)(e);
                             }}

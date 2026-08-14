@@ -56,4 +56,8 @@ export class OpenRouterProvider extends BaseAIProvider implements IAIProvider {
         : undefined,
     };
   }
+
+  async healthCheck(): Promise<boolean> {
+    return !!this.configService.get<string>('ai.openrouter.apiKey');
+  }
 }

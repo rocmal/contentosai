@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import {
-  ArrowUpRight,
   BarChart2,
   Bot,
   Brain,
@@ -14,7 +13,6 @@ import {
   Plus,
   Share2,
   Sparkles,
-  TrendingUp,
   Users,
   Video,
   Zap,
@@ -23,7 +21,16 @@ import {
   Project,
   ViewType,
 } from '../../types';
-import { listContent, listMyGallery, listScheduledPosts, MediaAsset, PublishingJob } from '../../lib/api';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  getMyCreditWallet,
+  listContent,
+  listMyGallery,
+  listScheduledPosts,
+  listTeamMembers,
+  MediaAsset,
+  PublishingJob,
+} from '../../lib/api';
 
 interface DashboardViewProps {
   onNavigate: (view: ViewType) => void;
@@ -50,16 +57,30 @@ function formatScheduledTime(iso: string | null): string {
   return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+function timeOfDayGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   projects,
 }) => {
+  const { user } = useAuth();
   const [generations, setGenerations] = useState<MediaAsset[] | null>(null);
+  const [jobs, setJobs] = useState<PublishingJob[] | null>(null);
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
+  const [teamSize, setTeamSize] = useState<number | null>(null);
+  const [creditsRemaining, setCreditsRemaining] = useState<number | null | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
-    listMyGallery(undefined, 5)
+    // Fetched once at a higher limit and reused for both the "recent"
+    // feed (first 5) and the real generation-count stat below, instead of
+    // two separate calls for overlapping data.
+    listMyGallery(undefined, 100)
       .then((items) => {
         if (!cancelled) setGenerations(items);
       })
@@ -67,22 +88,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         if (!cancelled) setGenerations([]);
       });
     Promise.all([listScheduledPosts(), listContent()])
-      .then(([jobs, content]) => {
+      .then(([allJobs, content]) => {
         if (cancelled) return;
+        setJobs(allJobs);
         const contentById = new Map(content.map((c) => [c.id, c]));
-        const items = jobs
+        const items = allJobs
           .filter((job) => job.status === 'scheduled')
           .slice(0, 3)
           .map((job) => ({ job, title: (job.contentId && contentById.get(job.contentId)?.title) || 'Untitled' }));
         setQueue(items);
       })
       .catch(() => {
-        if (!cancelled) setQueue([]);
+        if (!cancelled) {
+          setJobs([]);
+          setQueue([]);
+        }
       });
+    listTeamMembers().then((m) => {
+      if (!cancelled) setTeamSize(m.length);
+    }).catch(() => {
+      if (!cancelled) setTeamSize(null);
+    });
+    getMyCreditWallet().then((w) => {
+      if (!cancelled) setCreditsRemaining(w.balance);
+    }).catch(() => {
+      if (!cancelled) setCreditsRemaining(null);
+    });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const publishedCount = (jobs ?? []).filter((j) => j.status === 'published').length;
+  const scheduledCount = (jobs ?? []).filter((j) => j.status === 'scheduled').length;
+  const recentGenerations = (generations ?? []).slice(0, 5);
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-200">
@@ -95,10 +134,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Lumora Content OS v3.2 Active
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Good morning, Alex 👋
+              {timeOfDayGreeting()}{user?.firstName ? `, ${user.firstName}` : ''} 👋
             </h2>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Your 10 AI Agents ran 18 background tasks today. Your scheduled posts are on track to reach an estimated <span className="text-blue-400 font-semibold">842K audience members</span> this week.
+              {generations === null || jobs === null ? (
+                'Loading your workspace activity...'
+              ) : (
+                <>
+                  You've created <span className="text-blue-400 font-semibold">{generations.length} piece{generations.length === 1 ? '' : 's'}</span> of content, with{' '}
+                  <span className="text-blue-400 font-semibold">{scheduledCount} scheduled</span> to publish.
+                </>
+              )}
             </p>
           </div>
 
@@ -168,57 +214,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Analytics Highlights Banner */}
+      {/* Highlights Banner - same real metrics AnalyticsView computes
+          (generation/publishing/credits/team), not audience-analytics
+          numbers this app has no data source for. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Views</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">2.4M</p>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 mt-1">
-              <TrendingUp className="w-3 h-3" /> +12.5% vs last month
-            </p>
+            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Generations</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{generations === null ? '—' : generations.length}</p>
+            <p className="text-[11px] text-slate-400 mt-1">across all Studios</p>
           </div>
           <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-            <BarChart2 className="w-5 h-5" />
+            <Sparkles className="w-5 h-5" />
           </div>
         </div>
 
         <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Reach</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">842K</p>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 mt-1">
-              <TrendingUp className="w-3 h-3" /> +8.2% engagement rate
-            </p>
+            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Published</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{jobs === null ? '—' : publishedCount}</p>
+            <p className="text-[11px] text-slate-400 mt-1">{scheduledCount} scheduled</p>
           </div>
           <div className="p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
-            <Users className="w-5 h-5" />
+            <Share2 className="w-5 h-5" />
           </div>
         </div>
 
         <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Avg. CTR</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">4.8%</p>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 mt-1">
-              <TrendingUp className="w-3 h-3" /> +1.4% higher than industry
+            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Credits Remaining</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+              {creditsRemaining === undefined ? '—' : creditsRemaining === null ? 'Unlimited' : creditsRemaining.toLocaleString()}
             </p>
+            <p className="text-[11px] text-slate-400 mt-1">this billing cycle</p>
           </div>
           <div className="p-2.5 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400">
-            <ArrowUpRight className="w-5 h-5" />
+            <Zap className="w-5 h-5" />
           </div>
         </div>
 
         <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Conversions</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">12.4K</p>
-            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-0.5 mt-1">
-              <TrendingUp className="w-3 h-3" /> +24.1% qualified leads
-            </p>
+            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Team Size</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{teamSize ?? '—'}</p>
+            <p className="text-[11px] text-slate-400 mt-1">workspace members</p>
           </div>
           <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-            <Zap className="w-5 h-5" />
+            <Users className="w-5 h-5" />
           </div>
         </div>
       </div>
@@ -343,12 +385,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-center py-8 text-slate-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
-            ) : generations.length === 0 ? (
+            ) : recentGenerations.length === 0 ? (
               <p className="text-[11px] text-slate-400 text-center py-8">
                 No generations yet. Run the AI Studio wizard or a Studio to create your first asset.
               </p>
             ) : (
-              generations.map((gen) => (
+              recentGenerations.map((gen) => (
                 <div
                   key={gen.id}
                   className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-1.5"
@@ -373,51 +415,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* AI Agent System Fleet Summary */}
+        {/* AI Agent Fleet - execution isn't connected to anything real yet
+            (see AIAgentsView), so this is an honest preview link rather
+            than fabricated "Active" agent status, matching the disclosure
+            pattern already used on the Automation Builder page. */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">10 Autonomous AI Agents</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">AI Agents Fleet</h3>
             </div>
             <button
               onClick={() => onNavigate('ai-agents')}
               className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
             >
-              View Fleet →
+              Preview Fleet →
             </button>
           </div>
 
-          <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Research & Trend Agent</p>
-                <p className="text-[11px] text-slate-500">Scrapes Twitter & LinkedIn B2B trends</p>
-              </div>
-              <span className="px-2 py-1 text-[10px] font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-md">
-                Active
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Content & Strategy Agent</p>
-                <p className="text-[11px] text-slate-500">Drafting LinkedIn carousel & newsletter</p>
-              </div>
-              <span className="px-2 py-1 text-[10px] font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-md">
-                Active
-              </span>
-            </div>
-
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Publishing & Repurposing Agent</p>
-                <p className="text-[11px] text-slate-500">Multi-channel auto distribution</p>
-              </div>
-              <span className="px-2 py-1 text-[10px] font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-md">
-                Active
-              </span>
-            </div>
+          <div className="flex flex-col items-center gap-2 py-8 text-center">
+            <Bot className="w-6 h-6 text-slate-300 dark:text-slate-600" />
+            <p className="text-[11px] text-slate-400 max-w-[220px]">
+              Agent execution isn't connected yet - the Fleet page is a preview of what's coming.
+            </p>
           </div>
         </div>
       </div>

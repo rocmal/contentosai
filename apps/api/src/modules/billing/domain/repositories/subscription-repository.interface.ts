@@ -5,8 +5,9 @@ export interface CreateSubscriptionData {
   organizationId: string;
   plan: string;
   status?: SubscriptionStatus;
-  stripeCustomerId?: string | null;
-  stripeSubscriptionId?: string | null;
+  gatewayProvider?: string | null;
+  gatewayCustomerId?: string | null;
+  gatewaySubscriptionId?: string | null;
   currentPeriodEnd?: Date | null;
 }
 

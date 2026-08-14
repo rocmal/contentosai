@@ -6,7 +6,7 @@ import storageConfig from './storage.config';
 import aiConfig from './ai.config';
 import mailConfig from './mail.config';
 import oauthConfig from './oauth.config';
-import stripeConfig from './stripe.config';
+import razorpayConfig from './razorpay.config';
 import monitoringConfig from './monitoring.config';
 import metaConfig from './meta.config';
 import linkedinConfig from './linkedin.config';
@@ -21,7 +21,7 @@ export const configurations = [
   aiConfig,
   mailConfig,
   oauthConfig,
-  stripeConfig,
+  razorpayConfig,
   monitoringConfig,
   metaConfig,
   linkedinConfig,

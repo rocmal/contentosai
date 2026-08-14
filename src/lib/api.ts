@@ -624,8 +624,8 @@ export async function updateMyOrganization(input: { name?: string; description?:
 }
 
 // ---------------------------------------------------------------------------
-// Billing (subscription - Stripe isn't configured yet, so this is read-only:
-// which plan the workspace is on, not a checkout/payment flow)
+// Billing (subscription + Razorpay checkout - see BillingView.tsx for the
+// actual Checkout widget integration)
 // ---------------------------------------------------------------------------
 
 export interface Subscription {
@@ -643,6 +643,41 @@ export async function getMySubscription(): Promise<Subscription | null> {
     `/billing/subscriptions?organizationId=${encodeURIComponent(me.organizationId)}&limit=1`,
   );
   return result.items[0] ?? null;
+}
+
+export type PurchasablePlan = 'starter' | 'pro';
+
+export interface CheckoutOrder {
+  orderId: string;
+  /** Smallest currency unit (paise for INR). */
+  amount: number;
+  currency: string;
+  /** Razorpay's publishable key id - passed to the Checkout widget's `key` option. */
+  keyId: string;
+}
+
+/** Creates a Razorpay order for a plan upgrade - the caller opens the
+ * Checkout widget with this, and the subscription/credits only actually
+ * activate once RazorpayWebhookController confirms payment.captured. */
+export function createCheckoutOrder(plan: PurchasablePlan): Promise<CheckoutOrder> {
+  return apiRequest<CheckoutOrder>('/billing/checkout/order', {
+    method: 'POST',
+    body: JSON.stringify({ plan }),
+  });
+}
+
+/** USD exchange rate for display-only price localization (see
+ * lib/currency.ts's detectLikelyCurrency + pricingPlans.ts's formatPlanPrice).
+ * Never throws - falls back to `{ USD, 1 }` so a flaky rate source can never
+ * break a pricing page. */
+export async function fetchExchangeRate(currency: string): Promise<{ currency: string; rate: number }> {
+  try {
+    return await apiRequest<{ currency: string; rate: number }>(
+      `/pricing/fx-rate?currency=${encodeURIComponent(currency)}`,
+    );
+  } catch {
+    return { currency: 'USD', rate: 1 };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -792,6 +827,19 @@ export async function generateText(input: {
   });
 }
 
+export interface ProviderStatus {
+  name: string;
+  available: boolean;
+}
+
+/** Whether each AI text provider (openai/gemini/claude/openrouter/sarvam)
+ * has an API key configured on the backend - read-only, there's no
+ * per-workspace "connect" action for these (they're server-side keys). */
+export async function getAiProviderStatuses(): Promise<ProviderStatus[]> {
+  const { statuses } = await apiRequest<{ statuses: ProviderStatus[] }>('/ai/providers/status');
+  return statuses;
+}
+
 // ---------------------------------------------------------------------------
 // Image Studio
 // ---------------------------------------------------------------------------
@@ -849,6 +897,13 @@ export async function generateSpeech(input: {
     body: JSON.stringify(input),
   });
   return { audioUrl: URL.createObjectURL(blob), mimeType: blob.type || 'audio/mpeg' };
+}
+
+/** Whether each voice provider is configured/reachable - read-only status,
+ * same shape as getAiProviderStatuses. */
+export async function getVoiceProviderStatuses(): Promise<ProviderStatus[]> {
+  const { statuses } = await apiRequest<{ statuses: ProviderStatus[] }>('/voice/providers/status');
+  return statuses;
 }
 
 // ---------------------------------------------------------------------------

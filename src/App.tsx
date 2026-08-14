@@ -94,7 +94,7 @@ function getPublicRouteFromPath(): 'landing' | 'login' | 'signup' {
 }
 
 export function App() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromHash() ?? 'dashboard');
   const [publicRoute, setPublicRoute] = useState<'landing' | 'login' | 'signup'>(() => getPublicRouteFromPath());
   const [darkMode, setDarkMode] = useState<boolean>(true);
@@ -263,6 +263,7 @@ export function App() {
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
           onQuickGenerate={() => setCurrentView('ai-studio')}
           onStartTour={() => setIsTourOpen(true)}
+          user={user}
         />
 
         {/* View Viewport Canvas */}

@@ -11,7 +11,10 @@ export interface Subscription extends BaseEntity {
   organizationId: string;
   plan: string;
   status: SubscriptionStatus;
-  stripeCustomerId: string | null;
-  stripeSubscriptionId: string | null;
+  /** Payment gateway that owns this subscription, e.g. 'razorpay' - see
+   * PaymentProviderFactory. Null until a real checkout has run. */
+  gatewayProvider: string | null;
+  gatewayCustomerId: string | null;
+  gatewaySubscriptionId: string | null;
   currentPeriodEnd: Date | null;
 }

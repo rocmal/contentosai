@@ -28,4 +28,11 @@ export class AiController {
   listProviders(): { providers: string[] } {
     return { providers: this.aiService.listProviders() };
   }
+
+  @Get('providers/status')
+  @RequirePermissions('ai.generate')
+  @ApiOperation({ summary: 'Check configuration of every AI text provider' })
+  async getProviderStatuses(): Promise<{ statuses: { name: string; available: boolean }[] }> {
+    return { statuses: await this.aiService.getProviderStatuses() };
+  }
 }

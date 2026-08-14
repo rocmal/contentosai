@@ -34,4 +34,14 @@ export class AiService {
   listProviders(): string[] {
     return this.providerFactory.listProviders();
   }
+
+  async getProviderStatuses(): Promise<{ name: string; available: boolean }[]> {
+    const names = this.providerFactory.listProviders();
+    return Promise.all(
+      names.map(async (name) => ({
+        name,
+        available: await this.providerFactory.getProvider(name).healthCheck(),
+      })),
+    );
+  }
 }

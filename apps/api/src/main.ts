@@ -12,7 +12,14 @@ import { AllExceptionsFilter } from '@common/filters/all-exceptions.filter';
 import { TransformInterceptor } from '@common/interceptors/transform.interceptor';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
+  // rawBody: true keeps the untouched request Buffer on req.rawBody
+  // alongside the normal parsed req.body - RazorpayWebhookController needs
+  // the exact bytes Razorpay signed, since re-serializing the parsed JSON
+  // would not byte-for-byte match what was HMAC-signed.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+    rawBody: true,
+  });
 
   // Docker sends SIGTERM on `docker stop` / `compose up -d --no-deps`
   // (container recreate during a deploy). Without this, Nest never runs

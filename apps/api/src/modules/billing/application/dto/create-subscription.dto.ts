@@ -17,15 +17,20 @@ export class CreateSubscriptionDto {
   @IsEnum(SubscriptionStatus)
   status?: SubscriptionStatus;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: 'razorpay' })
   @IsOptional()
   @IsString()
-  stripeCustomerId?: string;
+  gatewayProvider?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  stripeSubscriptionId?: string;
+  gatewayCustomerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  gatewaySubscriptionId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

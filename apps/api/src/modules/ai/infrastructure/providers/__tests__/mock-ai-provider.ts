@@ -18,5 +18,7 @@ export class MockAIProvider implements IAIProvider {
     }),
   );
 
+  readonly healthCheck = jest.fn(async (): Promise<boolean> => true);
+
   constructor(readonly name: string = 'mock') {}
 }

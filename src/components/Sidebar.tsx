@@ -4,7 +4,6 @@ import {
   Bot,
   Brain,
   Calendar,
-  ChevronDown,
   CreditCard,
   FolderKanban,
   FolderOpen,
@@ -25,7 +24,7 @@ import {
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { getMyCreditWallet, CreditWallet } from '../lib/api';
+import { getMyCreditWallet, getMyOrganization, CreditWallet } from '../lib/api';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -42,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { user, logout } = useAuth();
   const [wallet, setWallet] = useState<CreditWallet | null>(null);
+  const [workspaceName, setWorkspaceName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,6 +51,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       })
       .catch(() => {
         // No wallet yet (or a transient error) - the card just doesn't render, no broken placeholder shown.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMyOrganization()
+      .then((org) => {
+        if (!cancelled && org) setWorkspaceName(org.name);
+      })
+      .catch(() => {
+        // No organization yet - the label just stays blank.
       });
     return () => {
       cancelled = true;
@@ -116,8 +130,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   OS
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 cursor-pointer hover:text-slate-700 dark:hover:text-slate-200">
-                Acme Workspace <ChevronDown className="w-3 h-3" />
+              {/* No multi-workspace switching exists yet (see api.ts's
+                  AuthUser comment - workspaceId is just the org's first
+                  workspace) - a static label is honest, a fake dropdown
+                  affordance was not. */}
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[160px]">
+                {workspaceName ?? 'Workspace'}
               </p>
             </div>
           </div>
