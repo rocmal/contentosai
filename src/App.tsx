@@ -9,7 +9,7 @@ import { LoginView } from './components/LoginView';
 import { MobileNav } from './components/MobileNav';
 import { Sidebar } from './components/Sidebar';
 import { useAuth } from './contexts/AuthContext';
-import { getMyBrandProfile, getSetting, setSetting } from './lib/api';
+import { getMyBrandProfile, getSetting, setSetting, PurchasablePlan } from './lib/api';
 
 import { AIAgentsView } from './components/views/AIAgentsView';
 import { AIStudioView } from './components/views/AIStudioView';
@@ -101,6 +101,12 @@ export function App() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
   const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
+  // Set when a visitor clicks a Starter/Pro pricing card on the landing page
+  // (see LandingPage's onSignupClick) - carried through the signup form
+  // entirely in memory (no query param/storage needed, this is one SPA
+  // instance) so the new account lands straight on Billing with checkout
+  // already open instead of a bare dashboard.
+  const [pendingCheckoutPlan, setPendingCheckoutPlan] = useState<PurchasablePlan | null>(null);
 
   // Application Persistent State
   // Starts as the local mock so every view has something to render
@@ -199,10 +205,19 @@ export function App() {
     setPublicRoute('login');
   };
 
-  const navigateToSignup = () => {
+  const navigateToSignup = (plan?: PurchasablePlan) => {
+    if (plan) setPendingCheckoutPlan(plan);
     window.history.pushState({}, '', '/signup');
     setPublicRoute('signup');
   };
+
+  // Once the new account exists, jump straight to Billing so the
+  // auto-triggered checkout (passed to BillingView below) is immediately visible.
+  useEffect(() => {
+    if (isAuthenticated && pendingCheckoutPlan) {
+      setCurrentView('billing');
+    }
+  }, [isAuthenticated, pendingCheckoutPlan]);
 
   const navigateToLanding = () => {
     window.history.pushState({}, '', '/');
@@ -352,7 +367,11 @@ export function App() {
           )}
 
           {currentView === 'billing' && (
-            <BillingView onNavigate={(v) => setCurrentView(v)} />
+            <BillingView
+              onNavigate={(v) => setCurrentView(v)}
+              autoCheckoutPlan={pendingCheckoutPlan}
+              onAutoCheckoutStarted={() => setPendingCheckoutPlan(null)}
+            />
           )}
 
           {currentView === 'settings' && (

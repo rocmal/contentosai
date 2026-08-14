@@ -92,7 +92,7 @@ export function formatPlanPrice(plan: PricingPlan, billingCycle: BillingCycle, l
   }
   const usdPrice = billingCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
   const periodLabel = billingCycle === 'annual' ? '/mo, billed annually' : '/month';
-  const ctaLabel = 'Start free trial';
+  const ctaLabel = 'Buy Now';
 
   if (!localized || localized.currency === 'USD' || !localized.rate) {
     return { priceDisplay: `$${usdPrice}`, periodLabel, ctaLabel };

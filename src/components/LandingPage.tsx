@@ -15,11 +15,14 @@ import {
 import { Logo, Wordmark } from './Logo';
 import { PRICING_PLANS, formatPlanPrice, BillingCycle, LocalizedRate } from '../lib/pricingPlans';
 import { detectLikelyCurrency } from '../lib/currency';
-import { fetchExchangeRate } from '../lib/api';
+import { fetchExchangeRate, PurchasablePlan } from '../lib/api';
 
 interface LandingPageProps {
   onLoginClick: () => void;
-  onSignupClick: () => void;
+  /** `plan` is set only when the click came from a Starter/Pro pricing card -
+   * App.tsx carries it through signup so the new account lands straight on
+   * Billing with checkout already open, instead of a bare dashboard. */
+  onSignupClick: (plan?: PurchasablePlan) => void;
 }
 
 const NAV_LINKS = [
@@ -128,7 +131,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
               Log in
             </button>
             <button
-              onClick={onSignupClick}
+              onClick={() => onSignupClick()}
               className="text-sm font-bold text-white px-5 py-2.5 rounded-[10px] bg-gradient-to-br from-[#2563EB] to-[#6366F1] shadow-[0_4px_14px_rgba(37,99,235,0.35)] whitespace-nowrap shrink-0"
             >
               Start free trial
@@ -152,7 +155,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
           </p>
           <div className="flex justify-center gap-3.5 flex-wrap mb-4">
             <button
-              onClick={onSignupClick}
+              onClick={() => onSignupClick()}
               className="text-[15px] font-bold text-white px-7 py-3.5 rounded-xl bg-gradient-to-br from-[#2563EB] to-[#6366F1] shadow-[0_8px_24px_rgba(37,99,235,0.4)] whitespace-nowrap shrink-0"
             >
               Start free trial
@@ -365,7 +368,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
                   </p>
                   <a
                     href={isEnterprise ? SALES_EMAIL : undefined}
-                    onClick={isEnterprise ? undefined : onSignupClick}
+                    onClick={isEnterprise ? undefined : () => onSignupClick(plan.key as PurchasablePlan)}
                     className="text-center w-full py-3 rounded-xl font-bold text-sm text-white bg-gradient-to-br from-[#2563EB] to-[#6366F1] whitespace-nowrap cursor-pointer"
                   >
                     {ctaLabel}
@@ -473,7 +476,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
           </p>
           <div className="flex justify-center gap-3.5 flex-wrap relative">
             <button
-              onClick={onSignupClick}
+              onClick={() => onSignupClick()}
               className="text-[15px] font-bold text-[#1e293b] px-7 py-3.5 rounded-xl bg-white whitespace-nowrap shrink-0"
             >
               Start free trial

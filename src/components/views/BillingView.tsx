@@ -17,6 +17,11 @@ import {
 
 interface BillingViewProps {
   onNavigate: (view: ViewType) => void;
+  /** Set once, right after signup, when the visitor picked a plan on the
+   * landing page's pricing cards - triggers Razorpay checkout automatically
+   * on arrival instead of making them click "Switch to Plan" again. */
+  autoCheckoutPlan?: PurchasablePlan | null;
+  onAutoCheckoutStarted?: () => void;
 }
 
 const SALES_EMAIL = 'mailto:sales@lumoraos.in';
@@ -93,7 +98,7 @@ function reasonLabel(reason: string): string {
   return labels[reason] ?? reason;
 }
 
-export const BillingView: React.FC<BillingViewProps> = () => {
+export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAutoCheckoutStarted }) => {
   const [subscription, setSubscription] = useState<Subscription | null | undefined>(undefined);
   const [wallet, setWallet] = useState<CreditWallet | null | undefined>(undefined);
   const [transactions, setTransactions] = useState<CreditTransaction[] | null>(null);
@@ -159,6 +164,16 @@ export const BillingView: React.FC<BillingViewProps> = () => {
       setCheckoutPlan(null);
     }
   };
+
+  useEffect(() => {
+    if (!autoCheckoutPlan) return;
+    onAutoCheckoutStarted?.();
+    handleUpgrade(autoCheckoutPlan);
+    // handleUpgrade is stable enough for this one-shot trigger (defined fresh
+    // each render but only ever fires once per non-null autoCheckoutPlan,
+    // since the parent clears it via onAutoCheckoutStarted right away).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoCheckoutPlan]);
 
   const plans = PRICING_PLANS.map((plan) => {
     const custom = plan.priceMonthly == null;
