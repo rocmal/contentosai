@@ -55,7 +55,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return () => {
       cancelled = true;
     };
-  }, []);
+    // Sidebar stays mounted for the whole session, so without currentView in
+    // the deps this balance would go stale the moment anything changes it
+    // elsewhere (e.g. a Billing checkout upgrade) - re-fetching on every
+    // navigation keeps it in sync without needing a shared credits context.
+  }, [currentView]);
 
   useEffect(() => {
     let cancelled = false;
