@@ -1,4 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { IMailer, MAILER } from '@shared/mail/mailer.interface';
 import { CreateSalesInquiryDto } from './dto/create-sales-inquiry.dto';
 
@@ -14,12 +15,30 @@ function escapeHtml(value: string): string {
 
 /** Enterprise "Contact Sales" inquiries - sent straight to the sales inbox via
  * the existing mailer rather than persisted, since this is a one-off lead
- * capture with no in-app follow-up flow yet (no CRM/leads table exists). */
+ * capture with no in-app follow-up flow yet (no CRM/leads table exists).
+ * That also means there is NO fallback if SMTP isn't configured - unlike
+ * password-reset/verification emails (where a user can just retry), a lost
+ * sales lead here is invisible unless this fails loudly, so this
+ * deliberately errors instead of the mailer's normal silent no-op. */
 @Injectable()
 export class ContactService {
-  constructor(@Inject(MAILER) private readonly mailer: IMailer) {}
+  private readonly logger = new Logger(ContactService.name);
+
+  constructor(
+    @Inject(MAILER) private readonly mailer: IMailer,
+    private readonly configService: ConfigService,
+  ) {}
 
   async submitSalesInquiry(dto: CreateSalesInquiryDto): Promise<void> {
+    if (!this.configService.get<string>('mail.host')) {
+      this.logger.error(
+        `Dropped sales inquiry from ${dto.workEmail} (${dto.companyName}) - SMTP_HOST is not configured, cannot deliver.`,
+      );
+      throw new ServiceUnavailableException(
+        'Sales inquiries are temporarily unavailable. Please email sales@lumoraos.in directly.',
+      );
+    }
+
     const rows = [
       ['Name', dto.fullName],
       ['Work email', dto.workEmail],
