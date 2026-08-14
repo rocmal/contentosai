@@ -11,6 +11,13 @@ export interface PricingPlan {
   priceMonthly: number | null;
   /** Per-month USD price when billed annually (~20% off). */
   priceAnnual: number | null;
+  /** Exact monthly INR price actually charged via Razorpay - matches apps/api's
+   * PLAN_PRICING_INR (billing.constants.ts) exactly, keep both in sync. Used
+   * instead of an FX-converted approximation so an India-based visitor never
+   * sees a different number here than what checkout actually charges. null
+   * for Enterprise (custom) and doesn't apply to the annual cycle (no annual
+   * charge flow exists yet - see billing.constants.ts). */
+  priceMonthlyINR: number | null;
   /** Matches apps/api's PLAN_CREDIT_ALLOTMENTS - null means unlimited (Enterprise). */
   creditsPerMonth: number | null;
   credits: string;
@@ -26,6 +33,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     tagline: 'For individuals and small teams getting started.',
     priceMonthly: 49,
     priceAnnual: 39,
+    priceMonthlyINR: 4000,
     creditsPerMonth: 2500,
     credits: '2,500 credits / month',
     seats: '1 seat',
@@ -43,6 +51,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     tagline: 'For growing marketing teams shipping weekly.',
     priceMonthly: 149,
     priceAnnual: 119,
+    priceMonthlyINR: 10000,
     creditsPerMonth: 10000,
     credits: '10,000 credits / month',
     seats: 'Up to 5 seats',
@@ -61,6 +70,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     tagline: 'For agencies and large organizations at scale.',
     priceMonthly: null,
     priceAnnual: null,
+    priceMonthlyINR: null,
     creditsPerMonth: null,
     credits: 'Unlimited credits',
     seats: 'Unlimited seats',
@@ -96,6 +106,20 @@ export function formatPlanPrice(plan: PricingPlan, billingCycle: BillingCycle, l
 
   if (!localized || localized.currency === 'USD' || !localized.rate) {
     return { priceDisplay: `$${usdPrice}`, periodLabel, ctaLabel };
+  }
+
+  // INR is the one currency actually charged (via Razorpay) - show the exact
+  // amount checkout will charge instead of an FX-derived approximation, so
+  // this number can never drift from what the visitor is actually billed.
+  // Only applies to monthly - there's no annual charge flow yet.
+  if (localized.currency === 'INR' && billingCycle === 'monthly' && plan.priceMonthlyINR != null) {
+    return {
+      priceDisplay: new Intl.NumberFormat(undefined, { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(
+        plan.priceMonthlyINR,
+      ),
+      periodLabel,
+      ctaLabel,
+    };
   }
 
   const converted = usdPrice * localized.rate;

@@ -3,15 +3,18 @@
  * src/lib/pricingPlans.ts on the frontend. */
 export type PurchasablePlan = 'starter' | 'pro';
 
-/** PLACEHOLDER pricing in paise (INR smallest unit), monthly billing only -
- * approximate INR equivalent of the USD prices in src/lib/pricingPlans.ts at
- * a rough ~83 INR/USD rate. Confirm real India pricing before going live;
- * this only exists so the checkout flow has a number to charge. Annual
- * billing isn't wired up anywhere in the backend yet (grantMonthlyRenewal
- * only understands monthly cycles), so it's intentionally left out here too. */
+/** India pricing in paise (INR smallest unit), monthly billing only - round
+ * numbers chosen deliberately (2026-08-14) over the FX-derived ~Rs
+ * 4,678/14,226. NOTE: a margin check against real per-credit AI provider
+ * costs flagged that video generation likely costs far more per credit than
+ * image/voice, and a flat per-credit price may not cover it at these
+ * numbers - revisit CREDIT_COST.VIDEO_PER_10_SECONDS (credits.constants.ts)
+ * once real usage data is in. Annual billing isn't wired up anywhere in the
+ * backend yet (grantMonthlyRenewal only understands monthly cycles), so
+ * it's intentionally left out here too. */
 export const PLAN_PRICING_INR: Record<PurchasablePlan, number> = {
-  starter: 399900, // ~Rs 3,999/mo
-  pro: 1219900, // ~Rs 12,199/mo
+  starter: 400000, // Rs 4,000/mo
+  pro: 1000000, // Rs 10,000/mo
 };
 
 export function isPurchasablePlan(plan: string): plan is PurchasablePlan {
