@@ -56,6 +56,14 @@ export class RazorpayProvider implements IPaymentProvider {
       currency: request.currency,
       receipt: request.receipt,
       notes: request.notes,
+      // Without this, capture behavior falls back to the merchant account's
+      // dashboard-level default (Settings -> Payment Capture), which can be
+      // "Manual" - in that case a successful checkout only ever reaches
+      // "authorized", never "captured", and RazorpayWebhookController (which
+      // only acts on payment.captured) would silently never activate the
+      // subscription. Force auto-capture per-order so this never depends on
+      // an account setting we don't control from here.
+      payment_capture: 1,
     });
 
     return {

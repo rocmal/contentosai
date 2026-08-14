@@ -60,6 +60,12 @@ export class RazorpayWebhookController {
       } else {
         this.logger.warn(`payment.captured webhook missing organizationId/plan notes (payment ${payment.id})`);
       }
+    } else {
+      // Razorpay sends a separate webhook call per event (payment.authorized,
+      // order.paid, payment.captured, ...) - logging every type we receive
+      // but don't act on makes it obvious when e.g. auto-capture isn't
+      // configured and captured never arrives, instead of a silent no-op.
+      this.logger.log(`Received unhandled Razorpay event: ${payload.event}`);
     }
 
     return { received: true };
