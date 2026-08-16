@@ -26,7 +26,7 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
     'Sleek 3D glassmorphism interface graphic showing an AI Content Operating System with glowing blue nodes, modern typography, 8k resolution'
   );
   const [aspectRatio, setAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:5'>('16:9');
-  const [provider, setProvider] = useState<api.ImageProvider>('flux');
+  const [provider, setProvider] = useState<api.ImageProvider>('stability');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outOfCredits, setOutOfCredits] = useState(false);
