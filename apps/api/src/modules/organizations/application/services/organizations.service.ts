@@ -1,6 +1,8 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FindAllOptions, PaginatedResult } from '@shared/interfaces/base-repository.interface';
+import { UsersService } from '@modules/users/application/services/users.service';
+import { SubscriptionsService } from '@modules/billing/application/services/subscriptions.service';
 import { Organization } from '../../domain/entities/organization.entity';
 import {
   IOrganizationsRepository,
@@ -15,6 +17,15 @@ import { CreateOrganizationDto } from '../dto/create-organization.dto';
 import { UpdateOrganizationDto } from '../dto/update-organization.dto';
 import { AddMemberDto } from '../dto/add-member.dto';
 import { OrganizationCreatedEvent } from '../events/organization-created.event';
+import { seatLimitForPlan } from '../../organizations.constants';
+
+export interface MemberCandidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl: string | null;
+}
 
 @Injectable()
 export class OrganizationsService {
@@ -23,6 +34,8 @@ export class OrganizationsService {
     private readonly organizationsRepository: IOrganizationsRepository,
     @Inject(ORGANIZATION_MEMBERS_REPOSITORY)
     private readonly membersRepository: IOrganizationMembersRepository,
+    private readonly usersService: UsersService,
+    private readonly subscriptionsService: SubscriptionsService,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -77,10 +90,42 @@ export class OrganizationsService {
     if (existing) {
       throw new ConflictException('User is already a member of this organization');
     }
+
+    // Seat limit is a plan property, not a workspace/org setting - matches
+    // the "seats" figure advertised per plan in src/lib/pricingPlans.ts.
+    // Trialing/no-subscription orgs fall back to the default (Starter) limit.
+    const subscription = await this.subscriptionsService.findByOrganization(organizationId);
+    const plan = subscription?.plan ?? 'starter';
+    const seatLimit = seatLimitForPlan(plan);
+    if (seatLimit !== null) {
+      const currentMembers = await this.membersRepository.listByOrganization(organizationId);
+      if (currentMembers.length >= seatLimit) {
+        throw new ConflictException(
+          `The "${plan}" plan allows up to ${seatLimit} team member${seatLimit === 1 ? '' : 's'}. Upgrade your plan to add more.`,
+        );
+      }
+    }
+
     return this.membersRepository.create(
       { organizationId, userId: dto.userId, roleId: dto.roleId },
       actorId,
     );
+  }
+
+  /** Looks up a signed-up user by email so an admin can invite them by email
+   * instead of needing to already know their raw user id. Returns null (not
+   * a 404) when nobody's signed up with that email yet - the caller decides
+   * how to present "they need to sign up first" rather than that being an error. */
+  async findMemberCandidateByEmail(email: string): Promise<MemberCandidate | null> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user) return null;
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+    };
   }
 
   async listMembers(organizationId: string): Promise<OrganizationMember[]> {

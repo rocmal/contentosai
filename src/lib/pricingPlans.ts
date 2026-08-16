@@ -22,6 +22,11 @@ export interface PricingPlan {
   creditsPerMonth: number | null;
   credits: string;
   seats: string;
+  /** Matches apps/api's PLAN_SEAT_LIMITS (organizations.constants.ts) - null
+   * means unlimited (Enterprise). Enforced server-side in
+   * OrganizationsService.addMember(); this is only for displaying "X of Y
+   * seats used" client-side. */
+  seatLimit: number | null;
   popular: boolean;
   features: string[];
 }
@@ -37,6 +42,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     creditsPerMonth: 2500,
     credits: '2,500 credits / month',
     seats: '1 seat',
+    seatLimit: 1,
     popular: false,
     features: [
       'Image, Voice & Video Studio',
@@ -55,6 +61,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     creditsPerMonth: 10000,
     credits: '10,000 credits / month',
     seats: 'Up to 5 seats',
+    seatLimit: 5,
     popular: true,
     features: [
       'Everything in Starter',
@@ -74,6 +81,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     creditsPerMonth: null,
     credits: 'Unlimited credits',
     seats: 'Unlimited seats',
+    seatLimit: null,
     popular: false,
     features: [
       'Everything in Pro',

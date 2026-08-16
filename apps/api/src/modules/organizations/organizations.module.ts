@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { UsersModule } from '@modules/users/users.module';
 import { RolesModule } from '@modules/roles/roles.module';
+import { BillingModule } from '@modules/billing/billing.module';
 import { OrganizationModel } from './infrastructure/persistence/organization.model';
 import { OrganizationMemberModel } from './infrastructure/persistence/organization-member.model';
 import { OrganizationsRepository } from './infrastructure/persistence/organizations.repository';
@@ -16,6 +17,7 @@ import { OrganizationsController } from './presentation/organizations.controller
     SequelizeModule.forFeature([OrganizationModel, OrganizationMemberModel]),
     UsersModule,
     RolesModule,
+    BillingModule,
   ],
   controllers: [OrganizationsController],
   providers: [

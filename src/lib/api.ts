@@ -540,10 +540,38 @@ export async function listTeamMembers(): Promise<TeamMember[]> {
   });
 }
 
-/** Adding a member requires their existing user id - there is no
- * email-invite flow (SMTP isn't configured, and building an invitation
- * system is out of scope here). The caller is expected to already know the
- * teammate's user id, e.g. from having them sign up first. */
+export interface MemberCandidate {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  avatarUrl: string | null;
+}
+
+/** Looks up whether someone has already signed up with this email - null
+ * means nobody has, not an error (there's still no pending-invite system for
+ * that case; they need to sign up first, then you add them). */
+export async function lookupMemberCandidate(email: string): Promise<MemberCandidate | null> {
+  const me = await getCurrentUser();
+  if (!me.organizationId) return null;
+  const result = await apiRequest<{ candidate: MemberCandidate | null }>(
+    `/organizations/${encodeURIComponent(me.organizationId)}/members/lookup?email=${encodeURIComponent(email)}`,
+  );
+  return result.candidate;
+}
+
+/** Adds an already-signed-up user by email (looks up their user id first) -
+ * throws a clear ApiError if nobody's signed up with that email, or if the
+ * organization's plan is already at its seat limit (enforced server-side in
+ * OrganizationsService.addMember). */
+export async function addTeamMemberByEmail(email: string, roleId: string): Promise<void> {
+  const candidate = await lookupMemberCandidate(email);
+  if (!candidate) {
+    throw new ApiError(404, `No account found for ${email} - they need to sign up first.`);
+  }
+  await addTeamMemberById(candidate.id, roleId);
+}
+
 export async function addTeamMemberById(userId: string, roleId: string): Promise<void> {
   const me = await getCurrentUser();
   if (!me.organizationId) {

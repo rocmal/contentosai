@@ -1,28 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, Loader2, Plus, Trash2, Users, X } from 'lucide-react';
 import { ViewType } from '../../types';
-import { addTeamMemberById, listRoles, listTeamMembers, removeTeamMember, Role, TeamMember } from '../../lib/api';
+import { PRICING_PLANS } from '../../lib/pricingPlans';
+import {
+  addTeamMemberByEmail,
+  getMySubscription,
+  listRoles,
+  listTeamMembers,
+  removeTeamMember,
+  Role,
+  Subscription,
+  TeamMember,
+} from '../../lib/api';
 
 interface TeamViewProps {
   onNavigate: (view: ViewType) => void;
 }
 
-export const TeamView: React.FC<TeamViewProps> = () => {
+export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
+  const [subscription, setSubscription] = useState<Subscription | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   const [showAdd, setShowAdd] = useState(false);
-  const [newUserId, setNewUserId] = useState('');
+  const [newEmail, setNewEmail] = useState('');
   const [newRoleId, setNewRoleId] = useState('');
   const [adding, setAdding] = useState(false);
 
   const load = async () => {
     setError(null);
     try {
-      const [teamMembers, roleList] = await Promise.all([listTeamMembers(), listRoles()]);
+      const [teamMembers, roleList, sub] = await Promise.all([
+        listTeamMembers(),
+        listRoles(),
+        getMySubscription(),
+      ]);
       setMembers(teamMembers);
       setRoles(roleList);
+      setSubscription(sub);
       if (!newRoleId && roleList.length > 0) setNewRoleId(roleList[0].id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load team');
@@ -34,14 +50,19 @@ export const TeamView: React.FC<TeamViewProps> = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const plan = PRICING_PLANS.find((p) => p.key === subscription?.plan);
+  const seatLimit = plan?.seatLimit ?? 1;
+  const seatsUsed = members?.length ?? 0;
+  const atSeatLimit = seatLimit !== null && seatsUsed >= seatLimit;
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUserId.trim() || !newRoleId) return;
+    if (!newEmail.trim() || !newRoleId) return;
     setAdding(true);
     setError(null);
     try {
-      await addTeamMemberById(newUserId.trim(), newRoleId);
-      setNewUserId('');
+      await addTeamMemberByEmail(newEmail.trim(), newRoleId);
+      setNewEmail('');
       setShowAdd(false);
       await load();
     } catch (err) {
@@ -78,13 +99,38 @@ export const TeamView: React.FC<TeamViewProps> = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAdd((v) => !v)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-sm"
-        >
-          <Plus className="w-4 h-4" /> Add Teammate
-        </button>
+        <div className="flex items-center gap-3">
+          {subscription !== undefined && (
+            <span className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {seatsUsed} of {seatLimit === null ? 'unlimited' : seatLimit} seat{seatLimit === 1 ? '' : 's'} used
+              {plan ? ` (${plan.name})` : ''}
+            </span>
+          )}
+          <button
+            onClick={() => setShowAdd((v) => !v)}
+            disabled={atSeatLimit}
+            title={atSeatLimit ? 'Seat limit reached for your plan' : undefined}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Add Teammate
+          </button>
+        </div>
       </div>
+
+      {atSeatLimit && (
+        <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300">
+          <span>
+            You've used all {seatLimit} seat{seatLimit === 1 ? '' : 's'} on your {plan?.name ?? 'current'} plan.
+            Upgrade to add more teammates.
+          </span>
+          <button
+            onClick={() => onNavigate('billing')}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold whitespace-nowrap"
+          >
+            View plans
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
@@ -92,7 +138,7 @@ export const TeamView: React.FC<TeamViewProps> = () => {
         </div>
       )}
 
-      {showAdd && (
+      {showAdd && !atSeatLimit && (
         <form
           onSubmit={handleAdd}
           className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4"
@@ -104,19 +150,19 @@ export const TeamView: React.FC<TeamViewProps> = () => {
             </button>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            There's no email-invite flow yet - the teammate needs to sign up first, then you add them here by their
-            user ID.
+            There's no pending-invite flow yet - if they haven't signed up already, ask them to create an account
+            first, then add them here by email.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">User ID</label>
+              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">Email</label>
               <input
-                type="text"
+                type="email"
                 required
-                value={newUserId}
-                onChange={(e) => setNewUserId(e.target.value)}
-                placeholder="00000000-0000-0000-0000-000000000000"
-                className="w-full text-xs px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="teammate@company.com"
+                className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
               />
             </div>
             <div>

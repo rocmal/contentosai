@@ -42,7 +42,7 @@ export const ProfileView: React.FC = () => {
     getMyCreditWallet()
       .then(setWallet)
       .catch(() => setWallet(null));
-    listMyCreditTransactions({ limit: 10 })
+    listMyCreditTransactions({ limit: 25 })
       .then((result) => setTransactions(result.items))
       .catch(() => setTransactions([]));
   }, []);
@@ -228,18 +228,30 @@ export const ProfileView: React.FC = () => {
 
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
                 <h4 className="text-[11px] font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Recent activity
+                  Credit usage history
                 </h4>
                 {transactions === null ? (
                   <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
                 ) : transactions.length === 0 ? (
                   <p className="text-[11px] text-slate-400">No credit activity yet.</p>
                 ) : (
-                  <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scroll">
+                  <div className="space-y-2 max-h-80 overflow-y-auto custom-scroll">
                     {transactions.map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between text-[11px]">
-                        <span className="text-slate-600 dark:text-slate-300">{reasonLabel(tx.reason)}</span>
-                        <span className={`font-semibold ${tx.amount < 0 ? 'text-slate-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      <div key={tx.id} className="flex items-center justify-between text-[11px] gap-3">
+                        <div className="min-w-0">
+                          <p className="text-slate-600 dark:text-slate-300 truncate">{reasonLabel(tx.reason)}</p>
+                          <p className="text-[10px] text-slate-400">
+                            {new Date(tx.createdAt).toLocaleString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </div>
+                        <span
+                          className={`shrink-0 font-mono font-semibold ${tx.amount < 0 ? 'text-slate-500' : 'text-emerald-600 dark:text-emerald-400'}`}
+                        >
                           {tx.amount > 0 ? '+' : ''}
                           {tx.amount}
                         </span>

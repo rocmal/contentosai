@@ -84,6 +84,18 @@ export class OrganizationsController {
     return this.organizationsService.addMember(id, dto, userId);
   }
 
+  @Get(':id/members/lookup')
+  @RequirePermissions('organizations.manage-members')
+  @ApiOperation({ summary: "Look up a signed-up user by email to invite them (doesn't require knowing their user id)" })
+  async lookupMemberCandidate(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @Query('email') email: string,
+  ) {
+    await this.organizationsService.findById(id);
+    const candidate = await this.organizationsService.findMemberCandidateByEmail(email);
+    return { candidate };
+  }
+
   @Get(':id/members')
   @RequirePermissions('organizations.read')
   @ApiOperation({ summary: 'List members of an organization' })
