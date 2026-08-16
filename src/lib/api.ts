@@ -505,6 +505,45 @@ export function listRoles(): Promise<Role[]> {
   return apiRequest<{ items: Role[] }>('/roles?limit=100').then((r) => r.items);
 }
 
+export interface RoleInput {
+  name: string;
+  slug: string;
+  description?: string;
+  permissionSlugs?: string[];
+}
+
+/** organizationId/isSystem are never client-settable (RolesController always
+ * derives organizationId from the caller's JWT and forces isSystem false) -
+ * every role created here is a plain custom role for the caller's own org. */
+export function createRole(input: RoleInput): Promise<Role> {
+  return apiRequest<Role>('/roles', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateRole(id: string, input: Partial<RoleInput>): Promise<Role> {
+  return apiRequest<Role>(`/roles/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+/** Throws if the role is a shared system role (super-admin/member) or
+ * belongs to another organization - see RolesService.findOwnedForMutation. */
+export function deleteRole(id: string): Promise<{ deleted: boolean }> {
+  return apiRequest(`/roles/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+export interface Permission {
+  id: string;
+  name: string;
+  slug: string;
+  module: string;
+  description: string | null;
+}
+
+export function listPermissions(): Promise<Permission[]> {
+  return apiRequest<{ items: Permission[] }>('/permissions?limit=500').then((r) => r.items);
+}
+
 /** Members come back as bare {membershipId, userId, roleId} rows - no
  * organizations.controller DTO joins in user/role details, so this fetches
  * each member's user + the role catalogue and joins them client-side. Fine

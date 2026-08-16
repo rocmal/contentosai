@@ -1,6 +1,11 @@
 import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsArray, IsOptional, IsString, MaxLength } from 'class-validator';
 
+// organizationId and isSystem are deliberately NOT client-settable fields:
+// RolesController always derives organizationId from the caller's own JWT
+// and forces isSystem false for anything created through this DTO, so a
+// tenant admin can never claim another organization's id or mark their own
+// role as a protected system role (system roles only ever come from seeders).
 export class CreateRoleDto {
   @ApiProperty({ example: 'Editor' })
   @IsString()
@@ -16,16 +21,6 @@ export class CreateRoleDto {
   @IsOptional()
   @IsString()
   description?: string;
-
-  @ApiPropertyOptional({ description: 'Organization this role belongs to; omit for system roles' })
-  @IsOptional()
-  @IsUUID('4')
-  organizationId?: string;
-
-  @ApiPropertyOptional({ default: false })
-  @IsOptional()
-  @IsBoolean()
-  isSystem?: boolean;
 
   @ApiPropertyOptional({ type: [String], description: 'Permission slugs granted to this role' })
   @IsOptional()

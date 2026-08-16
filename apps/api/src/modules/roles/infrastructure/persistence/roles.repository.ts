@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { Op } from 'sequelize';
+import { Op, Order } from 'sequelize';
 import { BaseRepository } from '@database/repositories/base.repository';
+import { FindAllOptions, PaginatedResult } from '@shared/interfaces/base-repository.interface';
 import { PermissionModel } from '@modules/permissions/infrastructure/persistence/permission.model';
 import { Role } from '../../domain/entities/role.entity';
 import {
@@ -31,6 +32,32 @@ export class RolesRepository
   async findWithPermissions(id: string): Promise<Role | null> {
     const instance = await this.model.findByPk(id, { include: [PermissionModel] });
     return instance ? this.toEntity(instance) : null;
+  }
+
+  async findAllForOrganization(organizationId: string, options: FindAllOptions = {}): Promise<PaginatedResult<Role>> {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = options.limit && options.limit > 0 ? options.limit : 20;
+    const order: Order = options.sortBy
+      ? [[options.sortBy, options.sortOrder ?? 'ASC']]
+      : [['createdAt', 'DESC']];
+
+    const { rows, count } = await this.model.findAndCountAll({
+      where: { organizationId: { [Op.or]: [null, organizationId] } },
+      limit,
+      offset: (page - 1) * limit,
+      order,
+    });
+
+    return {
+      items: rows.map((row) => this.toEntity(row)),
+      meta: {
+        totalItems: count,
+        itemCount: rows.length,
+        itemsPerPage: limit,
+        totalPages: Math.max(1, Math.ceil(count / limit)),
+        currentPage: page,
+      },
+    };
   }
 
   async syncPermissions(roleId: string, permissionIds: string[]): Promise<void> {

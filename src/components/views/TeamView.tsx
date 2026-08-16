@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Loader2, Plus, Trash2, Users, X } from 'lucide-react';
+import { AlertCircle, Loader2, Plus, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 import { ViewType } from '../../types';
 import { PRICING_PLANS } from '../../lib/pricingPlans';
 import {
@@ -12,12 +12,14 @@ import {
   Subscription,
   TeamMember,
 } from '../../lib/api';
+import { RolesPanel } from './team/RolesPanel';
 
 interface TeamViewProps {
   onNavigate: (view: ViewType) => void;
 }
 
 export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
+  const [activeTab, setActiveTab] = useState<'members' | 'roles'>('members');
   const [members, setMembers] = useState<TeamMember[] | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null | undefined>(undefined);
@@ -99,25 +101,52 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {subscription !== undefined && (
-            <span className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-              {seatsUsed} of {seatLimit === null ? 'unlimited' : seatLimit} seat{seatLimit === 1 ? '' : 's'} used
-              {plan ? ` (${plan.name})` : ''}
-            </span>
-          )}
-          <button
-            onClick={() => setShowAdd((v) => !v)}
-            disabled={atSeatLimit}
-            title={atSeatLimit ? 'Seat limit reached for your plan' : undefined}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Add Teammate
-          </button>
-        </div>
+        {activeTab === 'members' && (
+          <div className="flex items-center gap-3">
+            {subscription !== undefined && (
+              <span className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                {seatsUsed} of {seatLimit === null ? 'unlimited' : seatLimit} seat{seatLimit === 1 ? '' : 's'} used
+                {plan ? ` (${plan.name})` : ''}
+              </span>
+            )}
+            <button
+              onClick={() => setShowAdd((v) => !v)}
+              disabled={atSeatLimit}
+              title={atSeatLimit ? 'Seat limit reached for your plan' : undefined}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Add Teammate
+            </button>
+          </div>
+        )}
       </div>
 
-      {atSeatLimit && (
+      <div className="flex gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 w-fit">
+        <button
+          onClick={() => setActiveTab('members')}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'members'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" /> Members
+        </button>
+        <button
+          onClick={() => setActiveTab('roles')}
+          className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+            activeTab === 'roles'
+              ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+          }`}
+        >
+          <ShieldCheck className="w-3.5 h-3.5" /> Roles & Permissions
+        </button>
+      </div>
+
+      {activeTab === 'roles' && <RolesPanel />}
+
+      {activeTab === 'members' && atSeatLimit && (
         <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300">
           <span>
             You've used all {seatLimit} seat{seatLimit === 1 ? '' : 's'} on your {plan?.name ?? 'current'} plan.
@@ -132,13 +161,13 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
         </div>
       )}
 
-      {error && (
+      {activeTab === 'members' && error && (
         <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-900/40 text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" /> {error}
         </div>
       )}
 
-      {showAdd && !atSeatLimit && (
+      {activeTab === 'members' && showAdd && !atSeatLimit && (
         <form
           onSubmit={handleAdd}
           className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4"
@@ -191,6 +220,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
         </form>
       )}
 
+      {activeTab === 'members' && (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
         {members === null ? (
           <div className="flex items-center justify-center py-16 text-slate-400">
@@ -235,6 +265,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 };
