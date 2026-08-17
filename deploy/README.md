@@ -3,9 +3,12 @@
 **Status: LIVE, migrated to a new server 2026-08-17.** https://lumoraos.in
 runs on a brand-new VPS as of this date - the original server
 (`192.169.177.255`, user `lumoosr`) is no longer in use for this project.
-Everything below describes the **current** server. One security item is
-open right now - see "Known issues" near the bottom - fix that before
-treating this deployment as done.
+Everything below describes the **current** server. **Two items are open
+right now** - see "Known issues" near the bottom - fix both before
+treating this deployment as fully done:
+1. MySQL has no firewall in front of it (security).
+2. CI cannot currently deploy here - the first deploy was done manually.
+   `VPS_SSH_USERNAME` needs re-verifying (see "Known issues").
 
 Domain: **https://lumoraos.in** (single domain, path-based split - see
 "Architecture" below). Repo: `git@github.com:rocmal/contentosai.git`.
@@ -309,3 +312,36 @@ iptables -I INPUT -p tcp --dport 3306 -j DROP
 ```
 Re-test after any fix: `nc -zv -w3 <server-ip> 3306` from a machine
 outside the server - should refuse/time out, not connect.
+
+### CI cannot currently deploy - wrong SSH account (open as of 2026-08-17)
+
+`.github/workflows/deploy.yml`'s deploy job authenticates successfully
+(the SSH key works) but as the **wrong cPanel account** - not `lumoraos`.
+Confirmed with a diagnostic added to the sync step (`id; echo HOME=$HOME`
+before doing anything else): the CI run showed a different `uid` than
+`lumoraos` has when reached directly over SSH (uid 1267 in CI vs. uid
+1010 for a real `lumoraos` session). This is why the sync step failed
+with `mkdir: cannot create directory '/home/lumoraos': Permission
+denied` / `No such file or directory` even though the target directory
+demonstrably exists and is writable by `lumoraos` - cPanel's CageFS makes
+other accounts' home directories genuinely not exist (not just
+access-denied) from a different account's session, which is exactly the
+symptom.
+
+**Fix**: re-verify the `VPS_SSH_USERNAME` GitHub secret is exactly
+`lumoraos`, character for character. If it already looks right, the CI
+deploy key (`~/.ssh/contentosai_deploy_ci.pub`) may have ended up
+appended to a *different* account's `authorized_keys` too (e.g. while
+troubleshooting as root) - check every account's `authorized_keys` on the
+server for that key's comment (`github-actions-deploy@contentosai`) and
+remove it from anywhere that isn't `lumoraos`.
+
+The sync mechanism itself (a single `ssh`+`tar` stream, see the "Sync
+deploy/ to the VPS" step) is confirmed correct by direct manual testing -
+this is purely a "wrong account" problem, not a bug in the approach. The
+**first deploy to this server was done manually** as a result (`docker
+compose pull` + `deploy/scripts/remote-deploy.sh latest`, run directly
+over SSH as `lumoraos`, using images the CI run had already successfully
+built and pushed). Future deploys should go back through `git push` once
+this secret is fixed and a real CI run succeeds end to end - don't make
+manual deploys the norm.
