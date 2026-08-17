@@ -537,8 +537,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
             <div>
               <h4 className="text-xs font-bold tracking-[0.05em] text-[#64748B] mb-3.5">LEGAL</h4>
               <div className="flex flex-col gap-2.5">
-                <a href="#" className="text-[13px] text-[#94A3B8] hover:text-white">Privacy Policy</a>
-                <a href="#" className="text-[13px] text-[#94A3B8] hover:text-white">Terms of Service</a>
+                <a href="/privacy" className="text-[13px] text-[#94A3B8] hover:text-white">Privacy Policy</a>
+                <a href="/terms" className="text-[13px] text-[#94A3B8] hover:text-white">Terms of Service</a>
               </div>
             </div>
           </div>

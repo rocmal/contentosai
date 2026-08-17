@@ -5,6 +5,7 @@ import { FloatingAIAssistant } from './components/FloatingAIAssistant';
 import { GuidedTourModal } from './components/GuidedTourModal';
 import { Header } from './components/Header';
 import { LandingPage } from './components/LandingPage';
+import { PrivacyPolicyPage, TermsOfServicePage } from './components/LegalPage';
 import { LoginView } from './components/LoginView';
 import { MobileNav } from './components/MobileNav';
 import { Sidebar } from './components/Sidebar';
@@ -82,21 +83,24 @@ function getViewFromHash(): ViewType | null {
   return isViewType(hash) ? hash : null;
 }
 
-/** Logged-out visitors get three real paths - "/" (LandingPage), "/login",
- * and "/signup" (both LoginView, different initial mode) - via plain
- * pushState instead of a router dependency, since server.ts already falls
- * back to index.html for any unmatched path in both dev (Vite's appType:
- * 'spa') and prod (its explicit `app.get('*', ...)`). */
-function getPublicRouteFromPath(): 'landing' | 'login' | 'signup' {
+/** Logged-out visitors get real paths - "/" (LandingPage), "/login" and
+ * "/signup" (both LoginView, different initial mode), plus "/privacy" and
+ * "/terms" (static legal pages Meta's App Review needs a working URL for) -
+ * via plain pushState instead of a router dependency, since server.ts
+ * already falls back to index.html for any unmatched path in both dev
+ * (Vite's appType: 'spa') and prod (its explicit `app.get('*', ...)`). */
+function getPublicRouteFromPath(): 'landing' | 'login' | 'signup' | 'privacy' | 'terms' {
   if (window.location.pathname === '/login') return 'login';
   if (window.location.pathname === '/signup') return 'signup';
+  if (window.location.pathname === '/privacy') return 'privacy';
+  if (window.location.pathname === '/terms') return 'terms';
   return 'landing';
 }
 
 export function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromHash() ?? 'dashboard');
-  const [publicRoute, setPublicRoute] = useState<'landing' | 'login' | 'signup'>(() => getPublicRouteFromPath());
+  const [publicRoute, setPublicRoute] = useState<'landing' | 'login' | 'signup' | 'privacy' | 'terms'>(() => getPublicRouteFromPath());
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
@@ -238,6 +242,16 @@ export function App() {
   const handleRunQuickAI = (prompt: string) => {
     setCurrentView('ai-studio');
   };
+
+  // Privacy/Terms are static, unauthenticated pages - served regardless of
+  // auth/loading state so a direct link (e.g. from Meta's App Review) always
+  // resolves, even mid-session for a logged-in user.
+  if (publicRoute === 'privacy') {
+    return <PrivacyPolicyPage onBack={navigateToLanding} />;
+  }
+  if (publicRoute === 'terms') {
+    return <TermsOfServicePage onBack={navigateToLanding} />;
+  }
 
   if (isLoading) {
     return (
