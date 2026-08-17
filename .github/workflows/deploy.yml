@@ -167,39 +167,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # rsync (the previous approach here) depends on the client and server
-      # rsync protocol versions being compatible - hit a hard-to-diagnose
-      # "mkdir failed: No such file or directory" against a VPS running a
-      # very recent rsync (3.4.4, from a brand-new OS release) that the
-      # rsync-deployments action's bundled client apparently couldn't talk
-      # to. tar+scp has no such protocol to version-mismatch on.
-      - name: Package deploy/ for transfer
-        run: tar czf deploy.tar.gz -C deploy .
-
-      - name: Upload deploy/ tarball to the VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_SSH_HOST }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          username: ${{ secrets.VPS_SSH_USERNAME }}
-          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          source: deploy.tar.gz
-          target: /tmp
-
-      - name: Extract deploy/ on the VPS (never touches the live deploy/.env)
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.VPS_SSH_HOST }}
-          port: ${{ secrets.VPS_SSH_PORT }}
-          username: ${{ secrets.VPS_SSH_USERNAME }}
-          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
-          envs: DEPLOY_PATH
-          script: |
-            set -e
-            mkdir -p "$DEPLOY_PATH/deploy"
-            tar xzf /tmp/deploy.tar.gz -C "$DEPLOY_PATH/deploy" --exclude='.env'
-            rm -f /tmp/deploy.tar.gz
+      # Both rsync (protocol version mismatch against this VPS's very recent
+      # rsync 3.4.4) and a two-step scp-upload-then-ssh-extract (the
+      # uploaded file was inexplicably not where the ssh-action step looked
+      # for it - never fully root-caused, not worth chasing in a third-party
+      # action) failed here before. This streams the tarball straight
+      # through a single ssh process via stdin - no intermediate file on
+      # either side, no separate action's target-path semantics to trust.
+      # Only plain openssh + tar, both already proven to work directly
+      # against this server.
+      - name: Sync deploy/ to the VPS (single ssh stream, never touches deploy/.env)
+        run: |
+          umask 077
+          echo "$VPS_SSH_PRIVATE_KEY" > deploy_key
+          chmod 600 deploy_key
+          SSH="ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -i deploy_key -p $VPS_SSH_PORT $VPS_SSH_USERNAME@$VPS_SSH_HOST"
+          $SSH "mkdir -p '$DEPLOY_PATH/deploy'"
+          tar czf - -C deploy . | $SSH "tar xzf - -C '$DEPLOY_PATH/deploy' --exclude='.env'"
+          rm -f deploy_key
         env:
+          VPS_SSH_HOST: ${{ secrets.VPS_SSH_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          VPS_SSH_USERNAME: ${{ secrets.VPS_SSH_USERNAME }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
 
       - name: Pull, migrate, recreate (with automatic rollback on failure)
