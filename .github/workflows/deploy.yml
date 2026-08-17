@@ -167,16 +167,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sync deploy/ to the VPS (never touches deploy/.env or app secrets)
-        uses: burnett01/rsync-deployments@7.0.1
+      # rsync (the previous approach here) depends on the client and server
+      # rsync protocol versions being compatible - hit a hard-to-diagnose
+      # "mkdir failed: No such file or directory" against a VPS running a
+      # very recent rsync (3.4.4, from a brand-new OS release) that the
+      # rsync-deployments action's bundled client apparently couldn't talk
+      # to. tar+scp has no such protocol to version-mismatch on.
+      - name: Package deploy/ for transfer
+        run: tar czf deploy.tar.gz -C deploy .
+
+      - name: Upload deploy/ tarball to the VPS
+        uses: appleboy/scp-action@v0.1.7
         with:
-          switches: -avzr --delete --exclude=.env
-          path: deploy/
-          remote_path: ${{ env.DEPLOY_PATH }}/deploy/
-          remote_host: ${{ secrets.VPS_SSH_HOST }}
-          remote_port: ${{ secrets.VPS_SSH_PORT }}
-          remote_user: ${{ secrets.VPS_SSH_USERNAME }}
-          remote_key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          host: ${{ secrets.VPS_SSH_HOST }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          username: ${{ secrets.VPS_SSH_USERNAME }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          source: deploy.tar.gz
+          target: /tmp
+
+      - name: Extract deploy/ on the VPS (never touches the live deploy/.env)
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          username: ${{ secrets.VPS_SSH_USERNAME }}
+          key: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          envs: DEPLOY_PATH
+          script: |
+            set -e
+            mkdir -p "$DEPLOY_PATH/deploy"
+            tar xzf /tmp/deploy.tar.gz -C "$DEPLOY_PATH/deploy" --exclude='.env'
+            rm -f /tmp/deploy.tar.gz
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
 
       - name: Pull, migrate, recreate (with automatic rollback on failure)
         uses: appleboy/ssh-action@v1.2.0
