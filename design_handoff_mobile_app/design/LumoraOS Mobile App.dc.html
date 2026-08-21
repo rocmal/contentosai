@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/organic-cadc079a-c9c7-4665-a7b7-1c369ba60d3b/styles.css">
+  <script src="_ds/organic-cadc079a-c9c7-4665-a7b7-1c369ba60d3b/_ds_bundle.js"></script>
+  <style>body{margin:0;}</style>
+</helmet>
+<div style="min-height:100vh;background:#cbd5e1;display:flex;align-items:center;justify-content:center;padding:40px 20px;font-family:'Figtree',system-ui,sans-serif;">
+<div style="position:relative;width:390px;height:844px;background:#1b1815;border-radius:52px;padding:12px;box-shadow:0 12px 32px rgba(15,23,42,0.28);">
+  <div style="position:absolute;top:10px;left:50%;transform:translateX(-50%);width:60px;height:16px;background:#1b1815;border-radius:10px;z-index:50;"></div>
+  <div style="position:relative;width:100%;height:100%;background:#ffffff;border-radius:42px;overflow:hidden;display:flex;flex-direction:column;">
+
+    <div style="flex:none;height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:relative;z-index:10;">
+      <span style="font-size:14px;font-weight:700;color:#0f172a;">9:41</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;align-items:flex-end;gap:2px;height:10px;">
+          <div style="width:3px;height:4px;background:#0f172a;border-radius:1px;"></div>
+          <div style="width:3px;height:6px;background:#0f172a;border-radius:1px;"></div>
+          <div style="width:3px;height:8px;background:#0f172a;border-radius:1px;"></div>
+          <div style="width:3px;height:10px;background:#0f172a;border-radius:1px;"></div>
+        </div>
+        <div style="width:22px;height:11px;border:1.5px solid #0f172a;border-radius:3px;padding:1.5px;box-sizing:border-box;">
+          <div style="width:70%;height:100%;background:#0f172a;border-radius:1px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <sc-if value="{{ isOnboarding }}" hint-placeholder-val="{{ true }}">
+      <div data-screen-label="Onboarding" style="flex:1;display:flex;flex-direction:column;padding:8px 28px 30px;">
+        <div style="display:flex;justify-content:flex-end;">
+          <button onClick="{{ onboardSkip }}" style="background:none;border:none;font-size:13px;font-weight:600;color:#64748b;cursor:pointer;padding:8px;">Skip</button>
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:26px;">
+          <div style="{{ onboardSlide.circleStyle }}">{{ onboardSlide.iconEl }}</div>
+          <div style="display:flex;flex-direction:column;gap:10px;max-width:270px;">
+            <h1 style="font-family:'Caprasimo',system-ui,sans-serif;font-size:25px;font-weight:400;color:#0f172a;margin:0;line-height:1.18;">{{ onboardSlide.title }}</h1>
+            <p style="font-size:14px;color:#475569;line-height:1.55;margin:0;">{{ onboardSlide.body }}</p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;gap:6px;">
+            <sc-for list="{{ onboardDots }}" as="dot" hint-placeholder-count="3">
+              <div style="{{ dot.style }}"></div>
+            </sc-for>
+          </div>
+          <button onClick="{{ onboardNext }}" style="width:52px;height:52px;border-radius:999px;background:#2563eb;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 10px rgba(15,23,42,0.18);">{{ onboardNextIcon }}</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="Login" style="flex:1;display:flex;flex-direction:column;padding:24px 28px 30px;overflow-y:auto;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:32px;">
+          <div style="width:40px;height:40px;border-radius:14px;background:#2563eb;display:flex;align-items:center;justify-content:center;flex:none;">{{ loginSparkIcon }}</div>
+          <span style="font-family:'Caprasimo',sans-serif;font-size:19px;color:#0f172a;">Lumora</span>
+        </div>
+        <h1 style="font-family:'Caprasimo',sans-serif;font-size:27px;color:#0f172a;margin:0 0 6px;font-weight:400;">Welcome back</h1>
+        <p style="font-size:13px;color:#64748b;margin:0 0 26px;">Sign in to keep creating for {{ workspaceName }}.</p>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <label style="display:block;font-size:12px;color:#475569;margin-bottom:6px;">Email</label>
+            <input type="email" placeholder="maya@willowandrye.com" style="width:100%;box-sizing:border-box;min-height:46px;padding:0 16px;border-radius:999px;border:1px solid #e2e8f0;background:#f1f5f9;font-size:14px;color:#0f172a;" />
+          </div>
+          <div>
+            <label style="display:block;font-size:12px;color:#475569;margin-bottom:6px;">Password</label>
+            <input type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;min-height:46px;padding:0 16px;border-radius:999px;border:1px solid #e2e8f0;background:#f1f5f9;font-size:14px;color:#0f172a;" />
+          </div>
+        </div>
+        <button onClick="{{ doLogin }}" style="height:50px;font-size:15px;margin-top:24px;width:100%;border-radius:999px;background:#2563eb;color:#ffffff;border:none;cursor:pointer;font-weight:700;">Sign in</button>
+        <button onClick="{{ doLogin }}" style="margin-top:18px;align-self:center;font-size:13px;background:none;border:none;color:#2563eb;font-weight:700;cursor:pointer;">New to Lumora? Create an account</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isApp }}" hint-placeholder-val="{{ false }}">
+      <div data-screen-label="App" style="flex:1;min-height:0;display:flex;flex-direction:column;position:relative;">
+        <div style="flex:1;overflow-y:auto;">
+
+          <sc-if value="{{ showCreateOverlay }}" hint-placeholder-val="{{ false }}">
+            <div data-screen-label="Create" style="padding:14px 20px 40px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:22px;">
+                <sc-if value="{{ createScreenSet }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ backToCreateList }}" style="width:34px;height:34px;border-radius:999px;background:#f1f5f9;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;">{{ arrowLeftIcon }}</button>
+                </sc-if>
+                <h2 style="margin:0;flex:1;font-family:'Caprasimo',sans-serif;font-size:20px;color:#0f172a;font-weight:400;">{{ createTitle }}</h2>
+                <button onClick="{{ closeCreate }}" style="width:34px;height:34px;border-radius:999px;background:#f1f5f9;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;">{{ xIcon }}</button>
+              </div>
+
+              <sc-if value="{{ createScreenList }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <button onClick="{{ openWizard }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:20px;background:#f1f5f9;border:none;text-align:left;cursor:pointer;">
+                    <div style="width:42px;height:42px;border-radius:14px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex:none;">{{ sparkIconMed }}</div>
+                    <div><div style="font-size:14px;font-weight:700;color:#0f172a;">AI Wizard</div><div style="font-size:11.5px;color:#64748b;">Zero-prompt content generator</div></div>
+                  </button>
+                  <button onClick="{{ openCapture }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:20px;background:#f1f5f9;border:none;text-align:left;cursor:pointer;">
+                    <div style="width:42px;height:42px;border-radius:14px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex:none;">{{ cameraIconBig }}</div>
+                    <div><div style="font-size:14px;font-weight:700;color:#0f172a;">Quick Capture</div><div style="font-size:11.5px;color:#64748b;">Snap a photo or clip, tag your location</div></div>
+                  </button>
+                  <button onClick="{{ openVoice }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:20px;background:#f1f5f9;border:none;text-align:left;cursor:pointer;">
+                    <div style="width:42px;height:42px;border-radius:14px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;flex:none;">{{ micIconMed }}</div>
+                    <div><div style="font-size:14px;font-weight:700;color:#0f172a;">Voice Note</div><div style="font-size:11.5px;color:#64748b;">Dictate a caption or script idea</div></div>
+                  </button>
+                  <button onClick="{{ openUpload }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:20px;background:#f1f5f9;border:none;text-align:left;cursor:pointer;">
+                    <div style="width:42px;height:42px;border-radius:14px;background:#f8fafc;display:flex;align-items:center;justify-content:center;flex:none;">{{ uploadIconMed }}</div>
+                    <div><div style="font-size:14px;font-weight:700;color:#0f172a;">Upload Media</div><div style="font-size:11.5px;color:#64748b;">Bring in existing photos or clips</div></div>
+                  </button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ createScreenCapture }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                  <div style="height:170px;border-radius:16px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 8px,#94a3b8 8px,#94a3b8 16px);display:flex;align-items:center;justify-content:center;">
+                    <span style="font-family:monospace;font-size:10px;color:#334155;background:rgba(255,255,255,0.85);padding:4px 8px;border-radius:6px;">camera preview</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 2px;">
+                    <div style="display:flex;align-items:center;gap:8px;">{{ mapPinSmall }}<span style="font-size:12.5px;color:#0f172a;font-weight:600;">{{ locationText }}</span></div>
+                    <button onClick="{{ toggleLocation }}" style="{{ toggleTrackStyle }}"><div style="{{ toggleKnobStyle }}"></div></button>
+                  </div>
+                  <button onClick="{{ closeCreate }}" style="height:46px;font-size:13px;width:100%;border-radius:999px;background:#2563eb;color:#ffffff;border:none;cursor:pointer;font-weight:700;">Save to Media Library</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ createScreenWizard }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:16px;">
+                  <div>
+                    <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:8px;">Content type</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <sc-for list="{{ wizardTypes }}" as="opt" hint-placeholder-count="3">
+                        <button onClick="{{ opt.onSelect }}" style="{{ opt.style }}">{{ opt.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div>
+                    <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:8px;">Goal</div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                      <sc-for list="{{ wizardGoals }}" as="opt" hint-placeholder-count="3">
+                        <button onClick="{{ opt.onSelect }}" style="{{ opt.style }}">{{ opt.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div>
+                    <label style="display:block;font-size:12px;color:#475569;margin-bottom:6px;">Topic</label>
+                    <input type="text" placeholder="Fall menu launch, new loyalty program..." style="width:100%;box-sizing:border-box;min-height:46px;padding:0 16px;border-radius:999px;border:1px solid #e2e8f0;background:#f1f5f9;font-size:14px;color:#0f172a;" />
+                  </div>
+                  <button onClick="{{ generateWizard }}" style="height:46px;font-size:13px;width:100%;border-radius:999px;background:#2563eb;color:#ffffff;border:none;cursor:pointer;font-weight:700;">Generate</button>
+                  <sc-if value="{{ wizardGenerated }}" hint-placeholder-val="{{ false }}">
+                    <div style="background:#f1f5f9;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;">
+                      <span style="display:inline-flex;align-self:flex-start;font-size:10px;font-weight:700;letter-spacing:.03em;padding:3px 9px;border-radius:999px;text-transform:uppercase;background:#eff6ff;color:#1d4ed8;">Draft ready</span>
+                      <h3 style="margin:0;font-size:15px;color:#0f172a;">Cozy season, cozier rewards</h3>
+                      <p style="margin:0;font-size:12.5px;color:#475569;line-height:1.5;">Our fall menu just dropped — and so did a new way to earn free drinks. Every order this week stacks points toward your next cup, on us.</p>
+                      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                        <span style="font-size:11px;color:#2563eb;font-weight:600;">#WillowAndRye</span>
+                        <span style="font-size:11px;color:#2563eb;font-weight:600;">#FallMenu</span>
+                        <span style="font-size:11px;color:#2563eb;font-weight:600;">#LoyaltyProgram</span>
+                      </div>
+                      <button onClick="{{ closeCreate }}" style="margin-top:6px;height:42px;font-size:13px;width:100%;border-radius:999px;background:#0f172a;color:#ffffff;border:none;cursor:pointer;font-weight:700;">Use this draft</button>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ createScreenVoice }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:18px;padding:12px 0 6px;">
+                  <button onClick="{{ toggleRecording }}" style="{{ recordButtonStyle }}">{{ micIconBig }}</button>
+                  <div style="font-family:'Caprasimo',sans-serif;font-size:18px;color:#0f172a;">{{ voiceTimerLabel }}</div>
+                  <div style="display:flex;align-items:center;gap:3px;height:32px;">
+                    <sc-for list="{{ waveformBars }}" as="bar" hint-placeholder-count="12">
+                      <div style="{{ bar.style }}"></div>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{ voiceHasResult }}" hint-placeholder-val="{{ false }}">
+                    <div style="width:100%;background:#f1f5f9;border-radius:16px;padding:14px;box-sizing:border-box;">
+                      <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:6px;">Transcript</div>
+                      <p style="margin:0;font-size:12.5px;color:#334155;line-height:1.5;">Fall is here and so is our new pumpkin spice latte — cozy vibes, warm drinks, and 10% off your first order this week.</p>
+                    </div>
+                    <button onClick="{{ closeCreate }}" style="width:100%;height:46px;font-size:13px;border-radius:999px;background:#2563eb;color:#ffffff;border:none;cursor:pointer;font-weight:700;">Save note</button>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ createScreenUpload }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:16px;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                    <sc-for list="{{ uploadTiles }}" as="tile" hint-placeholder-count="6">
+                      <button onClick="{{ tile.onSelect }}" style="position:relative;height:76px;border-radius:12px;border:none;cursor:pointer;padding:0;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 6px,#94a3b8 6px,#94a3b8 12px);">
+                        <sc-if value="{{ tile.selected }}" hint-placeholder-val="{{ false }}">
+                          <div style="position:absolute;inset:0;border-radius:12px;border:2.5px solid #2563eb;background:rgba(37,99,235,0.15);"></div>
+                          <div style="position:absolute;top:5px;right:5px;width:18px;height:18px;border-radius:999px;background:#2563eb;display:flex;align-items:center;justify-content:center;">{{ checkIconWhite }}</div>
+                        </sc-if>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <button onClick="{{ closeCreate }}" style="height:46px;font-size:13px;width:100%;border-radius:999px;background:#2563eb;color:#ffffff;border:none;cursor:pointer;font-weight:700;">{{ uploadButtonLabel }}</button>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ showNotifOverlay }}" hint-placeholder-val="{{ false }}">
+            <div data-screen-label="Notifications" style="padding:14px 20px 40px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <button onClick="{{ closeNotif }}" style="width:34px;height:34px;border-radius:999px;background:#f1f5f9;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;">{{ arrowLeftIcon }}</button>
+                <h2 style="margin:0;font-family:'Caprasimo',sans-serif;font-size:20px;color:#0f172a;font-weight:400;">Notifications</h2>
+              </div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:10px;">Today</div>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:22px;">
+                <sc-for list="{{ notifToday }}" as="n" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:16px;background:#f1f5f9;">
+                    <div style="{{ n.wrapStyle }}">{{ n.iconEl }}</div>
+                    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;line-height:1.35;">{{ n.title }}</div><div style="font-size:11px;color:#64748b;margin-top:3px;">{{ n.time }}</div></div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:10px;">Earlier</div>
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <sc-for list="{{ notifEarlier }}" as="n" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:16px;background:#f1f5f9;">
+                    <div style="{{ n.wrapStyle }}">{{ n.iconEl }}</div>
+                    <div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#0f172a;line-height:1.35;">{{ n.title }}</div><div style="font-size:11px;color:#64748b;margin-top:3px;">{{ n.time }}</div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ showMainBody }}" hint-placeholder-val="{{ true }}">
+            <sc-if value="{{ isTabHome }}" hint-placeholder-val="{{ true }}">
+              <div data-screen-label="Home" style="padding:14px 20px 24px;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
+                  <div><p style="margin:0;font-size:12px;color:#64748b;">{{ workspaceName }}</p><h1 style="margin:2px 0 0;font-family:'Caprasimo',sans-serif;font-size:21px;color:#0f172a;font-weight:400;">{{ greeting }}</h1></div>
+                  <button onClick="{{ openNotif }}" style="position:relative;width:40px;height:40px;border-radius:999px;background:#f1f5f9;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none;">
+                    {{ bellIcon }}
+                    <sc-if value="{{ hasUnread }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:999px;background:#2563eb;border:1.5px solid #ffffff;"></div></sc-if>
+                  </button>
+                </div>
+
+                <div style="background:#172554;border-radius:24px;padding:20px;margin-bottom:20px;position:relative;overflow:hidden;">
+                  <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:999px;background:rgba(255,255,255,0.08);"></div>
+                  <div style="position:relative;display:flex;flex-direction:column;gap:10px;">
+                    <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#93c5fd;">{{ heroSparkIcon }} AI Wizard</span>
+                    <h2 style="margin:0;font-family:'Caprasimo',sans-serif;font-size:19px;line-height:1.25;color:#ffffff;font-weight:400;">Create your next post in minutes</h2>
+                    <button onClick="{{ openCreate }}" style="align-self:flex-start;margin-top:2px;padding:10px 18px;border-radius:999px;background:#ffffff;color:#172554;border:none;font-family:'Caprasimo',sans-serif;font-size:13px;cursor:pointer;">Start creating</button>
+                  </div>
+                </div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+                  <sc-for list="{{ quickActions }}" as="qa" hint-placeholder-count="4">
+                    <button onClick="{{ qa.onSelect }}" style="{{ qa.cardStyle }}">
+                      <div style="{{ qa.iconWrapStyle }}">{{ qa.iconEl }}</div>
+                      <span style="{{ qa.labelStyle }}">{{ qa.label }}</span>
+                      <span style="{{ qa.subStyle }}">{{ qa.sub }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:22px;">
+                  <sc-for list="{{ statCards }}" as="c" hint-placeholder-count="4">
+                    <div style="flex:none;min-width:118px;padding:14px;border-radius:16px;background:#f1f5f9;">
+                      <div style="{{ c.iconWrapStyle }}">{{ c.iconEl }}</div>
+                      <div style="font-family:'Caprasimo',sans-serif;font-size:19px;color:#0f172a;font-weight:400;">{{ c.value }}</div>
+                      <div style="font-size:10.5px;color:#475569;font-weight:600;">{{ c.label }}</div>
+                      <div style="font-size:10px;color:#64748b;">{{ c.sub }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <h3 style="margin:0;font-size:14px;font-weight:700;color:#0f172a;">Today's Queue</h3>
+                  <button onClick="{{ goCalendar }}" style="background:none;border:none;font-size:11.5px;font-weight:700;color:#1d4ed8;cursor:pointer;">Calendar</button>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:22px;">
+                  <sc-for list="{{ queueItems }}" as="item" hint-placeholder-count="3">
+                    <button onClick="{{ item.onOpen }}" style="display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:16px;background:#f1f5f9;border:none;text-align:left;cursor:pointer;">
+                      <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <span style="{{ item.platformStyle }}">{{ item.platform }}</span>
+                        <span style="{{ item.statusStyle }}">{{ item.status }}</span>
+                      </div>
+                      <span style="font-size:12.5px;font-weight:700;color:#0f172a;">{{ item.title }}</span>
+                      <span style="font-size:11px;color:#64748b;">{{ item.time }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                  <h3 style="margin:0;font-size:14px;font-weight:700;color:#0f172a;">Recent Generations</h3>
+                </div>
+                <div style="display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;">
+                  <sc-for list="{{ recentGens }}" as="g" hint-placeholder-count="3">
+                    <div style="flex:none;width:132px;">
+                      <div style="width:132px;height:88px;border-radius:14px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 8px,#94a3b8 8px,#94a3b8 16px);display:flex;align-items:flex-end;padding:6px;box-sizing:border-box;margin-bottom:6px;">
+                        <span style="font-family:monospace;font-size:9px;color:#334155;background:rgba(255,255,255,0.85);padding:2px 6px;border-radius:5px;">{{ g.type }}</span>
+                      </div>
+                      <div style="font-size:11.5px;font-weight:700;color:#0f172a;line-height:1.3;">{{ g.title }}</div>
+                      <div style="font-size:10px;color:#64748b;">{{ g.time }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isTabCalendar }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="Calendar" style="padding:14px 20px 24px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+                  <h1 style="margin:0;font-family:'Caprasimo',sans-serif;font-size:21px;color:#0f172a;font-weight:400;">Content Calendar</h1>
+                  <button onClick="{{ openCreate }}" style="width:36px;height:36px;border-radius:999px;background:#2563eb;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;">{{ plusIcon }}</button>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+                  <sc-for list="{{ calendarDays }}" as="d" hint-placeholder-count="7">
+                    <button onClick="{{ d.onSelect }}" style="{{ d.style }}">
+                      <span style="font-size:10px;font-weight:700;opacity:.75;">{{ d.label }}</span>
+                      <span style="font-family:'Caprasimo',sans-serif;font-size:14px;font-weight:400;">{{ d.date }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+                <div style="font-size:13px;font-weight:700;color:#0f172a;margin-bottom:12px;">{{ selectedDayLabel }}</div>
+                <sc-if value="{{ hasSelectedDayPosts }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <sc-for list="{{ selectedDayPosts }}" as="item" hint-placeholder-count="2">
+                      <button onClick="{{ item.onOpen }}" style="display:flex;flex-direction:column;gap:6px;padding:12px 14px;border-radius:16px;background:#f1f5f9;border:none;text-align:left;cursor:pointer;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;">
+                          <span style="{{ item.platformStyle }}">{{ item.platform }}</span>
+                          <span style="{{ item.statusStyle }}">{{ item.status }}</span>
+                        </div>
+                        <span style="font-size:12.5px;font-weight:700;color:#0f172a;">{{ item.title }}</span>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                          <span style="font-size:11px;color:#64748b;">{{ item.time }}</span>
+                          <sc-if value="{{ item.location }}" hint-placeholder-val="{{ false }}">
+                            <span style="display:flex;align-items:center;gap:3px;font-size:11px;color:#1d4ed8;">{{ item.mapPinEl }}{{ item.location }}</span>
+                          </sc-if>
+                        </div>
+                      </button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isTabStudio }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="Studio" style="padding:14px 20px 24px;">
+                <h1 style="margin:0 0 16px;font-family:'Caprasimo',sans-serif;font-size:21px;color:#0f172a;font-weight:400;">Studio</h1>
+                <div style="display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;">
+                  <sc-for list="{{ studioTabs }}" as="t" hint-placeholder-count="4">
+                    <button onClick="{{ t.onSelect }}" style="{{ t.style }}">{{ t.iconEl }}<span>{{ t.label }}</span></button>
+                  </sc-for>
+                </div>
+
+                <sc-if value="{{ isStudioVideo }}" hint-placeholder-val="{{ true }}">
+                  <div style="background:#f1f5f9;border-radius:20px;padding:16px;margin-bottom:18px;">
+                    <div style="display:flex;gap:12px;margin-bottom:12px;">
+                      <div style="width:80px;height:80px;border-radius:14px;background:repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1 8px,#94a3b8 8px,#94a3b8 16px);flex:none;display:flex;align-items:center;justify-content:center;">{{ playIconWhite }}</div>
+                      <div style="display:flex;flex-direction:column;justify-content:center;gap:4px;">
+                        <span style="font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;">Continue editing</span>
+                        <span style="font-size:13.5px;font-weight:700;color:#0f172a;">{{ continueProject.title }}</span>
+                        <span style="font-size:11px;color:#64748b;">{{ continueProject.duration }} · {{ continueProject.stepLabel }}</span>
+                      </div>
+                    </div>
+                    <div style="display:flex;gap:6px;overflow-x:auto;">
+                      <sc-for list="{{ stepChips }}" as="chip" hint-placeholder-count="5">
+                        <span style="{{ chip.style }}"><sc-if value="{{ chip.showCheck }}" hint-placeholder-val="{{ false }}">{{ checkIconTiny }}</sc-if>{{ chip.name }}</span>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <button onClick="{{ openCreate }}" style="height:46px;font-size:13px;margin-bottom:18px;width:100%;border-radius:999px;background:#2563eb;color:#ffffff;border:none;cursor:pointer;font-weight:700;">New video</button>
+                  <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:10px;">Past projects</div>
+                  <div style="display:flex;flex-direction:column;gap:8px;">
+                    <sc-for list="{{ pastVideoProjects }}" as="p" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:16px;background:#f1f5f9;">
+                        <div><div style="font-size:12.5px;font-weight:700;color:#0f172a;">{{ p.title }}</div><div style="font-size:11px;color:#64748b;">{{ p.duration }}</div></div>
+                        <span style="{{ p.statusStyle }}">{{ p.status }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{ isStudioImage }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:#f1f5f9;border-radius:20px;padding:18px;">
+                    <h3 style="margin:0 0 6px;font-size:14px;color:#0f172a;">Image Studio</h3>
+                    <p style="font-size:12.5px;color:#475569;margin:0 0 12px;">Recent: Pumpkin Latte Flat Lay, Autumn Table Setting</p>
+                    <p style="font-size:11px;color:#64748b;margin:0;">Full editor and upscaling tools open on desktop.</p>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ isStudioVoice }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:#f1f5f9;border-radius:20px;padding:18px;">
+                    <h3 style="margin:0 0 6px;font-size:14px;color:#0f172a;">Voice Studio</h3>
+                    <p style="font-size:12.5px;color:#475569;margin:0 0 12px;">Voices: Warm Female (EN-US), Friendly Male (EN-US)</p>
+                    <p style="font-size:11px;color:#64748b;margin:0;">Recent: Fall Menu VO. Cloning tools open on desktop.</p>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ isStudioCharacter }}" hint-placeholder-val="{{ false }}">
+                  <div style="background:#f1f5f9;border-radius:20px;padding:18px;">
+                    <h3 style="margin:0 0 6px;font-size:14px;color:#0f172a;">Character Studio</h3>
+                    <p style="font-size:12.5px;color:#475569;margin:0 0 12px;">Avatar: Maya · 2 talking-avatar videos generated</p>
+                    <p style="font-size:11px;color:#64748b;margin:0;">Upload a photo and script on desktop to set up a new avatar.</p>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isTabProfile }}" hint-placeholder-val="{{ false }}">
+              <div data-screen-label="Profile" style="padding:14px 20px 24px;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+                  <div style="width:52px;height:52px;border-radius:999px;background:#2563eb;color:#ffffff;display:flex;align-items:center;justify-content:center;font-family:'Caprasimo',sans-serif;font-size:17px;flex:none;">{{ userInitials }}</div>
+                  <div><div style="font-size:15px;font-weight:700;color:#0f172a;">{{ userFullName }}</div><div style="font-size:12px;color:#64748b;">{{ workspaceName }} · Admin</div></div>
+                </div>
+                <div style="background:#172554;border-radius:18px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;">
+                  <div><div style="font-size:11px;color:#93c5fd;text-transform:uppercase;font-weight:700;letter-spacing:.04em;">Credits</div><div style="font-family:'Caprasimo',sans-serif;font-size:18px;color:#ffffff;font-weight:400;">1,240 remaining</div></div>
+                  <span style="font-size:11.5px;font-weight:700;color:#d1fae5;">View plan</span>
+                </div>
+                <sc-for list="{{ moreGroups }}" as="grp" hint-placeholder-count="3">
+                  <div style="margin-bottom:18px;">
+                    <div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;margin-bottom:8px;">{{ grp.groupLabel }}</div>
+                    <div style="display:flex;flex-direction:column;gap:2px;background:#f1f5f9;border-radius:18px;overflow:hidden;">
+                      <sc-for list="{{ grp.items }}" as="it" hint-placeholder-count="4">
+                        <button onClick="{{ it.onSelect }}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:none;border:none;text-align:left;cursor:pointer;width:100%;box-sizing:border-box;">
+                          <div style="{{ it.wrapStyle }}">{{ it.iconEl }}</div>
+                          <span style="font-size:13px;font-weight:600;color:#0f172a;flex:1;">{{ it.label }}</span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+                <button onClick="{{ signOut }}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:none;border:none;cursor:pointer;">
+                  {{ logOutIcon }}<span style="font-size:13px;font-weight:700;color:#475569;">Sign out</span>
+                </button>
+              </div>
+            </sc-if>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ showMainBody }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:none;display:flex;flex-direction:column;align-items:center;background:#ffffff;border-top:1px solid rgba(15,23,42,0.1);">
+            <div style="display:flex;align-items:center;justify-content:space-around;width:100%;padding:10px 8px 4px;">
+              <button onClick="{{ goHome }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 10px;">{{ navHomeIcon }}<span style="{{ navHomeLabelStyle }}">Home</span></button>
+              <button onClick="{{ goCalendar }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 10px;">{{ navCalendarIcon }}<span style="{{ navCalendarLabelStyle }}">Calendar</span></button>
+              <button onClick="{{ openCreate }}" style="width:52px;height:52px;border-radius:999px;background:#2563eb;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-top:-22px;box-shadow:0 3px 10px rgba(15,23,42,0.2);">{{ plusIcon }}</button>
+              <button onClick="{{ goStudio }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 10px;">{{ navStudioIcon }}<span style="{{ navStudioLabelStyle }}">Studio</span></button>
+              <button onClick="{{ goProfile }}" style="display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 10px;">{{ navProfileIcon }}<span style="{{ navProfileLabelStyle }}">Profile</span></button>
+            </div>
+            <div style="width:134px;height:5px;border-radius:999px;background:#334155;margin:6px 0 8px;"></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasSelectedPost }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute;inset:0;background:rgba(15,23,42,0.45);z-index:60;" onClick="{{ closePost }}"></div>
+          <div style="position:absolute;left:0;right:0;bottom:0;background:#f1f5f9;border-radius:28px 28px 0 0;padding:20px 20px 26px;z-index:61;box-shadow:0 -12px 32px rgba(15,23,42,0.22);display:flex;flex-direction:column;gap:14px;">
+            <div style="width:40px;height:4px;border-radius:999px;background:#94a3b8;align-self:center;"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="{{ selectedPost.platformStyle }}">{{ selectedPost.platform }}</span>
+              <span style="{{ selectedPost.statusStyle }}">{{ selectedPost.status }}</span>
+            </div>
+            <h3 style="margin:0;font-family:'Caprasimo',sans-serif;font-size:18px;color:#0f172a;font-weight:400;">{{ selectedPost.title }}</h3>
+            <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#475569;">{{ mapPinSmall }}<span>{{ selectedPost.time }}</span></div>
+            <sc-if value="{{ selectedPost.location }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:#1d4ed8;">{{ selectedPost.mapPinEl }}<span>{{ selectedPost.location }}</span></div>
+            </sc-if>
+            <div style="display:flex;gap:10px;margin-top:6px;">
+              <button style="flex:1;height:44px;border-radius:999px;background:#ffffff;color:#0f172a;border:1px solid #e2e8f0;cursor:pointer;font-weight:700;">Edit</button>
+              <button onClick="{{ closePost }}" style="flex:1;height:44px;border-radius:999px;background:#2563eb;color:#ffffff;border:none;cursor:pointer;font-weight:700;">Done</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;startScreen&quot;: {&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;onboarding&quot;,&quot;options&quot;:[&quot;onboarding&quot;,&quot;login&quot;,&quot;app&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
+  &quot;workspaceName&quot;: {&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Willow &amp; Rye&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Content&quot;},
+  &quot;userName&quot;: {&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Maya Chen&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Content&quot;}
+}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      screen: (props && props.startScreen) || 'onboarding',
+      onboardIndex: 0,
+      activeTab: 'home',
+      studioTab: 'video',
+      showCreate: false,
+      createScreen: null,
+      captureLocationOn: true,
+      wizardType: 'Instagram Reel',
+      wizardGoal: 'Engagement',
+      wizardGenerated: false,
+      voiceRecording: false,
+      voiceHasResult: false,
+      uploadSelected: {},
+      showNotifications: false,
+      selectedPost: null,
+      calendarDayIndex: 3,
+    };
+    this.postsByDay = [
+      [{ platform: 'Instagram', title: 'New loyalty program launch', time: '10:00 AM', status: 'Published' }],
+      [],
+      [{ platform: 'TikTok', title: 'Latte art tutorial', time: '4:00 PM', status: 'Scheduled' }],
+      [
+        { platform: 'Instagram', title: 'Fall Menu Launch — Reel', time: '2:30 PM', status: 'Scheduled', location: 'Willow & Rye, Main St' },
+        { platform: 'TikTok', title: 'Behind the Roast', time: '5:00 PM', status: 'Scheduled' },
+        { platform: 'Facebook', title: 'Weekend hours update', time: '6:15 PM', status: 'Draft' },
+      ],
+      [{ platform: 'Pinterest', title: 'Cozy corner styling', time: '11:00 AM', status: 'Draft' }],
+      [],
+      [{ platform: 'Instagram', title: 'Sunday market pop-up', time: '9:00 AM', status: 'Scheduled', location: 'Zilker Park Market' }],
+    ];
+    this.dayMeta = [
+      { label: 'Mon', date: 17, full: 'Monday, Aug 17' },
+      { label: 'Tue', date: 18, full: 'Tuesday, Aug 18' },
+      { label: 'Wed', date: 19, full: 'Wednesday, Aug 19' },
+      { label: 'Thu', date: 20, full: 'Thursday, Aug 20' },
+      { label: 'Fri', date: 21, full: 'Friday, Aug 21' },
+      { label: 'Sat', date: 22, full: 'Saturday, Aug 22' },
+      { label: 'Sun', date: 23, full: 'Sunday, Aug 23' },
+    ];
+    this.onboardData = [
+      { title: 'Create content, anywhere', body: 'AI-powered video, image, and voice tools built for your brand — now in your pocket.', icon: 'spark', bg: '#eff6ff', color: '#1d4ed8' },
+      { title: 'One brand, every platform', body: 'Your Brand Brain keeps voice and visuals consistent across every studio and channel.', icon: 'video', bg: '#ecfdf5', color: '#059669' },
+      { title: 'Plan, schedule, capture on the go', body: 'Queue posts, tag locations, and publish without opening a laptop.', icon: 'calendar', bg: '#dbeafe', color: '#1d4ed8' },
+    ];
+  }
+
+  icon(name, opts) {
+    opts = opts || {};
+    var size = opts.size || 20;
+    var color = opts.color || '#0f172a';
+    var sw = opts.sw || 2.75;
+    var base = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: sw, strokeLinecap: 'round', strokeLinejoin: 'round' };
+    var kids = [];
+    var E = React.createElement;
+    switch (name) {
+      case 'home':
+        kids = [E('path', { key: 1, d: 'M4 11.5 12 4l8 7.5' }), E('path', { key: 2, d: 'M6 10v9a1 1 0 0 0 1 1h4v-6h2v6h4a1 1 0 0 0 1-1v-9' })];
+        break;
+      case 'calendar':
+        kids = [E('rect', { key: 1, x: 3, y: 5, width: 18, height: 16, rx: 3 }), E('line', { key: 2, x1: 3, y1: 9, x2: 21, y2: 9 }), E('line', { key: 3, x1: 8, y1: 3, x2: 8, y2: 7 }), E('line', { key: 4, x1: 16, y1: 3, x2: 16, y2: 7 })];
+        break;
+      case 'plus':
+        kids = [E('line', { key: 1, x1: 12, y1: 5, x2: 12, y2: 19 }), E('line', { key: 2, x1: 5, y1: 12, x2: 19, y2: 12 })];
+        break;
+      case 'video':
+        kids = [E('rect', { key: 1, x: 3, y: 6, width: 13, height: 12, rx: 2 }), E('path', { key: 2, d: 'M17 9.5l4-2.3v9.6l-4-2.3z' })];
+        break;
+      case 'user':
+        kids = [E('circle', { key: 1, cx: 12, cy: 8, r: 4 }), E('path', { key: 2, d: 'M4 20c0-4 4-6 8-6s8 2 8 6' })];
+        break;
+      case 'bell':
+        kids = [E('path', { key: 1, d: 'M6 9a6 6 0 1 1 12 0v5l1.7 3H4.3L6 14z' }), E('path', { key: 2, d: 'M10 20a2 2 0 0 0 4 0' })];
+        break;
+      case 'chevronRight':
+        kids = [E('path', { key: 1, d: 'M9 5l7 7-7 7' })];
+        break;
+      case 'arrowLeft':
+        kids = [E('path', { key: 1, d: 'M19 12H5' }), E('path', { key: 2, d: 'M11 5l-6 7 6 7' })];
+        break;
+      case 'camera':
+        kids = [E('rect', { key: 1, x: 2, y: 7, width: 20, height: 13, rx: 2.5 }), E('circle', { key: 2, cx: 12, cy: 13.5, r: 3.5 }), E('path', { key: 3, d: 'M9 7l1.3-2h3.4L15 7' })];
+        break;
+      case 'mic':
+        kids = [E('rect', { key: 1, x: 9, y: 3, width: 6, height: 11, rx: 3 }), E('path', { key: 2, d: 'M5 11a7 7 0 0 0 14 0' }), E('line', { key: 3, x1: 12, y1: 18, x2: 12, y2: 22 }), E('line', { key: 4, x1: 8, y1: 22, x2: 16, y2: 22 })];
+        break;
+      case 'image':
+        kids = [E('rect', { key: 1, x: 3, y: 4, width: 18, height: 16, rx: 2 }), E('circle', { key: 2, cx: 9, cy: 10, r: 1.6, fill: color, stroke: 'none' }), E('path', { key: 3, d: 'M4 17l5-5 3 3 4-5 4 5' })];
+        break;
+      case 'mapPin':
+        kids = [E('path', { key: 1, d: 'M12 21s7-6.7 7-12a7 7 0 1 0-14 0c0 5.3 7 12 7 12z' }), E('circle', { key: 2, cx: 12, cy: 9, r: 2.3 })];
+        break;
+      case 'check':
+        kids = [E('path', { key: 1, d: 'M5 13l4 4 10-10' })];
+        break;
+      case 'spark':
+        kids = [
+          E('rect', { key: 1, x: 10.5, y: 2, width: 3, height: 20, rx: 1.5 }),
+          E('rect', { key: 2, x: 10.5, y: 2, width: 3, height: 20, rx: 1.5, transform: 'rotate(45 12 12)' }),
+          E('rect', { key: 3, x: 10.5, y: 2, width: 3, height: 20, rx: 1.5, transform: 'rotate(90 12 12)' }),
+          E('rect', { key: 4, x: 10.5, y: 2, width: 3, height: 20, rx: 1.5, transform: 'rotate(135 12 12)' }),
+        ];
+        base.fill = color; base.stroke = 'none';
+        break;
+      case 'chart':
+        kids = [E('rect', { key: 1, x: 4, y: 12, width: 4, height: 8, rx: 1 }), E('rect', { key: 2, x: 10, y: 7, width: 4, height: 13, rx: 1 }), E('rect', { key: 3, x: 16, y: 3, width: 4, height: 17, rx: 1 })];
+        break;
+      case 'layers':
+        kids = [E('path', { key: 1, d: 'M12 3l9 5-9 5-9-5z' }), E('path', { key: 2, d: 'M3 13l9 5 9-5' })];
+        break;
+      case 'folder':
+        kids = [E('path', { key: 1, d: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' })];
+        break;
+      case 'megaphone':
+        kids = [E('path', { key: 1, d: 'M3 10v4a1 1 0 0 0 1 1h2l9 4V5l-9 4H4a1 1 0 0 0-1 1z' }), E('path', { key: 2, d: 'M13.5 9.5a3 3 0 0 1 0 5' })];
+        break;
+      case 'bookmark':
+        kids = [E('path', { key: 1, d: 'M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z' })];
+        break;
+      case 'usersTeam':
+        kids = [E('circle', { key: 1, cx: 9, cy: 8, r: 3 }), E('path', { key: 2, d: 'M3 20c0-3 2.7-5 6-5s6 2 6 5' }), E('circle', { key: 3, cx: 17.5, cy: 9, r: 2.3 }), E('path', { key: 4, d: 'M15.3 20c.2-2.3 1.7-3.8 3.5-4.3' })];
+        break;
+      case 'zap':
+        kids = [E('path', { key: 1, d: 'M13 2 4 14h6l-1 8 9-12h-6z' })];
+        break;
+      case 'x':
+        kids = [E('line', { key: 1, x1: 6, y1: 6, x2: 18, y2: 18 }), E('line', { key: 2, x1: 18, y1: 6, x2: 6, y2: 18 })];
+        break;
+      case 'play':
+        kids = [E('path', { key: 1, d: 'M7 5l12 7-12 7z', fill: color, stroke: 'none' })];
+        break;
+      case 'upload':
+        kids = [E('line', { key: 1, x1: 12, y1: 3, x2: 12, y2: 15 }), E('path', { key: 2, d: 'M7 8l5-5 5 5' }), E('path', { key: 3, d: 'M4 21h16' })];
+        break;
+      case 'clock':
+        kids = [E('circle', { key: 1, cx: 12, cy: 12, r: 9 }), E('path', { key: 2, d: 'M12 7v5l4 2' })];
+        break;
+      case 'gear': {
+        var lines = [0, 60, 120, 180, 240, 300].map(function (deg, i) {
+          return E('line', { key: 'g' + i, x1: 12, y1: 4, x2: 12, y2: 7, transform: 'rotate(' + deg + ' 12 12)' });
+        });
+        kids = [E('circle', { key: 'c', cx: 12, cy: 12, r: 3 })].concat(lines);
+        break;
+      }
+      case 'logOut':
+        kids = [E('path', { key: 1, d: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4' }), E('path', { key: 2, d: 'M16 17l5-5-5-5' }), E('line', { key: 3, x1: 21, y1: 12, x2: 9, y2: 12 })];
+        break;
+      case 'helpCircle':
+        kids = [E('circle', { key: 1, cx: 12, cy: 12, r: 9 }), E('text', { key: 2, x: 12, y: 16.3, textAnchor: 'middle', fontSize: 11, fontFamily: 'Figtree, sans-serif', fontWeight: 700, fill: color, stroke: 'none' }, '?')];
+        break;
+      case 'shoppingBag':
+        kids = [E('path', { key: 1, d: 'M6 8h12l1 12H5z' }), E('path', { key: 2, d: 'M9 8a3 3 0 1 1 6 0' })];
+        break;
+      case 'botFace':
+        kids = [E('rect', { key: 1, x: 4, y: 8, width: 16, height: 10, rx: 3 }), E('circle', { key: 2, cx: 9, cy: 13, r: 1.4, fill: color, stroke: 'none' }), E('circle', { key: 3, cx: 15, cy: 13, r: 1.4, fill: color, stroke: 'none' }), E('line', { key: 4, x1: 12, y1: 8, x2: 12, y2: 4 }), E('circle', { key: 5, cx: 12, cy: 3, r: 1.2, fill: color, stroke: 'none' })];
+        break;
+      case 'creditCard':
+        kids = [E('rect', { key: 1, x: 2, y: 5, width: 20, height: 14, rx: 2 }), E('line', { key: 2, x1: 2, y1: 10, x2: 22, y2: 10 }), E('rect', { key: 3, x: 5, y: 14, width: 4, height: 2, rx: 0.5, fill: color, stroke: 'none' })];
+        break;
+      default:
+        kids = [E('circle', { key: 1, cx: 12, cy: 12, r: 8 })];
+    }
+    return E('svg', base, kids);
+  }
+
+  tagStyle(kind) {
+    var base = 'display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.02em;padding:3px 9px;border-radius:999px;text-transform:uppercase;';
+    if (kind === 'Published') return base + 'background:#ecfdf5;color:#059669;';
+    if (kind === 'Scheduled') return base + 'background:#eff6ff;color:#1d4ed8;';
+    if (kind === 'Review') return base + 'background:#dbeafe;color:#1d4ed8;';
+    return base + 'background:#e2e8f0;color:#475569;';
+  }
+
+  platformTagStyle() {
+    return 'display:inline-flex;align-items:center;font-size:10px;font-weight:700;letter-spacing:.03em;padding:3px 9px;border-radius:999px;text-transform:uppercase;background:#e2e8f0;color:#334155;';
+  }
+
+  goTab(tab) { this.setState({ activeTab: tab, showCreate: false, showNotifications: false, selectedPost: null }); }
+  openCreate() { this.setState({ showCreate: true, createScreen: null }); }
+  closeCreate() { this.setState({ showCreate: false, createScreen: null }); }
+  openCreateScreen(name) {
+    var patch = { createScreen: name };
+    if (name === 'wizard') patch.wizardGenerated = false;
+    if (name === 'voice') { patch.voiceRecording = false; patch.voiceHasResult = false; }
+    if (name === 'upload') patch.uploadSelected = {};
+    this.setState(patch);
+  }
+  backToCreateList() { this.setState({ createScreen: null }); }
+  toggleLocation() { this.setState(function (s) { return { captureLocationOn: !s.captureLocationOn }; }); }
+  setWizardType(t) { this.setState({ wizardType: t }); }
+  setWizardGoal(g) { this.setState({ wizardGoal: g }); }
+  generateWizard() { this.setState({ wizardGenerated: true }); }
+  toggleRecording() {
+    this.setState(function (s) {
+      if (s.voiceRecording) return { voiceRecording: false, voiceHasResult: true };
+      return { voiceRecording: true, voiceHasResult: false };
+    });
+  }
+  toggleUploadTile(i) {
+    this.setState(function (s) {
+      var sel = Object.assign({}, s.uploadSelected);
+      sel[i] = !sel[i];
+      return { uploadSelected: sel };
+    });
+  }
+  openNotif() { this.setState({ showNotifications: true }); }
+  closeNotif() { this.setState({ showNotifications: false }); }
+  openPost(post) { this.setState({ selectedPost: post }); }
+  closePost() { this.setState({ selectedPost: null }); }
+  setStudioTab(t) { this.setState({ studioTab: t }); }
+  setCalendarDay(i) { this.setState({ calendarDayIndex: i }); }
+  nextOnboard() {
+    var s = this.state;
+    if (s.onboardIndex < 2) this.setState({ onboardIndex: s.onboardIndex + 1 });
+    else this.setState({ screen: 'login' });
+  }
+  skipOnboard() { this.setState({ screen: 'login' }); }
+  doLogin() { this.setState({ screen: 'app' }); }
+  signOut() { this.setState({ screen: 'login', activeTab: 'home', showCreate: false, showNotifications: false, selectedPost: null }); }
+
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var accent = '#2563eb', accent700 = '#1d4ed8', accent2_700 = '#059669', neutral700 = '#475569', neutral600 = '#64748b', text = '#0f172a';
+
+    var greetHour = new Date().getHours();
+    var greetWord = greetHour < 12 ? 'Good morning' : greetHour < 18 ? 'Good afternoon' : 'Good evening';
+    var fullName = (this.props && this.props.userName) || 'Maya Chen';
+    var firstName = fullName.split(' ')[0];
+    var workspaceName = (this.props && this.props.workspaceName) || 'Willow & Rye';
+    var initials = fullName.split(' ').map(function (w) { return w[0]; }).slice(0, 2).join('').toUpperCase();
+
+    var slide = this.onboardData[s.onboardIndex];
+    var onboardSlide = {
+      iconEl: this.icon(slide.icon, { size: 40, color: slide.color }),
+      title: slide.title,
+      body: slide.body,
+      circleStyle: 'width:132px;height:132px;border-radius:999px;background:' + slide.bg + ';display:flex;align-items:center;justify-content:center;',
+    };
+    var onboardDots = [0, 1, 2].map(function (i) {
+      var active = i === s.onboardIndex;
+      return { style: 'height:6px;border-radius:999px;transition:all .2s;width:' + (active ? '22px' : '6px') + ';background:' + (active ? accent : '#cbd5e1') + ';' };
+    });
+
+    function navColor(tab) { return s.activeTab === tab ? accent : neutral600; }
+    function navLabelStyle(tab) { return 'font-size:10px;font-weight:700;color:' + navColor(tab) + ';'; }
+
+    var quickActions = [
+      { label: 'AI Wizard', sub: 'Zero-prompt generator', icon: 'spark', bg: '#eff6ff', color: accent700, onSelect: function () { self.openCreate(); } },
+      { label: 'Video Studio', sub: 'Scripts & B-roll', icon: 'video', bg: '#ecfdf5', color: accent2_700, onSelect: function () { self.goTab('studio'); } },
+      { label: 'Calendar', sub: 'Queue & schedule', icon: 'calendar', bg: '#dbeafe', color: accent700, onSelect: function () { self.goTab('calendar'); } },
+      { label: 'Brand Brain', sub: 'Brand memory', icon: 'bookmark', bg: '#f8fafc', color: neutral700, onSelect: function () { self.goTab('profile'); } },
+    ].map(function (qa) {
+      return {
+        label: qa.label, sub: qa.sub, onSelect: qa.onSelect,
+        iconEl: self.icon(qa.icon, { size: 17, color: qa.color }),
+        cardStyle: 'display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:14px;border-radius:18px;background:#f1f5f9;border:none;cursor:pointer;text-align:left;',
+        iconWrapStyle: 'width:34px;height:34px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:' + qa.bg + ';',
+        labelStyle: 'font-size:12.5px;font-weight:700;color:#0f172a;',
+        subStyle: 'font-size:10.5px;color:#64748b;',
+      };
+    });
+
+    var statCards = [
+      { label: 'Generations', value: '68', sub: 'this month', icon: 'spark', color: accent700, bg: '#eff6ff' },
+      { label: 'Published', value: '12', sub: '5 scheduled', icon: 'check', color: accent2_700, bg: '#ecfdf5' },
+      { label: 'Credits', value: '1,240', sub: 'remaining', icon: 'zap', color: accent700, bg: '#dbeafe' },
+      { label: 'Team', value: '4', sub: 'members', icon: 'usersTeam', color: neutral700, bg: '#f8fafc' },
+    ].map(function (c) {
+      return {
+        label: c.label, value: c.value, sub: c.sub,
+        iconEl: self.icon(c.icon, { size: 15, color: c.color }),
+        iconWrapStyle: 'width:28px;height:28px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:' + c.bg + ';margin-bottom:8px;',
+      };
+    });
+
+    function makePost(p) {
+      return {
+        platform: p.platform, title: p.title, time: p.time,
+        platformStyle: self.platformTagStyle(),
+        statusStyle: self.tagStyle(p.status), status: p.status,
+        location: p.location || null,
+        mapPinEl: p.location ? self.icon('mapPin', { size: 12, color: accent700 }) : null,
+        onOpen: function () { self.openPost(p); },
+      };
+    }
+    var queueItems = this.postsByDay[3].map(makePost);
+
+    var recentGens = [
+      { type: 'IMAGE', title: 'Pumpkin latte flat lay', time: '2h ago' },
+      { type: 'VIDEO', title: 'Barista pour-over b-roll', time: '5h ago' },
+      { type: 'VOICE', title: 'Fall menu VO — warm female', time: '1d ago' },
+    ];
+
+    var calendarDays = this.dayMeta.map(function (d, i) {
+      var selected = i === s.calendarDayIndex;
+      var today = i === 3;
+      var bg = selected ? accent : (today ? '#dbeafe' : 'transparent');
+      var color = selected ? '#ffffff' : '#0f172a';
+      return {
+        label: d.label, date: d.date,
+        style: 'display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 0;border-radius:16px;width:38px;background:' + bg + ';color:' + color + ';border:none;cursor:pointer;',
+        onSelect: function () { self.setCalendarDay(i); },
+      };
+    });
+    var selectedDayPosts = this.postsByDay[s.calendarDayIndex].map(makePost);
+    var selectedDayLabel = this.dayMeta[s.calendarDayIndex].full;
+
+    var studioTabsData = [
+      { key: 'video', label: 'Video', icon: 'video' },
+      { key: 'image', label: 'Image', icon: 'image' },
+      { key: 'voice', label: 'Voice', icon: 'mic' },
+      { key: 'character', label: 'Character', icon: 'user' },
+    ];
+    var studioTabs = studioTabsData.map(function (t) {
+      var active = s.studioTab === t.key;
+      return {
+        label: t.label,
+        iconEl: self.icon(t.icon, { size: 14, color: active ? '#ffffff' : neutral700 }),
+        style: 'display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:999px;border:none;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;background:' + (active ? accent : 'transparent') + ';color:' + (active ? '#ffffff' : neutral700) + ';',
+        onSelect: function () { self.setStudioTab(t.key); },
+      };
+    });
+
+    var stepNames = ['Script', 'Scenes', 'Voiceover', 'B-roll', 'Export'];
+    var currentStep = 1;
+    var stepChips = stepNames.map(function (name, i) {
+      var st = i < currentStep ? 'done' : (i === currentStep ? 'current' : 'todo');
+      var style = 'display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;' +
+        (st === 'done' ? 'background:#ecfdf5;color:#059669;' : st === 'current' ? 'background:#2563eb;color:#ffffff;' : 'background:#e2e8f0;color:#64748b;');
+      return { name: name, style: style, showCheck: st === 'done' };
+    });
+
+    var pastVideoProjects = [
+      { title: 'Behind the Roast', status: 'Published', duration: '1:02' },
+      { title: 'Espresso Machine Demo', status: 'Draft', duration: '0:35' },
+      { title: 'Customer Testimonial — Jordan', status: 'Review', duration: '0:58' },
+    ].map(function (p) { return { title: p.title, duration: p.duration, statusStyle: self.tagStyle(p.status), status: p.status }; });
+
+    function notifIconWrap(icon, color, bg) {
+      return { iconEl: self.icon(icon, { size: 15, color: color }), wrapStyle: 'width:34px;height:34px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none;background:' + bg + ';' };
+    }
+    var notifToday = [
+      Object.assign({ title: 'Fall Menu Launch reel published to Instagram', time: '2:31 PM', unread: true }, notifIconWrap('check', accent2_700, '#ecfdf5')),
+      Object.assign({ title: 'TikTok post scheduled for 5:00 PM', time: '12:00 PM', unread: true }, notifIconWrap('clock', accent700, '#eff6ff')),
+      Object.assign({ title: 'Jordan approved your caption draft', time: '11:14 AM', unread: false }, notifIconWrap('usersTeam', neutral700, '#f8fafc')),
+    ];
+    var notifEarlier = [
+      Object.assign({ title: 'Character Studio avatars are now live', time: 'Yesterday', unread: false }, notifIconWrap('spark', accent700, '#dbeafe')),
+      Object.assign({ title: 'Sam joined the Willow & Rye workspace', time: '3 days ago', unread: false }, notifIconWrap('usersTeam', neutral700, '#f8fafc')),
+    ];
+    var hasUnread = notifToday.some(function (n) { return n.unread; });
+
+    function toolItem(icon, label, color, bg) {
+      return { label: label, iconEl: self.icon(icon, { size: 16, color: color }), wrapStyle: 'width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:' + bg + ';', onSelect: function () {} };
+    }
+    var moreGroups = [
+      { groupLabel: 'Studios', items: [
+        toolItem('image', 'Image Studio', accent700, '#eff6ff'),
+        toolItem('mic', 'Voice Studio', accent2_700, '#ecfdf5'),
+        toolItem('user', 'Character Studio', accent700, '#dbeafe'),
+        toolItem('bookmark', 'Brand Brain', neutral700, '#f8fafc'),
+      ]},
+      { groupLabel: 'Workspace', items: [
+        toolItem('folder', 'Projects', accent700, '#eff6ff'),
+        toolItem('megaphone', 'Campaigns', accent2_700, '#ecfdf5'),
+        toolItem('chart', 'Analytics', accent2_700, '#d1fae5'),
+        toolItem('usersTeam', 'Team', neutral700, '#f8fafc'),
+        toolItem('layers', 'Integrations', neutral700, '#e2e8f0'),
+        toolItem('zap', 'Automation', accent700, '#dbeafe'),
+        toolItem('botFace', 'AI Agents', neutral700, '#f8fafc'),
+        toolItem('shoppingBag', 'Marketplace', accent700, '#eff6ff'),
+      ]},
+      { groupLabel: 'Account', items: [
+        toolItem('creditCard', 'Billing & Credits', accent700, '#eff6ff'),
+        toolItem('gear', 'Settings', neutral700, '#e2e8f0'),
+        toolItem('helpCircle', 'Help & Support', neutral700, '#f8fafc'),
+      ]},
+    ];
+
+    var showMainBody = s.screen === 'app' && !s.showCreate && !s.showNotifications;
+    var sp = s.selectedPost;
+
+    return {
+      isOnboarding: s.screen === 'onboarding',
+      isLogin: s.screen === 'login',
+      isApp: s.screen === 'app',
+      onboardSlide: onboardSlide,
+      onboardDots: onboardDots,
+      onboardNext: function () { self.nextOnboard(); },
+      onboardSkip: function () { self.skipOnboard(); },
+      onboardNextIcon: this.icon('chevronRight', { size: 22, color: '#ffffff' }),
+      loginSparkIcon: this.icon('spark', { size: 18, color: '#ffffff' }),
+      workspaceName: workspaceName,
+      doLogin: function () { self.doLogin(); },
+
+      showCreateOverlay: s.showCreate,
+      showNotifOverlay: s.showNotifications,
+      showMainBody: showMainBody,
+
+      isTabHome: s.activeTab === 'home',
+      isTabCalendar: s.activeTab === 'calendar',
+      isTabStudio: s.activeTab === 'studio',
+      isTabProfile: s.activeTab === 'profile',
+
+      goHome: function () { self.goTab('home'); },
+      goCalendar: function () { self.goTab('calendar'); },
+      goStudio: function () { self.goTab('studio'); },
+      goProfile: function () { self.goTab('profile'); },
+      navHomeIcon: this.icon('home', { size: 20, color: navColor('home') }),
+      navCalendarIcon: this.icon('calendar', { size: 20, color: navColor('calendar') }),
+      navStudioIcon: this.icon('video', { size: 20, color: navColor('studio') }),
+      navProfileIcon: this.icon('user', { size: 20, color: navColor('profile') }),
+      navHomeLabelStyle: navLabelStyle('home'),
+      navCalendarLabelStyle: navLabelStyle('calendar'),
+      navStudioLabelStyle: navLabelStyle('studio'),
+      navProfileLabelStyle: navLabelStyle('profile'),
+      plusIcon: this.icon('plus', { size: 24, color: '#ffffff' }),
+      openCreate: function () { self.openCreate(); },
+      closeCreate: function () { self.closeCreate(); },
+      openNotif: function () { self.openNotif(); },
+      closeNotif: function () { self.closeNotif(); },
+      bellIcon: this.icon('bell', { size: 17, color: text }),
+      hasUnread: hasUnread,
+
+      greeting: greetWord + ', ' + firstName,
+      quickActions: quickActions,
+      statCards: statCards,
+      queueItems: queueItems,
+      recentGens: recentGens,
+
+      calendarDays: calendarDays,
+      selectedDayLabel: selectedDayLabel,
+      selectedDayPosts: selectedDayPosts,
+      hasSelectedDayPosts: selectedDayPosts.length > 0,
+
+      studioTabs: studioTabs,
+      isStudioVideo: s.studioTab === 'video',
+      isStudioImage: s.studioTab === 'image',
+      isStudioVoice: s.studioTab === 'voice',
+      isStudioCharacter: s.studioTab === 'character',
+      stepChips: stepChips,
+      checkIconTiny: this.icon('check', { size: 10, color: '#059669' }),
+      playIconWhite: this.icon('play', { size: 18, color: '#ffffff' }),
+      continueProject: { title: 'Fall Menu Launch — Reel', duration: '0:42', stepLabel: 'Scenes (3/5)' },
+      pastVideoProjects: pastVideoProjects,
+
+      notifToday: notifToday,
+      notifEarlier: notifEarlier,
+
+      userInitials: initials,
+      userFullName: fullName,
+      moreGroups: moreGroups,
+      signOut: function () { self.signOut(); },
+      logOutIcon: this.icon('logOut', { size: 16, color: neutral700 }),
+
+      hasSelectedPost: !!sp,
+      selectedPost: sp ? {
+        platform: sp.platform, title: sp.title, time: sp.time, status: sp.status,
+        platformStyle: this.platformTagStyle(), statusStyle: this.tagStyle(sp.status),
+        location: sp.location || null,
+        mapPinEl: sp.location ? this.icon('mapPin', { size: 13, color: accent700 }) : null,
+      } : null,
+      closePost: function () { self.closePost(); },
+
+      createScreenSet: !!s.createScreen,
+      createScreenList: !s.createScreen,
+      createScreenCapture: s.createScreen === 'capture',
+      createScreenWizard: s.createScreen === 'wizard',
+      createScreenVoice: s.createScreen === 'voice',
+      createScreenUpload: s.createScreen === 'upload',
+      createTitle: s.createScreen === 'wizard' ? 'AI Wizard' : s.createScreen === 'capture' ? 'Quick Capture' : s.createScreen === 'voice' ? 'Voice Note' : s.createScreen === 'upload' ? 'Upload Media' : 'Create',
+      backToCreateList: function () { self.backToCreateList(); },
+      openWizard: function () { self.openCreateScreen('wizard'); },
+      openCapture: function () { self.openCreateScreen('capture'); },
+      openVoice: function () { self.openCreateScreen('voice'); },
+      openUpload: function () { self.openCreateScreen('upload'); },
+      wizardTypes: ['Instagram Reel', 'Carousel', 'Blog Post'].map(function (t) {
+        var active = s.wizardType === t;
+        return { label: t, onSelect: function () { self.setWizardType(t); }, style: 'padding:8px 14px;border-radius:999px;border:none;cursor:pointer;font-size:12.5px;font-weight:700;background:' + (active ? accent : '#f1f5f9') + ';color:' + (active ? '#ffffff' : '#334155') + ';' };
+      }),
+      wizardGoals: ['Awareness', 'Engagement', 'Sales'].map(function (g) {
+        var active = s.wizardGoal === g;
+        return { label: g, onSelect: function () { self.setWizardGoal(g); }, style: 'padding:8px 14px;border-radius:999px;border:none;cursor:pointer;font-size:12.5px;font-weight:700;background:' + (active ? accent : '#f1f5f9') + ';color:' + (active ? '#ffffff' : '#334155') + ';' };
+      }),
+      wizardGenerated: s.wizardGenerated,
+      generateWizard: function () { self.generateWizard(); },
+      recordButtonStyle: 'width:88px;height:88px;border-radius:999px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:' + (s.voiceRecording ? '#1d4ed8' : accent) + ';box-shadow:0 3px 12px rgba(15,23,42,0.18);',
+      micIconBig: this.icon('mic', { size: 34, color: '#ffffff' }),
+      voiceTimerLabel: s.voiceRecording ? '00:12' : (s.voiceHasResult ? '00:14' : '00:00'),
+      waveformBars: [6, 14, 22, 12, 28, 18, 24, 10, 20, 15, 9, 17].map(function (h) {
+        return { style: 'width:3px;height:' + h + 'px;border-radius:2px;background:' + (s.voiceRecording ? accent : '#cbd5e1') + ';' };
+      }),
+      voiceHasResult: s.voiceHasResult,
+      toggleRecording: function () { self.toggleRecording(); },
+      uploadTiles: [0, 1, 2, 3, 4, 5].map(function (i) {
+        return { selected: !!s.uploadSelected[i], onSelect: function () { self.toggleUploadTile(i); } };
+      }),
+      checkIconWhite: this.icon('check', { size: 11, color: '#ffffff' }),
+      uploadButtonLabel: (function () { var n = Object.keys(s.uploadSelected).filter(function (k) { return s.uploadSelected[k]; }).length; return n > 0 ? 'Upload ' + n + ' selected' : 'Upload media'; })(),
+      captureLocationOn: s.captureLocationOn,
+      toggleLocation: function () { self.toggleLocation(); },
+      locationText: s.captureLocationOn ? 'Willow & Rye, 214 Main St, Austin TX' : 'Location off',
+      toggleTrackStyle: 'width:44px;height:26px;border-radius:999px;position:relative;cursor:pointer;border:none;flex:none;background:' + (s.captureLocationOn ? accent : '#cbd5e1') + ';',
+      toggleKnobStyle: 'position:absolute;top:3px;left:' + (s.captureLocationOn ? '21px' : '3px') + ';width:20px;height:20px;border-radius:999px;background:#ffffff;transition:left .15s;',
+      cameraIconBig: this.icon('camera', { size: 26, color: accent700 }),
+      xIcon: this.icon('x', { size: 18, color: text }),
+      arrowLeftIcon: this.icon('arrowLeft', { size: 18, color: text }),
+      sparkIconMed: this.icon('spark', { size: 18, color: accent700 }),
+      micIconMed: this.icon('mic', { size: 18, color: accent2_700 }),
+      uploadIconMed: this.icon('upload', { size: 18, color: neutral700 }),
+      mapPinSmall: this.icon('mapPin', { size: 14, color: accent700 }),
+      heroSparkIcon: this.icon('spark', { size: 14, color: '#93c5fd' }),
+    };
+  }
+}
+</script>
+</body>
+</html>

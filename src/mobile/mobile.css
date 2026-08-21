@@ -1,0 +1,11 @@
+/* Scoped to the /m mobile app shell only - the rest of LumoraOS uses the
+   system font stack, but the mobile app's design reference (see
+   ../../design_handoff_mobile_app/) calls for a distinct display face on
+   headings, greetings and stat values to give the mobile surface its own
+   personality. Body text stays on the app's default sans stack. */
+@import url('https://fonts.googleapis.com/css2?family=Caprasimo&display=swap');
+
+.lumora-mobile .font-display {
+  font-family: 'Caprasimo', ui-serif, Georgia, serif;
+  font-weight: 400;
+}
