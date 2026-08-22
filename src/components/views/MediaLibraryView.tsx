@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FileAudio, FolderOpen, Loader2, Mic, Search, Trash2, Video } from 'lucide-react';
+import { FileAudio, FolderOpen, Loader2, Mic, Search, Trash2, UserRound, Video } from 'lucide-react';
 import { ViewType } from '../../types';
 import { deleteMediaAsset, listMyGallery, MediaAsset, MediaAssetType } from '../../lib/api';
 
@@ -11,9 +11,19 @@ const FILTERS: { id: 'all' | MediaAssetType; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'image', label: 'Images' },
   { id: 'video', label: 'Videos' },
+  { id: 'character', label: 'Characters' },
   { id: 'audio', label: 'Audio' },
   { id: 'document', label: 'Documents' },
 ];
+
+/** Character Studio's talking-avatar clips are real video files (an
+ * .mp4/.webm the provider rendered), so they render with the same <video>
+ * element 'video' assets use - just tagged with a distinct corner badge so
+ * they're still visually distinguishable from Video Studio output when
+ * browsing "All", now that they're a separate type. */
+const TYPE_BADGE: Partial<Record<MediaAssetType, string>> = {
+  character: 'Character',
+};
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -108,12 +118,18 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = () => {
               <div className="aspect-video rounded-xl bg-slate-950 overflow-hidden relative flex items-center justify-center">
                 {asset.type === 'image' ? (
                   <img src={asset.url} alt={asset.fileName} className="w-full h-full object-cover" />
-                ) : asset.type === 'video' ? (
+                ) : asset.type === 'video' || asset.type === 'character' ? (
                   <video src={asset.url} className="w-full h-full object-cover" muted />
                 ) : asset.type === 'audio' ? (
                   <Mic className="w-8 h-8 text-slate-500" />
                 ) : (
                   <FileAudio className="w-8 h-8 text-slate-500" />
+                )}
+                {TYPE_BADGE[asset.type] && (
+                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-black/60 text-white text-[10px] font-semibold">
+                    <UserRound className="w-3 h-3" />
+                    {TYPE_BADGE[asset.type]}
+                  </span>
                 )}
                 <button
                   onClick={() => handleDelete(asset.id)}

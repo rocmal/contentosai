@@ -27,11 +27,12 @@ export class GalleryLimitExceededException extends HttpException {
   }
 }
 
-/** Applies to images + videos combined, not audio/documents - storage abuse
- * is a visual-media-size concern, and this is the single choke point every
- * image/video creation path already calls (Image Studio, Video Studio's
- * AI-generate, Character Studio, and the gallery upload endpoint), so
- * enforcing it here covers all of them at once. */
+/** Applies to images + videos + character clips combined, not audio/
+ * documents - storage abuse is a visual-media-size concern, and this is
+ * the single choke point every image/video/character creation path
+ * already calls (Image Studio, Video Studio's AI-generate, Character
+ * Studio, and the gallery upload endpoint), so enforcing it here covers
+ * all of them at once. */
 export const MAX_GALLERY_MEDIA_PER_USER = 100;
 
 @Injectable()
@@ -92,25 +93,33 @@ export class MediaAssetsService {
     return this.mediaAssetsRepository.findOne({ createdBy: userId, cacheKeyHash });
   }
 
-  /** This user's total image+video count, regardless of workspace - used to
-   * enforce MAX_GALLERY_MEDIA_PER_USER. Two equality-filtered counts rather
-   * than one Op.in filter, matching the scalar-filter shape already used
-   * elsewhere in this codebase (e.g. findOne({workspaceId, provider,
-   * status})) instead of relying on a Sequelize operator-object filter. */
+  /** This user's total image+video+character count, regardless of
+   * workspace - used to enforce MAX_GALLERY_MEDIA_PER_USER. Three
+   * equality-filtered counts rather than one Op.in filter, matching the
+   * scalar-filter shape already used elsewhere in this codebase (e.g.
+   * findOne({workspaceId, provider, status})) instead of relying on a
+   * Sequelize operator-object filter. */
   async countGalleryMedia(userId: string): Promise<number> {
-    const [images, videos] = await Promise.all([
+    const [images, videos, characters] = await Promise.all([
       this.mediaAssetsRepository.count({ createdBy: userId, type: MediaAssetType.IMAGE }),
       this.mediaAssetsRepository.count({ createdBy: userId, type: MediaAssetType.VIDEO }),
+      this.mediaAssetsRepository.count({ createdBy: userId, type: MediaAssetType.CHARACTER }),
     ]);
-    return images + videos;
+    return images + videos + characters;
   }
 
-  /** Persists a freshly-generated (already uploaded to storage) image/audio
-   * result into the gallery, doubling as this user's generation cache.
-   * Enforces MAX_GALLERY_MEDIA_PER_USER for image/video types only - the
-   * single choke point every image/video creation path already calls. */
+  /** Persists a freshly-generated (already uploaded to storage) image/audio/
+   * character result into the gallery, doubling as this user's generation
+   * cache. Enforces MAX_GALLERY_MEDIA_PER_USER for image/video/character
+   * types only - the single choke point every one of those creation paths
+   * already calls. */
   async saveGenerated(data: CreateMediaAssetData, actorId?: string): Promise<MediaAsset> {
-    if (actorId && (data.type === MediaAssetType.IMAGE || data.type === MediaAssetType.VIDEO)) {
+    if (
+      actorId &&
+      (data.type === MediaAssetType.IMAGE ||
+        data.type === MediaAssetType.VIDEO ||
+        data.type === MediaAssetType.CHARACTER)
+    ) {
       const count = await this.countGalleryMedia(actorId);
       if (count >= MAX_GALLERY_MEDIA_PER_USER) {
         throw new GalleryLimitExceededException(MAX_GALLERY_MEDIA_PER_USER);

@@ -72,7 +72,7 @@ describe('CharacterService', () => {
         expect.objectContaining({
           organizationId: 'org-1',
           workspaceId: 'workspace-1',
-          type: MediaAssetType.VIDEO,
+          type: MediaAssetType.CHARACTER,
           provider: 'did',
           url: 'https://cdn.example.com/character/job-1.mp4',
         }),

@@ -22,11 +22,12 @@ function galleryTitles(items: api.MediaAsset[]): string {
 
 export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubTab, onOpenCreate }) => {
   // Fetched once on mount rather than per-sub-tab, so switching between
-  // Video/Image/Voice/Character never shows a loading flicker - four small
+  // Video/Image/Voice/Character never shows a loading flicker - five small
   // requests is cheap next to that.
   const [recentVideos, setRecentVideos] = useState<api.MediaAsset[]>([]);
   const [recentImages, setRecentImages] = useState<api.MediaAsset[]>([]);
   const [recentVoice, setRecentVoice] = useState<api.MediaAsset[]>([]);
+  const [recentCharacters, setRecentCharacters] = useState<api.MediaAsset[]>([]);
   const [avatarsTotal, setAvatarsTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,13 +37,15 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
       api.listMyGallery('video', 2),
       api.listMyGallery('image', 2),
       api.listMyGallery('audio', 1),
+      api.listMyGallery('character', 2),
       api.listAvatars({ limit: 1 }),
     ])
-      .then(([videos, images, voice, avatars]) => {
+      .then(([videos, images, voice, characters, avatars]) => {
         if (cancelled) return;
         setRecentVideos(videos);
         setRecentImages(images);
         setRecentVoice(voice);
+        setRecentCharacters(characters);
         setAvatarsTotal(avatars.meta.totalItems);
       })
       .catch(() => {
@@ -83,11 +86,10 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
               still no editable, resumable "Continue editing" project or a
               real past-projects list with step progress - that's an honest
               hand-off to desktop below, not a data gap in the Recent line.
-              The Recent line itself IS real (video generations now save to
-              the gallery), though a character-generated clip can appear
-              here too - MediaAssetType has no separate 'character' value,
-              so Character Studio's talking-avatar output is saved as
-              'video' as well (see mediaDisplay.ts). */}
+              The Recent line itself is real, and (unlike before) is now
+              actually Video Studio output only - Character Studio's clips
+              have their own 'character' type, so they no longer show up
+              mixed in here (see mediaDisplay.ts). */}
           <div className="bg-slate-100 rounded-[20px] p-[18px] mb-[18px]">
             <h3 className="text-sm text-slate-900 mb-1.5">Video Studio</h3>
             {loading ? (
@@ -140,11 +142,18 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
           {loading ? (
             <Loader2 className="w-4 h-4 text-slate-400 animate-spin mb-3" />
           ) : (
-            <p className="text-[12.5px] text-slate-600 mb-3">
-              {avatarsTotal !== null && avatarsTotal > 0
-                ? `${avatarsTotal} avatar${avatarsTotal === 1 ? '' : 's'} ready to animate`
-                : 'No avatars set up yet.'}
-            </p>
+            <>
+              <p className="text-[12.5px] text-slate-600 mb-1.5">
+                {avatarsTotal !== null && avatarsTotal > 0
+                  ? `${avatarsTotal} avatar${avatarsTotal === 1 ? '' : 's'} ready to animate`
+                  : 'No avatars set up yet.'}
+              </p>
+              <p className="text-[12.5px] text-slate-600 mb-3">
+                {recentCharacters.length > 0
+                  ? `Recent: ${galleryTitles(recentCharacters)}`
+                  : 'No talking-avatar videos generated yet.'}
+              </p>
+            </>
           )}
           <p className="text-[11px] text-slate-500 m-0">Upload a photo and script on desktop to set up a new avatar.</p>
         </div>

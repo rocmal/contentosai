@@ -5,6 +5,12 @@ export enum MediaAssetType {
   VIDEO = 'video',
   AUDIO = 'audio',
   DOCUMENT = 'document',
+  /** Character Studio's talking-avatar clips - distinct from VIDEO so
+   * Media Library, the gallery cap, and Recent Generations feeds can tell
+   * a Character Studio output apart from a Video Studio one. Counts toward
+   * MAX_GALLERY_MEDIA_PER_USER the same way IMAGE/VIDEO do (see
+   * MediaAssetsService.countGalleryMedia). */
+  CHARACTER = 'character',
 }
 
 export interface MediaAsset extends BaseTenantEntity {

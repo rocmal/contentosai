@@ -1516,7 +1516,7 @@ export async function scheduleGeneratedContent(input: {
 // (see ImageService/VoiceService), so this just lists them back for reuse.
 // ---------------------------------------------------------------------------
 
-export type MediaAssetType = 'image' | 'video' | 'audio' | 'document';
+export type MediaAssetType = 'image' | 'video' | 'audio' | 'document' | 'character';
 
 export interface MediaAsset {
   id: string;
@@ -1541,12 +1541,10 @@ export async function listMyGallery(type?: MediaAssetType, limit = 40): Promise<
 
 /** Same endpoint as listMyGallery, but keeps the pagination meta instead of
  * dropping it - callers that just need a total count (e.g. a "Generations"
- * stat) can read meta.totalItems without pulling every item. Covers image,
- * audio, and video generations (Image/Voice/Video Studio) plus direct
- * uploads. Character Studio's talking-avatar clips are saved here too, but
- * as type 'video' - MediaAssetType has no separate 'character' variant, so
- * a character-generated clip is indistinguishable from a Video Studio
- * output by type alone once it's in the gallery. */
+ * stat) can read meta.totalItems without pulling every item. Covers every
+ * studio's generated output (Image/Voice/Video/Character) plus direct
+ * uploads - Character Studio's talking-avatar clips have their own
+ * 'character' type, distinct from 'video'. */
 export async function getMyGalleryPage(
   input: { type?: MediaAssetType; page?: number; limit?: number } = {},
 ): Promise<{

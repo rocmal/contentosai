@@ -38,27 +38,29 @@ describe('MediaAssetsService', () => {
   });
 
   describe('countGalleryMedia', () => {
-    it('sums image and video counts for the user', async () => {
+    it('sums image, video, and character counts for the user', async () => {
       repository.count
         .mockResolvedValueOnce(3) // images
-        .mockResolvedValueOnce(5); // videos
+        .mockResolvedValueOnce(5) // videos
+        .mockResolvedValueOnce(2); // character clips
 
       const count = await service.countGalleryMedia('user-1');
 
-      expect(count).toBe(8);
+      expect(count).toBe(10);
       expect(repository.count).toHaveBeenCalledWith({ createdBy: 'user-1', type: MediaAssetType.IMAGE });
       expect(repository.count).toHaveBeenCalledWith({ createdBy: 'user-1', type: MediaAssetType.VIDEO });
+      expect(repository.count).toHaveBeenCalledWith({ createdBy: 'user-1', type: MediaAssetType.CHARACTER });
     });
   });
 
   describe('saveGenerated', () => {
-    // countGalleryMedia sums two separate count() calls (images, then
-    // videos - see the Promise.all call order asserted in the
-    // countGalleryMedia tests above), so each case here sets both via
+    // countGalleryMedia sums three separate count() calls (images, videos,
+    // character clips - see the Promise.all call order asserted in the
+    // countGalleryMedia tests above), so each case here sets all three via
     // mockResolvedValueOnce rather than a single persistent mockResolvedValue
-    // - otherwise both calls return the same number and get double-counted.
+    // - otherwise every call returns the same number and gets miscounted.
     it('creates the asset when the user is under the cap', async () => {
-      repository.count.mockResolvedValueOnce(MAX_GALLERY_MEDIA_PER_USER - 1).mockResolvedValueOnce(0);
+      repository.count.mockResolvedValueOnce(MAX_GALLERY_MEDIA_PER_USER - 1).mockResolvedValueOnce(0).mockResolvedValueOnce(0);
 
       const result = await service.saveGenerated(baseData, 'user-1');
 
@@ -68,14 +70,14 @@ describe('MediaAssetsService', () => {
     });
 
     it('rejects a new image once the user is exactly at the cap', async () => {
-      repository.count.mockResolvedValueOnce(MAX_GALLERY_MEDIA_PER_USER).mockResolvedValueOnce(0);
+      repository.count.mockResolvedValueOnce(MAX_GALLERY_MEDIA_PER_USER).mockResolvedValueOnce(0).mockResolvedValueOnce(0);
 
       await expect(service.saveGenerated(baseData, 'user-1')).rejects.toThrow(GalleryLimitExceededException);
       expect(repository.create).not.toHaveBeenCalled();
     });
 
     it('rejects a new video once the user is at the cap too', async () => {
-      repository.count.mockResolvedValueOnce(0).mockResolvedValueOnce(MAX_GALLERY_MEDIA_PER_USER);
+      repository.count.mockResolvedValueOnce(0).mockResolvedValueOnce(MAX_GALLERY_MEDIA_PER_USER).mockResolvedValueOnce(0);
 
       await expect(
         service.saveGenerated({ ...baseData, type: MediaAssetType.VIDEO }, 'user-1'),
@@ -83,14 +85,23 @@ describe('MediaAssetsService', () => {
       expect(repository.create).not.toHaveBeenCalled();
     });
 
-    it('does not enforce the cap for audio - the quota only ever applies to image/video', async () => {
+    it('rejects a new character clip once the user is at the cap too - it shares the same quota as image/video', async () => {
+      repository.count.mockResolvedValueOnce(0).mockResolvedValueOnce(0).mockResolvedValueOnce(MAX_GALLERY_MEDIA_PER_USER);
+
+      await expect(
+        service.saveGenerated({ ...baseData, type: MediaAssetType.CHARACTER, mimeType: 'video/mp4' }, 'user-1'),
+      ).rejects.toThrow(GalleryLimitExceededException);
+      expect(repository.create).not.toHaveBeenCalled();
+    });
+
+    it('does not enforce the cap for audio - the quota only ever applies to image/video/character', async () => {
       await service.saveGenerated({ ...baseData, type: MediaAssetType.AUDIO, mimeType: 'audio/mpeg' }, 'user-1');
 
       expect(repository.count).not.toHaveBeenCalled();
       expect(repository.create).toHaveBeenCalled();
     });
 
-    it('does not enforce the cap for documents - the quota only ever applies to image/video', async () => {
+    it('does not enforce the cap for documents - the quota only ever applies to image/video/character', async () => {
       await service.saveGenerated({ ...baseData, type: MediaAssetType.DOCUMENT, mimeType: 'application/pdf' }, 'user-1');
 
       expect(repository.count).not.toHaveBeenCalled();

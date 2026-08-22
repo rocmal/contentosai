@@ -18,11 +18,9 @@ export function relativeTimeShort(iso: string): string {
 
 /** MediaAssetType -> the label the mobile UI already uses for each studio
  * ("VOICE" rather than the backend's "audio", matching Studio's sub-tab
- * names). Image, Voice, and Video Studio outputs are all reflected here.
- * Character Studio's talking-avatar clips are too, but backend-side they're
- * saved as type 'video' (no distinct 'character' MediaAssetType exists), so
- * a card labeled VIDEO may be either a Video Studio or Character Studio
- * output - see getMyGalleryPage's doc comment in lib/api.ts. */
+ * names). Every studio's output is reflected here, each with its own
+ * distinct type - Character Studio's talking-avatar clips have their own
+ * 'character' type (not lumped into 'video'). */
 export function generationTypeLabel(type: MediaAssetType): string {
   switch (type) {
     case 'image':
@@ -31,6 +29,8 @@ export function generationTypeLabel(type: MediaAssetType): string {
       return 'VIDEO';
     case 'audio':
       return 'VOICE';
+    case 'character':
+      return 'CHARACTER';
     default:
       return 'FILE';
   }

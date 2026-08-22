@@ -6,8 +6,7 @@ import { GenerateCharacterDto } from '../dto/generate-character.dto';
 import { StorageService } from '@modules/storage/application/services/storage.service';
 import { MediaAssetsService } from '@modules/media/application/services/media-assets.service';
 import { MediaAssetType } from '@modules/media/domain/entities/media-asset.entity';
-import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util';
-import { CreditsService } from '@modules/credits/application/services/credits.service';
+import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util';import { CreditsService } from '@modules/credits/application/services/credits.service';
 import { CreditTransactionReason } from '@modules/credits/domain/entities/credit-transaction.entity';
 import { creditsForDurationSeconds } from '@modules/credits/credits.constants';
 
@@ -141,7 +140,7 @@ export class CharacterService {
             url: stored.url,
             mimeType: 'video/mp4',
             sizeBytes: buffer.length,
-            type: MediaAssetType.VIDEO,
+            type: MediaAssetType.CHARACTER,
             prompt: null,
             provider: result.provider,
             cacheKeyHash,

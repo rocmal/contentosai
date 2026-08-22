@@ -537,11 +537,12 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setSelectedGalleryIds(new Set());
     setIsLoadingGalleryPicker(true);
     try {
-      const [images, videos] = await Promise.all([
+      const [images, videos, characters] = await Promise.all([
         api.listMyGallery('image', 100),
         api.listMyGallery('video', 100),
+        api.listMyGallery('character', 100),
       ]);
-      setGalleryPickerAssets([...images, ...videos]);
+      setGalleryPickerAssets([...images, ...videos, ...characters]);
     } catch {
       setGalleryPickerAssets([]);
     } finally {
@@ -563,7 +564,9 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
   const handleAddSelectedFromGallery = () => {
     const picked = galleryPickerAssets.filter((asset) => selectedGalleryIds.has(asset.id));
-    const newScenes = picked.map((asset) => createScene(asset.url, asset.type === 'video' ? 'video' : 'image'));
+    const newScenes = picked.map((asset) =>
+      createScene(asset.url, asset.type === 'video' || asset.type === 'character' ? 'video' : 'image'),
+    );
     setScenes((prev) => [...prev, ...newScenes]);
     setIsGalleryPickerOpen(false);
   };
@@ -1437,7 +1440,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                                 isSelected ? 'border-blue-600' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-700'
                               }`}
                             >
-                              {asset.type === 'video' ? (
+                              {asset.type === 'video' || asset.type === 'character' ? (
                                 <video src={asset.url} muted className="w-full h-full object-cover" />
                               ) : (
                                 <img src={asset.url} alt="" className="w-full h-full object-cover" />
