@@ -7,6 +7,10 @@ export enum QueueName {
   CREDITS_RENEWAL = 'credits-renewal',
 }
 
+export enum VideoJobName {
+  POLL = 'poll-video-job',
+}
+
 export enum EmailJobName {
   VERIFICATION = 'send-verification-email',
   PASSWORD_RESET = 'send-password-reset-email',

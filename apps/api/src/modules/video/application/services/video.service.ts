@@ -10,6 +10,7 @@ import { CREDIT_COST, creditsForDurationSeconds } from '@modules/credits/credits
 import { VideoProviderFactory } from '../../infrastructure/video-provider.factory';
 import { VideoGenerationResult } from '../../domain/interfaces/video-provider.interface';
 import { GenerateVideoDto } from '../dto/generate-video.dto';
+import { VideoJobSubmittedEvent } from '../events/video-job-submitted.event';
 
 const DEFAULT_DURATION_SECONDS = 5;
 
@@ -74,11 +75,10 @@ export class VideoService {
       throw err;
     }
 
-    this.eventEmitter.emit('video.job-submitted', {
-      provider: result.provider,
-      jobId: result.jobId,
-      userId: actor.userId,
-    });
+    this.eventEmitter.emit(
+      'video.job-submitted',
+      new VideoJobSubmittedEvent(result.provider, result.jobId, actor.userId, actor.organizationId, actor.workspaceId),
+    );
 
     return result;
   }

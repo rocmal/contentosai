@@ -19,6 +19,7 @@ import { CreditsRenewalProcessor } from './processors/credits-renewal.processor'
 import { CreditsRenewalScheduler } from './credits-renewal.scheduler';
 import { EmailEventsListener } from './listeners/email-events.listener';
 import { SocialPublishEventsListener } from './listeners/social-publish-events.listener';
+import { VideoEventsListener } from './listeners/video-events.listener';
 
 /**
  * Wires BullMQ to Redis and registers every named queue plus its worker.
@@ -66,6 +67,7 @@ import { SocialPublishEventsListener } from './listeners/social-publish-events.l
     CreditsRenewalScheduler,
     EmailEventsListener,
     SocialPublishEventsListener,
+    VideoEventsListener,
   ],
   exports: [BullModule],
 })

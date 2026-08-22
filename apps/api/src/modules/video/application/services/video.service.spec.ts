@@ -5,6 +5,8 @@ import { MediaAssetType } from '@modules/media/domain/entities/media-asset.entit
 import { StorageService } from '@modules/storage/application/services/storage.service';
 import { VideoProviderFactory } from '../../infrastructure/video-provider.factory';
 import { IVideoProvider, VideoGenerationResult } from '../../domain/interfaces/video-provider.interface';
+import { GenerateVideoDto } from '../dto/generate-video.dto';
+import { VideoJobSubmittedEvent } from '../events/video-job-submitted.event';
 import { VideoService } from './video.service';
 
 describe('VideoService', () => {
@@ -117,6 +119,39 @@ describe('VideoService', () => {
       const result = await service.getJobStatus('runway', 'job-1', actor);
 
       expect(result).toEqual(completedResult);
+    });
+  });
+
+  describe('submitJob', () => {
+    const dto: GenerateVideoDto = { prompt: 'a cat', provider: 'runway', durationSeconds: 10 };
+
+    it('emits video.job-submitted with the full actor context, so the queue listener can seed server-side polling', async () => {
+      provider.submitJob.mockResolvedValue({ provider: 'runway', model: 'gen-3', jobId: 'job-2', status: 'processing' });
+
+      await service.submitJob(dto, actor);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'video.job-submitted',
+        expect.any(VideoJobSubmittedEvent),
+      );
+      const [, event] = eventEmitter.emit.mock.calls[0] as [string, VideoJobSubmittedEvent];
+      expect(event).toMatchObject({
+        provider: 'runway',
+        jobId: 'job-2',
+        userId: 'user-1',
+        organizationId: 'org-1',
+        workspaceId: 'workspace-1',
+      });
+    });
+
+    it('still emits the event (with undefined org/workspace) when the actor has no tenant context yet', async () => {
+      provider.submitJob.mockResolvedValue({ provider: 'runway', model: 'gen-3', jobId: 'job-3', status: 'processing' });
+
+      await service.submitJob(dto, { userId: 'user-1' });
+
+      const [, event] = eventEmitter.emit.mock.calls[0] as [string, VideoJobSubmittedEvent];
+      expect(event.organizationId).toBeUndefined();
+      expect(event.workspaceId).toBeUndefined();
     });
   });
 });
