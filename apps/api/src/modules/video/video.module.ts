@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CreditsModule } from '@modules/credits/credits.module';
+import { StorageModule } from '@modules/storage/storage.module';
+import { MediaModule } from '@modules/media/media.module';
 import { VeoProvider } from './infrastructure/providers/veo.provider';
 import { RunwayProvider } from './infrastructure/providers/runway.provider';
 import { KlingProvider } from './infrastructure/providers/kling.provider';
@@ -11,7 +13,7 @@ import { VideoService } from './application/services/video.service';
 import { VideoController } from './presentation/video.controller';
 
 @Module({
-  imports: [CreditsModule],
+  imports: [CreditsModule, StorageModule, MediaModule],
   controllers: [VideoController],
   providers: [
     VeoProvider,

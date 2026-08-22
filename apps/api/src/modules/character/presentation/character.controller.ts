@@ -27,8 +27,14 @@ export class CharacterController {
   @Get('jobs/:jobId')
   @RequirePermissions('character.generate')
   @ApiOperation({ summary: 'Check the status of a character video generation job' })
-  async getJobStatus(@Param('jobId') jobId: string, @Query() query: JobStatusQueryDto) {
-    return this.characterService.getJobStatus(query.provider, jobId);
+  async getJobStatus(
+    @Param('jobId') jobId: string,
+    @Query() query: JobStatusQueryDto,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string | null,
+    @CurrentUser('workspaceId') workspaceId: string | null,
+  ) {
+    return this.characterService.getJobStatus(query.provider, jobId, { userId, organizationId, workspaceId });
   }
 
   @Get('providers')

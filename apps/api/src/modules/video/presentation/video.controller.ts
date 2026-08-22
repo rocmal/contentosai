@@ -27,8 +27,14 @@ export class VideoController {
   @Get('jobs/:jobId')
   @RequirePermissions('video.generate')
   @ApiOperation({ summary: 'Check the status of a video generation job' })
-  async getJobStatus(@Param('jobId') jobId: string, @Query() query: JobStatusQueryDto) {
-    return this.videoService.getJobStatus(query.provider, jobId);
+  async getJobStatus(
+    @Param('jobId') jobId: string,
+    @Query() query: JobStatusQueryDto,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string | null,
+    @CurrentUser('workspaceId') workspaceId: string | null,
+  ) {
+    return this.videoService.getJobStatus(query.provider, jobId, { userId, organizationId, workspaceId });
   }
 
   @Get('providers')

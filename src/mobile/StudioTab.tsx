@@ -22,8 +22,9 @@ function galleryTitles(items: api.MediaAsset[]): string {
 
 export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubTab, onOpenCreate }) => {
   // Fetched once on mount rather than per-sub-tab, so switching between
-  // Image/Voice/Character never shows a loading flicker - three small
+  // Video/Image/Voice/Character never shows a loading flicker - four small
   // requests is cheap next to that.
+  const [recentVideos, setRecentVideos] = useState<api.MediaAsset[]>([]);
   const [recentImages, setRecentImages] = useState<api.MediaAsset[]>([]);
   const [recentVoice, setRecentVoice] = useState<api.MediaAsset[]>([]);
   const [avatarsTotal, setAvatarsTotal] = useState<number | null>(null);
@@ -31,9 +32,15 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([api.listMyGallery('image', 2), api.listMyGallery('audio', 1), api.listAvatars({ limit: 1 })])
-      .then(([images, voice, avatars]) => {
+    Promise.all([
+      api.listMyGallery('video', 2),
+      api.listMyGallery('image', 2),
+      api.listMyGallery('audio', 1),
+      api.listAvatars({ limit: 1 }),
+    ])
+      .then(([videos, images, voice, avatars]) => {
         if (cancelled) return;
+        setRecentVideos(videos);
         setRecentImages(images);
         setRecentVoice(voice);
         setAvatarsTotal(avatars.meta.totalItems);
@@ -72,17 +79,24 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
 
       {activeSubTab === 'video' && (
         <>
-          {/* No video-project entity exists in apps/api yet - video
-              generations aren't even saved to the media gallery, let alone
-              tracked as an editable, resumable project with steps. Rather
-              than show a fabricated "Continue editing" card and a fake
-              past-projects list, this is an honest hand-off to desktop
-              until that data model exists. */}
+          {/* No video-project entity exists in apps/api yet, so there's
+              still no editable, resumable "Continue editing" project or a
+              real past-projects list with step progress - that's an honest
+              hand-off to desktop below, not a data gap in the Recent line.
+              The Recent line itself IS real (video generations now save to
+              the gallery), though a character-generated clip can appear
+              here too - MediaAssetType has no separate 'character' value,
+              so Character Studio's talking-avatar output is saved as
+              'video' as well (see mediaDisplay.ts). */}
           <div className="bg-slate-100 rounded-[20px] p-[18px] mb-[18px]">
             <h3 className="text-sm text-slate-900 mb-1.5">Video Studio</h3>
-            <p className="text-[12.5px] text-slate-600 mb-3">
-              Turn a script into a finished video with AI scenes, voiceover, and b-roll.
-            </p>
+            {loading ? (
+              <Loader2 className="w-4 h-4 text-slate-400 animate-spin mb-3" />
+            ) : (
+              <p className="text-[12.5px] text-slate-600 mb-3">
+                {recentVideos.length > 0 ? `Recent: ${galleryTitles(recentVideos)}` : 'No videos generated yet.'}
+              </p>
+            )}
             <p className="text-[11px] text-slate-500 m-0">Project history and step-by-step editing open on desktop.</p>
           </div>
           <button

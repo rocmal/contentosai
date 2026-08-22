@@ -18,10 +18,11 @@ export function relativeTimeShort(iso: string): string {
 
 /** MediaAssetType -> the label the mobile UI already uses for each studio
  * ("VOICE" rather than the backend's "audio", matching Studio's sub-tab
- * names). Only image/audio ever come from AI generation today - video and
- * character generations don't call MediaAssetsService yet (see
- * getMyGalleryPage's doc comment in lib/api.ts), so this gallery-backed
- * feed under-represents those two studios until that's wired up too. */
+ * names). Image, Voice, and Video Studio outputs are all reflected here.
+ * Character Studio's talking-avatar clips are too, but backend-side they're
+ * saved as type 'video' (no distinct 'character' MediaAssetType exists), so
+ * a card labeled VIDEO may be either a Video Studio or Character Studio
+ * output - see getMyGalleryPage's doc comment in lib/api.ts. */
 export function generationTypeLabel(type: MediaAssetType): string {
   switch (type) {
     case 'image':

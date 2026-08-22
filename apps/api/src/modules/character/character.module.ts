@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { StorageModule } from '@modules/storage/storage.module';
+import { MediaModule } from '@modules/media/media.module';
 import { VoiceModule } from '@modules/voice/voice.module';
 import { CreditsModule } from '@modules/credits/credits.module';
 import { DidProvider } from './infrastructure/providers/did.provider';
@@ -12,7 +13,7 @@ import { CharacterService } from './application/services/character.service';
 import { CharacterController } from './presentation/character.controller';
 
 @Module({
-  imports: [StorageModule, VoiceModule, CreditsModule],
+  imports: [StorageModule, MediaModule, VoiceModule, CreditsModule],
   controllers: [CharacterController],
   providers: [
     DidProvider,
