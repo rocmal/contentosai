@@ -14,6 +14,7 @@ import { CreateOverlay } from './CreateOverlay';
 import { NotificationsOverlay } from './NotificationsOverlay';
 import { PostDetailSheet } from './PostDetailSheet';
 import { useMobilePosts, todayKey } from './useMobilePosts';
+import { useMobileNotifications } from './useMobileNotifications';
 import { MobilePost, MobileTab, StudioTab as StudioTabKey } from './types';
 
 const ONBOARDING_SEEN_KEY = 'lumora_mobile_onboarding_seen';
@@ -39,6 +40,7 @@ export const MobileApp: React.FC = () => {
   const [organizationName, setOrganizationName] = useState<string | null>(null);
   const [wallet, setWallet] = useState<api.CreditWallet | null>(null);
   const { posts, loading: postsLoading } = useMobilePosts();
+  const notifications = useMobileNotifications();
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -101,6 +103,7 @@ export const MobileApp: React.FC = () => {
             posts={posts}
             postsLoading={postsLoading}
             todayKey={todayKey()}
+            unreadNotifications={notifications.unreadCount}
             onOpenNotifications={() => setShowNotifications(true)}
             onOpenCreate={() => setShowCreate(true)}
             onNavigateTab={goTab}
@@ -126,7 +129,16 @@ export const MobileApp: React.FC = () => {
       <BottomTabBar activeTab={activeTab} onNavigate={goTab} onCreate={() => setShowCreate(true)} />
 
       {showCreate && <CreateOverlay onClose={() => setShowCreate(false)} />}
-      {showNotifications && <NotificationsOverlay onClose={() => setShowNotifications(false)} />}
+      {showNotifications && (
+        <NotificationsOverlay
+          today={notifications.today}
+          earlier={notifications.earlier}
+          loading={notifications.loading}
+          error={notifications.error}
+          onMarkRead={notifications.markRead}
+          onClose={() => setShowNotifications(false)}
+        />
+      )}
       {selectedPost && <PostDetailSheet post={selectedPost} onClose={() => setSelectedPost(null)} />}
     </div>
   );

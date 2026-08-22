@@ -1,8 +1,7 @@
-import React from 'react';
-import { Check, Image as ImageIcon, Mic, Play, UserRound, Video } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Image as ImageIcon, Loader2, Mic, UserRound, Video } from 'lucide-react';
+import * as api from '../lib/api';
 import { StudioTab as StudioTabKey } from './types';
-import { CONTINUE_PROJECT, CURRENT_STEP_INDEX, PAST_VIDEO_PROJECTS, STEP_NAMES } from './mockMobileData';
-import { studioStatusClasses } from './postDisplay';
 
 interface StudioTabProps {
   activeSubTab: StudioTabKey;
@@ -17,7 +16,39 @@ const SUB_TABS: { key: StudioTabKey; label: string; icon: React.FC<{ className?:
   { key: 'character', label: 'Character', icon: UserRound },
 ];
 
+function galleryTitles(items: api.MediaAsset[]): string {
+  return items.map((a) => a.prompt?.trim() || a.fileName).join(', ');
+}
+
 export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubTab, onOpenCreate }) => {
+  // Fetched once on mount rather than per-sub-tab, so switching between
+  // Image/Voice/Character never shows a loading flicker - three small
+  // requests is cheap next to that.
+  const [recentImages, setRecentImages] = useState<api.MediaAsset[]>([]);
+  const [recentVoice, setRecentVoice] = useState<api.MediaAsset[]>([]);
+  const [avatarsTotal, setAvatarsTotal] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([api.listMyGallery('image', 2), api.listMyGallery('audio', 1), api.listAvatars({ limit: 1 })])
+      .then(([images, voice, avatars]) => {
+        if (cancelled) return;
+        setRecentImages(images);
+        setRecentVoice(voice);
+        setAvatarsTotal(avatars.meta.totalItems);
+      })
+      .catch(() => {
+        // Each sub-panel below just falls back to its own empty-state copy.
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <div className="px-5 pt-3.5 pb-6">
       <h1 className="font-display text-[21px] text-slate-900 mb-4">Studio</h1>
@@ -41,76 +72,66 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
 
       {activeSubTab === 'video' && (
         <>
-          <div className="bg-slate-100 rounded-[20px] p-4 mb-[18px]">
-            <div className="flex gap-3 mb-3">
-              <div className="w-20 h-20 rounded-2xl bg-[repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1_8px,#94a3b8_8px,#94a3b8_16px)] flex-none flex items-center justify-center">
-                <Play className="w-[18px] h-[18px] text-white fill-white" />
-              </div>
-              <div className="flex flex-col justify-center gap-1">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Continue editing</span>
-                <span className="text-[13.5px] font-bold text-slate-900">{CONTINUE_PROJECT.title}</span>
-                <span className="text-[11px] text-slate-500">
-                  {CONTINUE_PROJECT.duration} · {CONTINUE_PROJECT.stepLabel}
-                </span>
-              </div>
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto">
-              {STEP_NAMES.map((name, i) => {
-                const state = i < CURRENT_STEP_INDEX ? 'done' : i === CURRENT_STEP_INDEX ? 'current' : 'todo';
-                const cls =
-                  state === 'done'
-                    ? 'bg-emerald-50 text-emerald-600'
-                    : state === 'current'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-200 text-slate-500';
-                return (
-                  <span key={name} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap ${cls}`}>
-                    {state === 'done' && <Check className="w-2.5 h-2.5" />}
-                    {name}
-                  </span>
-                );
-              })}
-            </div>
+          {/* No video-project entity exists in apps/api yet - video
+              generations aren't even saved to the media gallery, let alone
+              tracked as an editable, resumable project with steps. Rather
+              than show a fabricated "Continue editing" card and a fake
+              past-projects list, this is an honest hand-off to desktop
+              until that data model exists. */}
+          <div className="bg-slate-100 rounded-[20px] p-[18px] mb-[18px]">
+            <h3 className="text-sm text-slate-900 mb-1.5">Video Studio</h3>
+            <p className="text-[12.5px] text-slate-600 mb-3">
+              Turn a script into a finished video with AI scenes, voiceover, and b-roll.
+            </p>
+            <p className="text-[11px] text-slate-500 m-0">Project history and step-by-step editing open on desktop.</p>
           </div>
           <button
             onClick={onOpenCreate}
-            className="h-[46px] text-[13px] mb-[18px] w-full rounded-full bg-blue-600 text-white font-bold"
+            className="h-[46px] text-[13px] w-full rounded-full bg-blue-600 text-white font-bold"
           >
             New video
           </button>
-          <div className="text-[11px] font-bold tracking-wide uppercase text-slate-500 mb-2.5">Past projects</div>
-          <div className="flex flex-col gap-2">
-            {PAST_VIDEO_PROJECTS.map((p) => (
-              <div key={p.id} className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-100">
-                <div>
-                  <div className="text-[12.5px] font-bold text-slate-900">{p.title}</div>
-                  <div className="text-[11px] text-slate-500">{p.duration}</div>
-                </div>
-                <span className={studioStatusClasses(p.status)}>{p.status}</span>
-              </div>
-            ))}
-          </div>
         </>
       )}
 
       {activeSubTab === 'image' && (
         <div className="bg-slate-100 rounded-[20px] p-[18px]">
           <h3 className="text-sm text-slate-900 mb-1.5">Image Studio</h3>
-          <p className="text-[12.5px] text-slate-600 mb-3">Recent: Pumpkin Latte Flat Lay, Autumn Table Setting</p>
+          {loading ? (
+            <Loader2 className="w-4 h-4 text-slate-400 animate-spin mb-3" />
+          ) : (
+            <p className="text-[12.5px] text-slate-600 mb-3">
+              {recentImages.length > 0 ? `Recent: ${galleryTitles(recentImages)}` : 'No images generated yet.'}
+            </p>
+          )}
           <p className="text-[11px] text-slate-500 m-0">Full editor and upscaling tools open on desktop.</p>
         </div>
       )}
       {activeSubTab === 'voice' && (
         <div className="bg-slate-100 rounded-[20px] p-[18px]">
           <h3 className="text-sm text-slate-900 mb-1.5">Voice Studio</h3>
-          <p className="text-[12.5px] text-slate-600 mb-3">Voices: Warm Female (EN-US), Friendly Male (EN-US)</p>
-          <p className="text-[11px] text-slate-500 m-0">Recent: Fall Menu VO. Cloning tools open on desktop.</p>
+          {loading ? (
+            <Loader2 className="w-4 h-4 text-slate-400 animate-spin mb-3" />
+          ) : (
+            <p className="text-[12.5px] text-slate-600 mb-3">
+              {recentVoice.length > 0 ? `Recent: ${galleryTitles(recentVoice)}` : 'No voiceovers generated yet.'}
+            </p>
+          )}
+          <p className="text-[11px] text-slate-500 m-0">Cloning and voice-library tools open on desktop.</p>
         </div>
       )}
       {activeSubTab === 'character' && (
         <div className="bg-slate-100 rounded-[20px] p-[18px]">
           <h3 className="text-sm text-slate-900 mb-1.5">Character Studio</h3>
-          <p className="text-[12.5px] text-slate-600 mb-3">2 talking-avatar videos generated</p>
+          {loading ? (
+            <Loader2 className="w-4 h-4 text-slate-400 animate-spin mb-3" />
+          ) : (
+            <p className="text-[12.5px] text-slate-600 mb-3">
+              {avatarsTotal !== null && avatarsTotal > 0
+                ? `${avatarsTotal} avatar${avatarsTotal === 1 ? '' : 's'} ready to animate`
+                : 'No avatars set up yet.'}
+            </p>
+          )}
           <p className="text-[11px] text-slate-500 m-0">Upload a photo and script on desktop to set up a new avatar.</p>
         </div>
       )}

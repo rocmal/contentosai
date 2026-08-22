@@ -26,25 +26,10 @@ export interface OnboardSlide {
   iconBg: string;
 }
 
-export interface NotificationItem {
-  id: string;
-  title: string;
-  time: string;
-  unread: boolean;
-  icon: ReactNode;
-  iconBg: string;
-}
-
-export interface RecentGeneration {
-  id: string;
-  type: 'IMAGE' | 'VIDEO' | 'VOICE';
-  title: string;
-  time: string;
-}
-
-export interface PastStudioProject {
-  id: string;
-  title: string;
-  duration: string;
-  status: 'Published' | 'Draft' | 'Review';
-}
+// NotificationItem, RecentGeneration, and PastStudioProject used to live
+// here for the mock data in mockMobileData.tsx. Notifications and
+// generations are now typed directly off the API (api.AppNotification,
+// api.MediaAsset) instead of a separate UI-only shape - see
+// useMobileNotifications.ts and HomeTab.tsx. PastStudioProject had no real
+// counterpart to migrate to (no video-project entity exists in apps/api
+// yet) so it was dropped along with the mock "Past projects" list itself.

@@ -864,6 +864,41 @@ export async function listMyCreditTransactions(input: { page?: number; limit?: n
 }
 
 // ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+export type NotificationType = 'info' | 'warning' | 'success' | 'error';
+
+export interface AppNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: NotificationType;
+  readAt: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** GET /notifications is already scoped server-side to the current user
+ * (NotificationsController#findAll calls findByUser), so no userId param
+ * is needed here. */
+export async function listMyNotifications(input: { page?: number; limit?: number } = {}): Promise<{
+  items: AppNotification[];
+  meta: { totalItems: number; itemCount: number; itemsPerPage: number; totalPages: number; currentPage: number };
+}> {
+  const params = new URLSearchParams();
+  params.set('page', String(input.page ?? 1));
+  params.set('limit', String(input.limit ?? 20));
+  return apiRequest(`/notifications?${params.toString()}`);
+}
+
+export function markNotificationRead(id: string): Promise<AppNotification> {
+  return apiRequest<AppNotification>(`/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' });
+}
+
+// ---------------------------------------------------------------------------
 // User profile
 // ---------------------------------------------------------------------------
 
@@ -1502,6 +1537,25 @@ export async function listMyGallery(type?: MediaAssetType, limit = 40): Promise<
   if (type) params.set('type', type);
   const result = await apiRequest<{ items: MediaAsset[] }>(`/media/my?${params.toString()}`);
   return result.items;
+}
+
+/** Same endpoint as listMyGallery, but keeps the pagination meta instead of
+ * dropping it - callers that just need a total count (e.g. a "Generations"
+ * stat) can read meta.totalItems without pulling every item. Note this only
+ * covers image/audio generations plus direct uploads: video and character
+ * generations don't call MediaAssetsService yet, so they're not reflected
+ * here (see ADR/backlog - no generations feed exists for those two studios). */
+export async function getMyGalleryPage(
+  input: { type?: MediaAssetType; page?: number; limit?: number } = {},
+): Promise<{
+  items: MediaAsset[];
+  meta: { totalItems: number; itemCount: number; itemsPerPage: number; totalPages: number; currentPage: number };
+}> {
+  const params = new URLSearchParams();
+  params.set('page', String(input.page ?? 1));
+  params.set('limit', String(input.limit ?? 20));
+  if (input.type) params.set('type', input.type);
+  return apiRequest(`/media/my?${params.toString()}`);
 }
 
 export function deleteMediaAsset(id: string): Promise<{ deleted: boolean }> {

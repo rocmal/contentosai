@@ -30,15 +30,3 @@ export function statusClasses(status: MobilePost['status']): string {
 
 export const platformTagClasses =
   'inline-flex items-center text-[10px] font-bold tracking-wide px-2.5 py-[3px] rounded-full uppercase bg-slate-200 text-slate-700';
-
-/** Studio "past projects" status pill - a separate small set (Published/
- * Draft/Review) from MobilePost['status'] since these are local sample
- * projects, not real PublishingJob records (no "draft"/"review" state
- * exists server-side yet). Kept apart from statusClasses/statusLabel above
- * so real post statuses never get bent to fit unrelated fake states. */
-export function studioStatusClasses(status: 'Published' | 'Draft' | 'Review'): string {
-  const base = 'inline-flex items-center gap-1 text-[10px] font-bold tracking-wide px-2.5 py-[3px] rounded-full uppercase';
-  if (status === 'Published') return `${base} bg-emerald-50 text-emerald-600`;
-  if (status === 'Review') return `${base} bg-blue-100 text-blue-700`;
-  return `${base} bg-slate-200 text-slate-600`;
-}

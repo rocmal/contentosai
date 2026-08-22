@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { FindAllOptions, PaginatedResult } from '@shared/interfaces/base-repository.interface';
 import { Notification } from '../../domain/entities/notification.entity';
 import {
@@ -52,18 +52,37 @@ export class NotificationsService {
     return notification;
   }
 
-  async update(id: string, dto: UpdateNotificationDto, actorId?: string): Promise<Notification> {
-    await this.findById(id);
+  /**
+   * Same lookup as findById, but for the single-record read/write routes,
+   * which are reached by id rather than through the already-user-scoped
+   * findByUser list. Without this, `notifications.read`/`.update`/`.delete`
+   * being granted at all (even just "read/update/delete your own") would let
+   * one user act on another user's notification by id.
+   */
+  private async findOwnedById(id: string, actorId: string): Promise<Notification> {
+    const notification = await this.findById(id);
+    if (notification.userId !== actorId) {
+      throw new ForbiddenException('You do not have access to this notification');
+    }
+    return notification;
+  }
+
+  async findOwned(id: string, actorId: string): Promise<Notification> {
+    return this.findOwnedById(id, actorId);
+  }
+
+  async update(id: string, dto: UpdateNotificationDto, actorId: string): Promise<Notification> {
+    await this.findOwnedById(id, actorId);
     return this.notificationsRepository.update(id, dto, actorId);
   }
 
-  async markAsRead(id: string, actorId?: string): Promise<Notification> {
-    await this.findById(id);
+  async markAsRead(id: string, actorId: string): Promise<Notification> {
+    await this.findOwnedById(id, actorId);
     return this.notificationsRepository.update(id, { readAt: new Date() }, actorId);
   }
 
-  async remove(id: string, actorId?: string): Promise<void> {
-    await this.findById(id);
+  async remove(id: string, actorId: string): Promise<void> {
+    await this.findOwnedById(id, actorId);
     await this.notificationsRepository.delete(id, actorId);
   }
 }

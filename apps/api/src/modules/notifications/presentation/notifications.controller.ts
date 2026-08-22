@@ -45,8 +45,11 @@ export class NotificationsController {
   @Get(':id')
   @RequirePermissions('notifications.read')
   @ApiOperation({ summary: 'Get a notification by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<NotificationResponseDto> {
-    const notification = await this.notificationsService.findById(id);
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser('id') userId: string,
+  ): Promise<NotificationResponseDto> {
+    const notification = await this.notificationsService.findOwned(id, userId);
     return new NotificationResponseDto(notification);
   }
 

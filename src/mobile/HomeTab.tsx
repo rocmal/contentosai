@@ -1,9 +1,10 @@
-import React from 'react';
-import { Bell, Bookmark, Calendar, Loader2, Sparkles, Video, Zap } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Bookmark, Calendar, Loader2, Sparkles, Video, Zap } from 'lucide-react';
 import * as api from '../lib/api';
 import { MobilePost, MobileTab } from './types';
-import { NOTIF_BELL_HAS_UNREAD, RECENT_GENERATIONS } from './mockMobileData';
 import { platformLabel, platformTagClasses, statusClasses, statusLabel } from './postDisplay';
+import { generationTypeLabel, relativeTimeShort } from './mediaDisplay';
+import { NOTIFICATION_BELL_ICON } from './notificationDisplay';
 
 interface HomeTabProps {
   firstName: string;
@@ -12,6 +13,7 @@ interface HomeTabProps {
   posts: MobilePost[];
   postsLoading: boolean;
   todayKey: string;
+  unreadNotifications: number;
   onOpenNotifications: () => void;
   onOpenCreate: () => void;
   onNavigateTab: (tab: MobileTab) => void;
@@ -25,6 +27,11 @@ function greetingWord(): string {
   return 'Good evening';
 }
 
+function generationTitle(asset: api.MediaAsset): string {
+  const raw = asset.prompt?.trim() || asset.fileName;
+  return raw.length > 42 ? `${raw.slice(0, 42)}…` : raw;
+}
+
 export const HomeTab: React.FC<HomeTabProps> = ({
   firstName,
   workspaceName,
@@ -32,6 +39,7 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   posts,
   postsLoading,
   todayKey,
+  unreadNotifications,
   onOpenNotifications,
   onOpenCreate,
   onNavigateTab,
@@ -41,6 +49,35 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   const scheduledCount = posts.filter((p) => p.status === 'scheduled').length;
   const todaysQueue = posts.filter((p) => p.dateKey === todayKey).slice(0, 3);
 
+  // Home-tab-local (not needed by any other screen), so fetched here rather
+  // than lifted into MobileApp - same reasoning as CalendarTab's local
+  // `selected` day state. One request covers both the recent-generations
+  // strip and the "Generations" stat's total count.
+  const [recentGenerations, setRecentGenerations] = useState<api.MediaAsset[]>([]);
+  const [generationsTotal, setGenerationsTotal] = useState<number | null>(null);
+  const [generationsLoading, setGenerationsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .getMyGalleryPage({ limit: 6 })
+      .then((result) => {
+        if (cancelled) return;
+        setRecentGenerations(result.items);
+        setGenerationsTotal(result.meta.totalItems);
+      })
+      .catch(() => {
+        // Gallery couldn't load - the stat card falls back to "-" and the
+        // strip below just shows its own empty state.
+      })
+      .finally(() => {
+        if (!cancelled) setGenerationsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const quickActions = [
     { label: 'AI Wizard', sub: 'Zero-prompt generator', icon: Sparkles, bg: 'bg-blue-50', color: 'text-blue-700', onSelect: onOpenCreate },
     { label: 'Video Studio', sub: 'Scripts & B-roll', icon: Video, bg: 'bg-emerald-50', color: 'text-emerald-600', onSelect: () => onNavigateTab('studio') },
@@ -49,7 +86,14 @@ export const HomeTab: React.FC<HomeTabProps> = ({
   ];
 
   const statCards = [
-    { label: 'Generations', value: '68', sub: 'this month', icon: Sparkles, color: 'text-blue-700', bg: 'bg-blue-50' },
+    {
+      label: 'Generations',
+      value: generationsTotal === null ? '—' : generationsTotal.toLocaleString(),
+      sub: 'all time',
+      icon: Sparkles,
+      color: 'text-blue-700',
+      bg: 'bg-blue-50',
+    },
     { label: 'Published', value: String(publishedCount), sub: `${scheduledCount} scheduled`, icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     {
       label: 'Credits',
@@ -75,8 +119,8 @@ export const HomeTab: React.FC<HomeTabProps> = ({
           aria-label="Notifications"
           className="relative w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center flex-none"
         >
-          <Bell className="w-[17px] h-[17px] text-slate-900" />
-          {NOTIF_BELL_HAS_UNREAD && (
+          {NOTIFICATION_BELL_ICON}
+          {unreadNotifications > 0 && (
             <div className="absolute top-[7px] right-2 w-2 h-2 rounded-full bg-blue-600 border-[1.5px] border-white" />
           )}
         </button>
@@ -158,13 +202,22 @@ export const HomeTab: React.FC<HomeTabProps> = ({
         <h3 className="text-sm font-bold text-slate-900 m-0">Recent Generations</h3>
       </div>
       <div className="flex gap-2.5 overflow-x-auto pb-1">
-        {RECENT_GENERATIONS.map((g) => (
+        {generationsLoading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin my-3" />}
+        {!generationsLoading && recentGenerations.length === 0 && (
+          <p className="text-[12.5px] text-slate-500">Nothing generated yet — try the AI Wizard.</p>
+        )}
+        {recentGenerations.map((g) => (
           <div key={g.id} className="flex-none w-[132px]">
-            <div className="w-[132px] h-[88px] rounded-2xl bg-[repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1_8px,#94a3b8_8px,#94a3b8_16px)] flex items-end p-1.5 mb-1.5">
-              <span className="font-mono text-[9px] text-slate-700 bg-white/85 px-1.5 py-0.5 rounded">{g.type}</span>
+            <div className="w-[132px] h-[88px] rounded-2xl bg-[repeating-linear-gradient(135deg,#cbd5e1,#cbd5e1_8px,#94a3b8_8px,#94a3b8_16px)] flex items-end p-1.5 mb-1.5 overflow-hidden relative">
+              {g.type === 'image' && (
+                <img src={g.url} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+              )}
+              <span className="relative font-mono text-[9px] text-slate-700 bg-white/85 px-1.5 py-0.5 rounded">
+                {generationTypeLabel(g.type)}
+              </span>
             </div>
-            <div className="text-[11.5px] font-bold text-slate-900 leading-tight">{g.title}</div>
-            <div className="text-[10px] text-slate-500">{g.time}</div>
+            <div className="text-[11.5px] font-bold text-slate-900 leading-tight">{generationTitle(g)}</div>
+            <div className="text-[10px] text-slate-500">{relativeTimeShort(g.createdAt)}</div>
           </div>
         ))}
       </div>
