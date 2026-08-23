@@ -89,6 +89,14 @@ if ! docker compose run --rm --no-deps api npm run db:migrate; then
   exit 1
 fi
 
+log "Running database seeders against the new api image..."
+if ! docker compose run --rm --no-deps api npm run db:seed; then
+  echo "[deploy] Seeding failed. Containers were NOT touched - the previous" >&2
+  echo "         deployment is still running. Fix the seeder and redeploy." >&2
+  set_image_tag "${PREV_TAG:-$IMAGE_TAG}"
+  exit 1
+fi
+
 log "Recreating containers and waiting for health checks..."
 if ! docker compose up -d --wait --wait-timeout 90; then
   echo "[deploy] New containers failed to become healthy." >&2

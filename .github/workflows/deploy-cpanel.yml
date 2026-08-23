@@ -67,6 +67,7 @@ jobs:
             cd ${{ secrets.CPANEL_API_APP_ROOT }}
             npm ci --omit=dev
             npm run db:migrate
+            npm run db:seed
             mkdir -p tmp && touch tmp/restart.txt
 
   deploy-web:
