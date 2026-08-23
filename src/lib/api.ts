@@ -1635,6 +1635,114 @@ export function deleteVideoTemplate(id: string): Promise<{ deleted: boolean }> {
 }
 
 // ---------------------------------------------------------------------------
+// Video projects - the Scene Builder's persisted, resumable draft state.
+// Auto-saved as the person edits (see updateVideoProject), so "Continue
+// editing" and a past-projects list are backed by real data instead of
+// vanishing on refresh.
+// ---------------------------------------------------------------------------
+
+export type VideoProjectSource = 'prompt' | 'upload' | 'templates' | 'scenes';
+export type VideoProjectStatus = 'draft' | 'ready';
+
+export interface VideoProjectScene {
+  id: string;
+  visualUrl: string;
+  visualType: 'video' | 'image';
+  durationSeconds: number;
+  focalXPct: number;
+  focalYPct: number;
+  filter: string;
+  motion: string;
+}
+
+export interface VideoProject {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  title: string;
+  source: VideoProjectSource;
+  status: VideoProjectStatus;
+  scenes: VideoProjectScene[];
+  aspectRatio: string;
+  transition: string;
+  narrationText: string | null;
+  narrationVoiceId: string | null;
+  narrationGender: string | null;
+  narrationLanguage: string | null;
+  finalAssetId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export function createVideoProject(input: {
+  organizationId: string;
+  workspaceId: string;
+  title?: string;
+  scenes?: VideoProjectScene[];
+  aspectRatio?: string;
+  transition?: string;
+}): Promise<VideoProject> {
+  return apiRequest<VideoProject>('/video-projects', {
+    method: 'POST',
+    body: JSON.stringify({ source: 'scenes', ...input }),
+  });
+}
+
+/** items[0] is "Continue editing" if it's still a draft; the rest populate
+ * a past-projects list - both views come from this one call. */
+export async function listMyVideoProjects(limit = 20): Promise<VideoProject[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const result = await apiRequest<{ items: VideoProject[] }>(`/video-projects?${params.toString()}`);
+  return result.items;
+}
+
+export function getVideoProject(id: string): Promise<VideoProject> {
+  return apiRequest<VideoProject>(`/video-projects/${encodeURIComponent(id)}`);
+}
+
+/** The auto-save target - call with whatever changed (title, scenes,
+ * narration settings, ...), not the whole project every time. */
+export function updateVideoProject(
+  id: string,
+  patch: Partial<
+    Pick<
+      VideoProject,
+      | 'title'
+      | 'scenes'
+      | 'aspectRatio'
+      | 'transition'
+      | 'narrationText'
+      | 'narrationVoiceId'
+      | 'narrationGender'
+      | 'narrationLanguage'
+    >
+  >,
+): Promise<VideoProject> {
+  return apiRequest<VideoProject>(`/video-projects/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+}
+
+/** Uploads the composited export to the gallery (this is what makes a
+ * finished Scene Builder video show up in Recent Generations / Media
+ * Library at all - previously it was download/share-only) and marks the
+ * project ready, pointing at the resulting asset. */
+export async function finishVideoProject(id: string, videoBlob: Blob): Promise<VideoProject> {
+  const file = new File([videoBlob], `lumora-video-${Date.now()}.mp4`, { type: videoBlob.type || 'video/mp4' });
+  const asset = await uploadToGallery(file);
+  return apiRequest<VideoProject>(`/video-projects/${encodeURIComponent(id)}/finish`, {
+    method: 'PATCH',
+    body: JSON.stringify({ finalAssetId: asset.id }),
+  });
+}
+
+export function deleteVideoProject(id: string): Promise<{ deleted: boolean }> {
+  return apiRequest(`/video-projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+// ---------------------------------------------------------------------------
 // Voice templates - save a provider + voice combo for reuse (e.g. picking it
 // back up in Character/Video Studio), privately or with your whole team.
 // ---------------------------------------------------------------------------

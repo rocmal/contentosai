@@ -331,6 +331,15 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const [narrationLanguage, setNarrationLanguage] = useState<NarrationLanguage>('hi');
   const [narrationGender, setNarrationGender] = useState<NarrationGender>('female');
   const [narrationVoiceId, setNarrationVoiceId] = useState('');
+  // Scene Builder persistence - see VideoProjectsModule (apps/api). Created
+  // lazily the moment scenes actually has something in it (not on tab-open),
+  // so switching to this tab without adding anything never leaves a phantom
+  // empty draft in "past projects".
+  const [videoProjectId, setVideoProjectId] = useState<string | null>(null);
+  const [pastProjects, setPastProjects] = useState<api.VideoProject[]>([]);
+  const [isSavingToGallery, setIsSavingToGallery] = useState(false);
+  const [savedToGallery, setSavedToGallery] = useState(false);
+  const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isGeneratingNarration, setIsGeneratingNarration] = useState(false);
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -419,7 +428,91 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   useEffect(() => {
     api.listVideoTemplates().then(setVideoTemplates).catch(() => undefined);
     api.getGalleryUsage().then(setGalleryUsage).catch(() => undefined);
+    api.listMyVideoProjects(10).then(setPastProjects).catch(() => undefined);
   }, []);
+
+  // Lazily creates the persisted draft the moment the Scene Builder
+  // actually has something in it.
+  useEffect(() => {
+    if (source !== 'scenes' || scenes.length === 0 || videoProjectId) return;
+    if (!user?.organizationId || !user?.workspaceId) return;
+    api
+      .createVideoProject({ organizationId: user.organizationId, workspaceId: user.workspaceId })
+      .then((project) => setVideoProjectId(project.id))
+      .catch(() => undefined);
+  }, [source, scenes.length, videoProjectId, user?.organizationId, user?.workspaceId]);
+
+  // Auto-saves the draft as the person edits - debounced so rapid changes
+  // (dragging a crop handle, typing narration) don't fire a PATCH per
+  // keystroke. Only scene *content* (not selection/UI state like
+  // previewSceneIndex or cropEditingSceneId) is persisted.
+  useEffect(() => {
+    if (!videoProjectId) return;
+    if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      api
+        .updateVideoProject(videoProjectId, {
+          scenes: scenes.map((s) => ({
+            id: s.id,
+            visualUrl: s.visualUrl,
+            visualType: s.visualType,
+            durationSeconds: s.durationSeconds,
+            focalXPct: s.focalXPct,
+            focalYPct: s.focalYPct,
+            filter: s.filter,
+            motion: s.motion,
+          })),
+          aspectRatio: sceneAspectRatio,
+          transition: sceneTransition,
+          narrationText,
+          narrationVoiceId,
+          narrationGender,
+          narrationLanguage,
+        })
+        .catch(() => undefined);
+    }, 1500);
+    return () => {
+      if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    videoProjectId,
+    scenes,
+    sceneAspectRatio,
+    sceneTransition,
+    narrationText,
+    narrationVoiceId,
+    narrationGender,
+    narrationLanguage,
+  ]);
+
+  /** Loads a past draft's scenes/settings back into the editor, so
+   * "Continue a draft" (below) can resume it. */
+  const handleResumeProject = (project: api.VideoProject) => {
+    setVideoProjectId(project.id);
+    setScenes(
+      project.scenes.map((s) => ({
+        id: s.id,
+        visualUrl: s.visualUrl,
+        visualType: s.visualType,
+        durationSeconds: s.durationSeconds,
+        focalXPct: s.focalXPct,
+        focalYPct: s.focalYPct,
+        filter: s.filter as SceneFilterPreset,
+        motion: s.motion as SceneMotion,
+      })),
+    );
+    setSceneAspectRatio(project.aspectRatio as OutputAspectRatio);
+    setSceneTransition(project.transition as SceneTransitionType);
+    setNarrationText(project.narrationText ?? '');
+    if (project.narrationVoiceId) setNarrationVoiceId(project.narrationVoiceId);
+    if (project.narrationGender === 'male' || project.narrationGender === 'female') {
+      setNarrationGender(project.narrationGender);
+    }
+    if (project.narrationLanguage === 'en' || project.narrationLanguage === 'hi') {
+      setNarrationLanguage(project.narrationLanguage);
+    }
+  };
 
   const resetAll = () => {
     setStep('create');
@@ -454,6 +547,9 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setTemplateTitle('');
     setTemplateVisibility('private');
     setSaveTemplateStatus('idle');
+    setVideoProjectId(null);
+    setSavedToGallery(false);
+    api.listMyVideoProjects(10).then(setPastProjects).catch(() => undefined);
   };
 
   // ---------------------------------------------------------------------
@@ -927,6 +1023,37 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setStep('result');
   };
 
+  /** The composited/overlaid export at the 'result' step was previously
+   * download/share-only - no path saved it into the gallery, so a finished
+   * Video Studio output (with any text overlay applied, or any Scene
+   * Builder multi-scene stitch) never showed up in Recent Generations or
+   * Media Library. If this result came from a persisted Scene Builder
+   * project, this also marks it ready and links the asset
+   * (VideoProjectsService.finish); otherwise it's just an upload. */
+  const handleSaveToGallery = async () => {
+    if (!finalVideoUrl) return;
+    setIsSavingToGallery(true);
+    setError(null);
+    try {
+      const blob = await fetch(finalVideoUrl).then((r) => r.blob());
+      if (videoProjectId) {
+        await api.finishVideoProject(videoProjectId, blob);
+      } else {
+        const file = new File([blob], `lumora-video-${Date.now()}.mp4`, {
+          type: finalMimeType || 'video/mp4',
+        });
+        await api.uploadToGallery(file);
+      }
+      setSavedToGallery(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? `Couldn't save to your gallery: ${err.message}` : "Couldn't save to your gallery.",
+      );
+    } finally {
+      setIsSavingToGallery(false);
+    }
+  };
+
   const applyOverlayAndFinish = async () => {
     if (!sourceVideoUrl) return;
     if (!overlayText.trim()) {
@@ -1310,6 +1437,34 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   {scenes.length} scene{scenes.length === 1 ? '' : 's'}
                 </span>
               </div>
+
+              {scenes.length === 0 && pastProjects.some((p) => p.status === 'draft') && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Continue a draft
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {pastProjects
+                      .filter((p) => p.status === 'draft')
+                      .slice(0, 4)
+                      .map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleResumeProject(p)}
+                          className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-left hover:border-blue-400 transition-colors"
+                        >
+                          <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                            {p.title}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {p.scenes.length} scene{p.scenes.length === 1 ? '' : 's'}
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
                 <div className="flex items-center gap-1">
@@ -2207,6 +2362,19 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <button
+              onClick={handleSaveToGallery}
+              disabled={isSavingToGallery || savedToGallery}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60"
+            >
+              {isSavingToGallery ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              <span>{savedToGallery ? 'Saved to Gallery' : 'Save to Gallery'}</span>
+            </button>
+
             <button
               onClick={handleDownload}
               disabled={isDownloading}

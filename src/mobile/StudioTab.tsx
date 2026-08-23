@@ -20,11 +20,15 @@ function galleryTitles(items: api.MediaAsset[]): string {
   return items.map((a) => a.prompt?.trim() || a.fileName).join(', ');
 }
 
+function sceneCountLabel(project: api.VideoProject): string {
+  const n = project.scenes.length;
+  return `${n} scene${n === 1 ? '' : 's'}`;
+}
+
 export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubTab, onOpenCreate }) => {
   // Fetched once on mount rather than per-sub-tab, so switching between
-  // Video/Image/Voice/Character never shows a loading flicker - five small
-  // requests is cheap next to that.
-  const [recentVideos, setRecentVideos] = useState<api.MediaAsset[]>([]);
+  // Video/Image/Voice/Character never shows a loading flicker.
+  const [videoProjects, setVideoProjects] = useState<api.VideoProject[]>([]);
   const [recentImages, setRecentImages] = useState<api.MediaAsset[]>([]);
   const [recentVoice, setRecentVoice] = useState<api.MediaAsset[]>([]);
   const [recentCharacters, setRecentCharacters] = useState<api.MediaAsset[]>([]);
@@ -34,15 +38,15 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      api.listMyGallery('video', 2),
+      api.listMyVideoProjects(6),
       api.listMyGallery('image', 2),
       api.listMyGallery('audio', 1),
       api.listMyGallery('character', 2),
       api.listAvatars({ limit: 1 }),
     ])
-      .then(([videos, images, voice, characters, avatars]) => {
+      .then(([projects, images, voice, characters, avatars]) => {
         if (cancelled) return;
-        setRecentVideos(videos);
+        setVideoProjects(projects);
         setRecentImages(images);
         setRecentVoice(voice);
         setRecentCharacters(characters);
@@ -58,6 +62,12 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
       cancelled = true;
     };
   }, []);
+
+  // videoProjects is sorted most-recently-edited first (see the backend's
+  // findMine) - the top one is "Continue editing" only if it's still a
+  // draft; a finished project just goes straight into the past list below.
+  const continueEditing = videoProjects[0]?.status === 'draft' ? videoProjects[0] : null;
+  const pastProjects = continueEditing ? videoProjects.slice(1) : videoProjects;
 
   return (
     <div className="px-5 pt-3.5 pb-6">
@@ -82,25 +92,42 @@ export const StudioTab: React.FC<StudioTabProps> = ({ activeSubTab, onSelectSubT
 
       {activeSubTab === 'video' && (
         <>
-          {/* No video-project entity exists in apps/api yet, so there's
-              still no editable, resumable "Continue editing" project or a
-              real past-projects list with step progress - that's an honest
-              hand-off to desktop below, not a data gap in the Recent line.
-              The Recent line itself is real, and (unlike before) is now
-              actually Video Studio output only - Character Studio's clips
-              have their own 'character' type, so they no longer show up
-              mixed in here (see mediaDisplay.ts). */}
-          <div className="bg-slate-100 rounded-[20px] p-[18px] mb-[18px]">
-            <h3 className="text-sm text-slate-900 mb-1.5">Video Studio</h3>
-            {loading ? (
-              <Loader2 className="w-4 h-4 text-slate-400 animate-spin mb-3" />
-            ) : (
-              <p className="text-[12.5px] text-slate-600 mb-3">
-                {recentVideos.length > 0 ? `Recent: ${galleryTitles(recentVideos)}` : 'No videos generated yet.'}
-              </p>
-            )}
-            <p className="text-[11px] text-slate-500 m-0">Project history and step-by-step editing open on desktop.</p>
-          </div>
+          {loading && <Loader2 className="w-4 h-4 text-slate-400 animate-spin mb-3" />}
+
+          {!loading && continueEditing && (
+            <div className="bg-blue-950 rounded-[20px] p-[18px] mb-3 relative overflow-hidden">
+              <div className="absolute -top-[24px] -right-[24px] w-[90px] h-[90px] rounded-full bg-white/[0.08]" />
+              <span className="relative inline-block text-[10.5px] font-bold tracking-wide uppercase text-blue-300 mb-1.5">
+                Continue editing
+              </span>
+              <h3 className="relative text-[15px] font-bold text-white leading-tight mb-1">{continueEditing.title}</h3>
+              <p className="relative text-[11.5px] text-blue-200 m-0">{sceneCountLabel(continueEditing)} · draft</p>
+            </div>
+          )}
+
+          {!loading && (
+            <div className="bg-slate-100 rounded-[20px] p-[18px] mb-[18px]">
+              <h3 className="text-sm text-slate-900 mb-1.5">Video Studio</h3>
+              {pastProjects.length > 0 ? (
+                <div className="flex flex-col gap-1.5 mb-3">
+                  {pastProjects.slice(0, 3).map((p) => (
+                    <div key={p.id} className="flex items-center justify-between text-[12px]">
+                      <span className="text-slate-700 truncate mr-2">{p.title}</span>
+                      <span className="text-slate-400 flex-none">
+                        {p.status === 'ready' ? 'Ready' : `${sceneCountLabel(p)} · draft`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[12.5px] text-slate-600 mb-3">
+                  {continueEditing ? 'No other projects yet.' : 'No videos generated yet.'}
+                </p>
+              )}
+              <p className="text-[11px] text-slate-500 m-0">Project history and step-by-step editing open on desktop.</p>
+            </div>
+          )}
+
           <button
             onClick={onOpenCreate}
             className="h-[46px] text-[13px] w-full rounded-full bg-blue-600 text-white font-bold"

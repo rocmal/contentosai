@@ -44,6 +44,7 @@ import { CurrencyModule } from '@modules/currency/currency.module';
 import { ContactModule } from '@modules/contact/contact.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { VideoTemplatesModule } from '@modules/video-templates/video-templates.module';
+import { VideoProjectsModule } from '@modules/video-projects/video-projects.module';
 import { VoiceTemplatesModule } from '@modules/voice-templates/voice-templates.module';
 import { AuditModule } from '@modules/audit/audit.module';
 import { SettingsModule } from '@modules/settings/settings.module';
@@ -107,6 +108,7 @@ import { QueuesModule } from '@queues/queues.module';
     ContactModule,
     IntegrationsModule,
     VideoTemplatesModule,
+    VideoProjectsModule,
     VoiceTemplatesModule,
     AuditModule,
     SettingsModule,
