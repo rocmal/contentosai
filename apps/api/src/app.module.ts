@@ -27,6 +27,7 @@ import { ContentModule } from '@modules/content/content.module';
 import { AiModule } from '@modules/ai/ai.module';
 import { ImageModule } from '@modules/image/image.module';
 import { VideoModule } from '@modules/video/video.module';
+import { VideoEditModule } from '@modules/video/video-edit.module';
 import { CharacterModule } from '@modules/character/character.module';
 import { AvatarsModule } from '@modules/avatars/avatars.module';
 import { VoiceModule } from '@modules/voice/voice.module';
@@ -40,6 +41,7 @@ import { CalendarModule } from '@modules/calendar/calendar.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { CreditsModule } from '@modules/credits/credits.module';
+import { VideoCreditsModule } from '@modules/video-credits/credits.module';
 import { CurrencyModule } from '@modules/currency/currency.module';
 import { ContactModule } from '@modules/contact/contact.module';
 import { IntegrationsModule } from '@modules/integrations/integrations.module';
@@ -87,6 +89,7 @@ import { QueuesModule } from '@queues/queues.module';
     AiModule,
     ImageModule,
     VideoModule,
+    VideoEditModule,
     CharacterModule,
     AvatarsModule,
     VoiceModule,
@@ -104,6 +107,7 @@ import { QueuesModule } from '@queues/queues.module';
     NotificationsModule,
     BillingModule,
     CreditsModule,
+    VideoCreditsModule,
     CurrencyModule,
     ContactModule,
     IntegrationsModule,

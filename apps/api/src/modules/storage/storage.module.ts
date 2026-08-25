@@ -15,6 +15,6 @@ import { StorageController } from './presentation/storage.controller';
     StorageProviderFactory,
     StorageService,
   ],
-  exports: [StorageService],
+  exports: [StorageService, StorageProviderFactory],
 })
 export class StorageModule {}

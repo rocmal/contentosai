@@ -73,6 +73,7 @@ export const envValidationSchema = Joi.object({
   KLING_API_KEY: Joi.string().allow('').default(''),
   PIKA_API_KEY: Joi.string().allow('').default(''),
   LUMA_API_KEY: Joi.string().allow('').default(''),
+  GEMINI_BASE_URL: Joi.string().allow('').default('https://generativelanguage.googleapis.com/v1beta'),
 
   // Image providers
   FLUX_API_KEY: Joi.string().allow('').default(''),

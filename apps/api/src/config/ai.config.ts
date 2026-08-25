@@ -13,6 +13,10 @@ export default registerAs('ai', () => ({
     kling: { apiKey: process.env.KLING_API_KEY ?? '' },
     pika: { apiKey: process.env.PIKA_API_KEY ?? '' },
     luma: { apiKey: process.env.LUMA_API_KEY ?? '' },
+    omni: {
+      apiKey: process.env.GEMINI_API_KEY ?? '',
+      baseUrl: process.env.GEMINI_BASE_URL ?? 'https://generativelanguage.googleapis.com/v1beta',
+    },
   },
   image: {
     openai: { apiKey: process.env.OPENAI_API_KEY ?? '' },
