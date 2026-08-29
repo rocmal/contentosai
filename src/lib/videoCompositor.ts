@@ -30,6 +30,11 @@ export interface TextOverlayOptions {
 export interface CompositeResult {
   blob: Blob;
   mimeType: string;
+  /** 1-based positions (in the original `scenes` input) of any scenes that
+   * were dropped because their visual failed to load - e.g. a broken/expired
+   * gallery asset URL. Only set by compositeScenes(); undefined/empty when
+   * every scene loaded fine or for compositors with no scene concept. */
+  skippedSceneNumbers?: number[];
 }
 
 // HTMLVideoElement.captureStream is a real, widely-supported browser API
@@ -467,6 +472,13 @@ export async function compositeScenes(
   const loadedVisuals: (HTMLVideoElement | HTMLImageElement)[] = [];
   const audioBuffers: (AudioBuffer | null)[] = [];
   const durations: number[] = [];
+  // Scenes whose visual failed to load (broken/expired asset URL - e.g. a
+  // gallery image whose storage URL went stale) are dropped rather than
+  // aborting the whole composite: one bad picture in a 5-image slideshow
+  // shouldn't nuke the other 4. `activeScenes` stays index-aligned with
+  // loadedVisuals/audioBuffers/durations for the rest of this function.
+  const activeScenes: SceneInput[] = [];
+  const skippedSceneNumbers: number[] = [];
 
   try {
     // Preload every scene up front - scene counts here are small (a
@@ -474,10 +486,18 @@ export async function compositeScenes(
     // rather than loading media mid-recording.
     const useGlobalAudio = options?.globalAudioUrl != null;
 
-    for (const scene of scenes) {
-      const visual =
-        scene.visualType === 'video' ? await loadSceneVideo(scene.visualUrl) : await loadSceneImage(scene.visualUrl);
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i];
+      let visual: HTMLVideoElement | HTMLImageElement;
+      try {
+        visual =
+          scene.visualType === 'video' ? await loadSceneVideo(scene.visualUrl) : await loadSceneImage(scene.visualUrl);
+      } catch {
+        skippedSceneNumbers.push(i + 1);
+        continue;
+      }
       loadedVisuals.push(visual);
+      activeScenes.push(scene);
 
       const audioBuffer = useGlobalAudio
         ? null
@@ -493,6 +513,10 @@ export async function compositeScenes(
       durations.push(
         scene.durationSeconds ?? Math.max(audioBuffer?.duration ?? naturalDuration, 0.5),
       );
+    }
+
+    if (activeScenes.length === 0) {
+      throw new Error('None of the selected scenes could be loaded - their files may be missing or expired.');
     }
 
     // Decoded up front (not after recorder.start()) so it can be scheduled
@@ -534,8 +558,8 @@ export async function compositeScenes(
 
     // Capped to half of whichever neighboring scene is shorter, so a
     // transition can never eat a whole short scene.
-    const transitionDurations = scenes.map((_, index) =>
-      transitionType === 'none' || index >= scenes.length - 1
+    const transitionDurations = activeScenes.map((_, index) =>
+      transitionType === 'none' || index >= activeScenes.length - 1
         ? 0
         : Math.min(TRANSITION_SECONDS, durations[index] / 2, durations[index + 1] / 2),
     );
@@ -550,7 +574,7 @@ export async function compositeScenes(
     // Ken Burns direction alternates by scene index purely for visual
     // variety across a slideshow, not user-configurable.
     const getSceneDrawOptions = (index: number, progressInScene: number): DrawSceneFrameOptions => {
-      const scene = scenes[index];
+      const scene = activeScenes[index];
       let extraScale = 1;
       if (scene.visualType === 'image' && scene.motion === 'kenburns') {
         const zoomIn = index % 2 === 0;
@@ -570,7 +594,7 @@ export async function compositeScenes(
       recorder.onerror = () => reject(new Error('Recording the composited video failed.'));
       recorder.onstop = () => {
         onProgress?.(1);
-        resolve({ blob: new Blob(chunks, { type: mimeType }), mimeType });
+        resolve({ blob: new Blob(chunks, { type: mimeType }), mimeType, skippedSceneNumbers });
       };
 
       recorder.start();
@@ -622,7 +646,7 @@ export async function compositeScenes(
       const drawFrame = () => {
         let elapsedInScene = (performance.now() - sceneStartedAt) / 1000;
         let duration = durations[sceneIndex];
-        let hasNext = sceneIndex + 1 < scenes.length;
+        let hasNext = sceneIndex + 1 < activeScenes.length;
         let transitionDur = hasNext ? transitionDurations[sceneIndex] : 0;
 
         if (hasNext && transitionDur > 0 && elapsedInScene >= duration - transitionDur) {
@@ -634,7 +658,7 @@ export async function compositeScenes(
           if (finishedVisual instanceof HTMLVideoElement) finishedVisual.pause();
           sceneIndex += 1;
 
-          if (sceneIndex >= scenes.length) {
+          if (sceneIndex >= activeScenes.length) {
             recorder.stop();
             return;
           }
@@ -644,7 +668,7 @@ export async function compositeScenes(
 
           elapsedInScene = (performance.now() - sceneStartedAt) / 1000;
           duration = durations[sceneIndex];
-          hasNext = sceneIndex + 1 < scenes.length;
+          hasNext = sceneIndex + 1 < activeScenes.length;
           transitionDur = hasNext ? transitionDurations[sceneIndex] : 0;
         }
 

@@ -17,6 +17,7 @@ import {
   Film,
   FolderOpen,
   GripVertical,
+  Info,
   Layers,
   LayoutTemplate,
   Loader2,
@@ -245,6 +246,15 @@ interface StudioScene {
 const MAX_SCENE_TOTAL_SECONDS = 30;
 const DEFAULT_SCENE_SECONDS = 4;
 
+/** Turns compositeScenes()'s skippedSceneNumbers into the sentence shown in
+ * the amber banner below the Generate/Preview buttons. */
+function describeSkippedScenes(skippedSceneNumbers: number[]): string | null {
+  if (skippedSceneNumbers.length === 0) return null;
+  const noun = skippedSceneNumbers.length === 1 ? 'scene' : 'scenes';
+  const positions = skippedSceneNumbers.join(', ');
+  return `Couldn't load ${noun} ${positions} (the file may be missing or its link expired) - it was left out. Delete it from "Choose from Gallery" to stop this happening again.`;
+}
+
 const SCENE_ASPECT_RATIO_OPTIONS: { id: OutputAspectRatio; label: string }[] = [
   { id: '16:9', label: '16:9 Landscape' },
   { id: '9:16', label: '9:16 Vertical' },
@@ -327,6 +337,14 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const [isLoadingGalleryPicker, setIsLoadingGalleryPicker] = useState(false);
   const [galleryPickerAssets, setGalleryPickerAssets] = useState<api.MediaAsset[]>([]);
   const [selectedGalleryIds, setSelectedGalleryIds] = useState<Set<string>>(new Set());
+  // Populated by each thumbnail's onError - the asset's own URL went stale
+  // (e.g. it was uploaded through a since-expired dev tunnel) or its file is
+  // gone. Broken assets can't be selected, only deleted.
+  const [brokenGalleryAssetIds, setBrokenGalleryAssetIds] = useState<Set<string>>(new Set());
+  const [deletingGalleryAssetId, setDeletingGalleryAssetId] = useState<string | null>(null);
+  // Non-fatal: set when compositeScenes() had to drop one or more scenes
+  // (broken asset) but still produced a video from the rest.
+  const [sceneWarning, setSceneWarning] = useState<string | null>(null);
   const [narrationText, setNarrationText] = useState('');
   const [narrationLanguage, setNarrationLanguage] = useState<NarrationLanguage>('hi');
   const [narrationGender, setNarrationGender] = useState<NarrationGender>('female');
@@ -535,6 +553,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setCropEditingSceneId(null);
     setIsGalleryPickerOpen(false);
     setSelectedGalleryIds(new Set());
+    setBrokenGalleryAssetIds(new Set());
+    setSceneWarning(null);
     setNarrationText('');
     setNarrationVoiceId('');
     setPreviewVideoUrl((prev) => {
@@ -631,6 +651,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const handleOpenGalleryPicker = async () => {
     setIsGalleryPickerOpen(true);
     setSelectedGalleryIds(new Set());
+    setBrokenGalleryAssetIds(new Set());
     setIsLoadingGalleryPicker(true);
     try {
       const [images, videos, characters] = await Promise.all([
@@ -647,6 +668,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   };
 
   const handleToggleGallerySelect = (id: string) => {
+    if (brokenGalleryAssetIds.has(id)) return;
     setSelectedGalleryIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -656,6 +678,44 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
       }
       return next;
     });
+  };
+
+  const handleGalleryAssetLoadError = (id: string) => {
+    setBrokenGalleryAssetIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+    setSelectedGalleryIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
+
+  /** Removes a broken (or simply unwanted) asset from the gallery for good -
+   * optimistic like MediaLibraryView's handleDelete, reverting the local
+   * list only if the API call itself fails. */
+  const handleDeleteGalleryAsset = async (id: string) => {
+    setDeletingGalleryAssetId(id);
+    try {
+      await api.deleteMediaAsset(id);
+      setGalleryPickerAssets((prev) => prev.filter((asset) => asset.id !== id));
+      setSelectedGalleryIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setBrokenGalleryAssetIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setGalleryUsage((prev) => (prev ? { ...prev, count: Math.max(0, prev.count - 1) } : prev));
+    } catch (err) {
+      setError(err instanceof Error ? `Couldn't delete that asset: ${err.message}` : "Couldn't delete that asset.");
+    } finally {
+      setDeletingGalleryAssetId(null);
+    }
   };
 
   const handleAddSelectedFromGallery = () => {
@@ -761,6 +821,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     }
 
     setError(null);
+    setSceneWarning(null);
     setIsPreviewingVideo(true);
     try {
       const pickedVoice = narrationVoiceId
@@ -778,11 +839,12 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         filter: s.filter,
         motion: s.motion,
       }));
-      const { blob } = await compositeScenes(sceneInputs, undefined, {
+      const { blob, skippedSceneNumbers } = await compositeScenes(sceneInputs, undefined, {
         globalAudioUrl: narrationText.trim() ? sarvamVoiceSampleUrl(previewVoiceId, narrationLanguage) : null,
         aspectRatio: sceneAspectRatio,
         transition: sceneTransition,
       });
+      setSceneWarning(describeSkippedScenes(skippedSceneNumbers ?? []));
       setPreviewVideoUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return URL.createObjectURL(blob);
@@ -801,6 +863,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     }
 
     setError(null);
+    setSceneWarning(null);
     setPreviewVideoUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
@@ -837,7 +900,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         filter: s.filter,
         motion: s.motion,
       }));
-      const { blob } = await compositeScenes(sceneInputs, setCompositeProgress, {
+      const { blob, skippedSceneNumbers } = await compositeScenes(sceneInputs, setCompositeProgress, {
         globalAudioUrl,
         aspectRatio: sceneAspectRatio,
         transition: sceneTransition,
@@ -849,6 +912,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
       // 'edit' step's preview box picks up the real shape from
       // sourceVideoNaturalAspect (see displayAspectRatio) once the exported
       // video's own metadata loads, so no aspectRatio state needs setting.
+      setSceneWarning(describeSkippedScenes(skippedSceneNumbers ?? []));
       setSourceVideoNaturalAspect(null);
       setSourceVideoUrl(URL.createObjectURL(blob));
       setStep('edit');
@@ -1585,27 +1649,68 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                       <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto">
                         {galleryPickerAssets.map((asset) => {
                           const isSelected = selectedGalleryIds.has(asset.id);
+                          const isBroken = brokenGalleryAssetIds.has(asset.id);
+                          const isDeleting = deletingGalleryAssetId === asset.id;
                           return (
-                            <button
-                              type="button"
+                            <div
                               key={asset.id}
+                              role="button"
+                              tabIndex={0}
                               onClick={() => handleToggleGallerySelect(asset.id)}
-                              title={asset.fileName}
-                              className={`relative aspect-video rounded-lg overflow-hidden bg-slate-950 border-2 transition-all ${
-                                isSelected ? 'border-blue-600' : 'border-transparent hover:border-slate-300 dark:hover:border-slate-700'
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') handleToggleGallerySelect(asset.id);
+                              }}
+                              title={isBroken ? `${asset.fileName} (unavailable)` : asset.fileName}
+                              className={`group relative aspect-video rounded-lg overflow-hidden bg-slate-950 border-2 transition-all ${
+                                isBroken
+                                  ? 'border-transparent cursor-not-allowed'
+                                  : isSelected
+                                    ? 'border-blue-600 cursor-pointer'
+                                    : 'border-transparent hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer'
                               }`}
                             >
-                              {asset.type === 'video' || asset.type === 'character' ? (
-                                <video src={asset.url} muted className="w-full h-full object-cover" />
+                              {isBroken ? (
+                                <div className="w-full h-full flex flex-col items-center justify-center gap-1 text-slate-500 bg-slate-900">
+                                  <AlertTriangle className="w-4 h-4" />
+                                  <span className="text-[9px] font-semibold">Unavailable</span>
+                                </div>
+                              ) : asset.type === 'video' || asset.type === 'character' ? (
+                                <video
+                                  src={asset.url}
+                                  muted
+                                  className="w-full h-full object-cover"
+                                  onError={() => handleGalleryAssetLoadError(asset.id)}
+                                />
                               ) : (
-                                <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                                <img
+                                  src={asset.url}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                  onError={() => handleGalleryAssetLoadError(asset.id)}
+                                />
                               )}
-                              {isSelected && (
+                              {isSelected && !isBroken && (
                                 <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-blue-600 text-white flex items-center justify-center">
                                   <Check className="w-2.5 h-2.5" />
                                 </span>
                               )}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void handleDeleteGalleryAsset(asset.id);
+                                }}
+                                disabled={isDeleting}
+                                title="Delete from gallery"
+                                className="absolute bottom-1 right-1 p-1 rounded-md bg-black/60 text-white opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all disabled:opacity-100"
+                              >
+                                {isDeleting ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3 h-3" />
+                                )}
+                              </button>
+                            </div>
                           );
                         })}
                       </div>
@@ -1995,6 +2100,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
               <p className="text-[11px] leading-snug">{error}</p>
             </div>
           )}
+
+          {sceneWarning && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-amber-700 dark:text-amber-400">
+              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <p className="text-[11px] leading-snug">{sceneWarning}</p>
+            </div>
+          )}
         </div>
 
         <div className="space-y-3 lg:sticky lg:top-4">
@@ -2303,6 +2415,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
             <div className="flex items-start gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <p className="text-[11px] leading-snug">{error}</p>
+            </div>
+          )}
+
+          {sceneWarning && (
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-amber-700 dark:text-amber-400">
+              <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <p className="text-[11px] leading-snug">{sceneWarning}</p>
             </div>
           )}
 
