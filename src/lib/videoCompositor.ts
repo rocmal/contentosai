@@ -11,6 +11,33 @@
  * and the browser blocks capturing it for security reasons.
  */
 
+import fixWebmDuration from 'fix-webm-duration';
+
+/** Chromium's MediaRecorder writes WebM files with no (or an "unknown")
+ * Duration in the Segment/Info header - there's no timeslice-independent
+ * way to know the length up front while still streaming the encode. Every
+ * consumer that reads `duration` from the result (a `loop`ing preview
+ * <video>, or feeding the blob back in as the *source* of a second
+ * recording pass - see compositeTextOntoVideo's use as the Scene Builder's
+ * "add text overlay" step) sees `duration: Infinity` and, lacking a real
+ * end time, can end/loop the video after only the first cluster or two of
+ * data - which looks exactly like "the multi-scene video collapsed down to
+ * just its first scene" even though every scene's pixels really did get
+ * recorded. Patching the real (measured, wall-clock) duration into the
+ * container header before handing the blob back fixes both symptoms.
+ * No-ops for anything that isn't actually WebM (e.g. Chrome's newer direct
+ * video/mp4 recording, whose MP4 muxer already writes a correct duration). */
+async function fixRecordedDuration(rawBlob: Blob, mimeType: string, durationMs: number): Promise<Blob> {
+  if (!mimeType.includes('webm') || !Number.isFinite(durationMs) || durationMs <= 0) {
+    return rawBlob;
+  }
+  try {
+    return await fixWebmDuration(rawBlob, durationMs, { logger: false });
+  } catch {
+    return rawBlob;
+  }
+}
+
 export interface TextOverlayOptions {
   text: string;
   /** Center of the text, as a 0-100 percentage of the video's width/height -
@@ -162,12 +189,17 @@ export async function compositeTextOntoVideo(
       rafHandle = requestAnimationFrame(drawFrame);
     };
 
+    let recordingStartedAt = 0;
+
     return await new Promise<CompositeResult>((resolve, reject) => {
       recorder.onerror = () => reject(new Error('Recording the composited video failed.'));
       recorder.onstop = () => {
         cancelAnimationFrame(rafHandle);
         onProgress?.(1);
-        resolve({ blob: new Blob(chunks, { type: mimeType }), mimeType });
+        const rawBlob = new Blob(chunks, { type: mimeType });
+        fixRecordedDuration(rawBlob, mimeType, performance.now() - recordingStartedAt).then((blob) =>
+          resolve({ blob, mimeType }),
+        );
       };
 
       video.addEventListener(
@@ -181,6 +213,7 @@ export async function compositeTextOntoVideo(
       video.addEventListener(
         'play',
         () => {
+          recordingStartedAt = performance.now();
           recorder.start();
           drawFrame();
         },
@@ -591,10 +624,14 @@ export async function compositeScenes(
     };
 
     return await new Promise<CompositeResult>((resolve, reject) => {
+      const recordingStartedAt = performance.now();
       recorder.onerror = () => reject(new Error('Recording the composited video failed.'));
       recorder.onstop = () => {
         onProgress?.(1);
-        resolve({ blob: new Blob(chunks, { type: mimeType }), mimeType, skippedSceneNumbers });
+        const rawBlob = new Blob(chunks, { type: mimeType });
+        fixRecordedDuration(rawBlob, mimeType, performance.now() - recordingStartedAt).then((blob) =>
+          resolve({ blob, mimeType, skippedSceneNumbers }),
+        );
       };
 
       recorder.start();
