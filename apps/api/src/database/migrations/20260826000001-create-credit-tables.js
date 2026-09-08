@@ -1,10 +1,13 @@
 'use strict';
 
 const { baseColumns } = require('./_helpers/base-columns');
+const { referenceCharsetCollate } = require('./_helpers/reference-collation');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    const charsetCollate = await referenceCharsetCollate(queryInterface);
+
     await queryInterface.createTable('video_credit_wallets', {
       ...baseColumns(),
       organizationId: {
@@ -20,7 +23,7 @@ module.exports = {
       grantedCredits: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
       reservedCredits: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
       consumedCredits: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
-    });
+    }, charsetCollate);
 
     // One wallet per org per period; the unique index is what stops a double
     // grant from silently doubling somebody's allowance.
@@ -56,7 +59,7 @@ module.exports = {
       modelId: { type: Sequelize.STRING(150), allowNull: true },
       vendorCostUsd: { type: Sequelize.DECIMAL(12, 6), allowNull: true },
       reason: { type: Sequelize.TEXT, allowNull: true },
-    });
+    }, charsetCollate);
 
     // A reservation may be settled exactly once in each direction. This index
     // is the database-level guarantee behind the idempotent commit/refund.

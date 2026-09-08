@@ -1,6 +1,7 @@
 'use strict';
 
 const { baseColumns } = require('./_helpers/base-columns');
+const { referenceCharsetCollate } = require('./_helpers/reference-collation');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -39,7 +40,7 @@ module.exports = {
       // would be circular. Integrity is enforced in the application layer.
       rootTurnId: { type: Sequelize.UUID, allowNull: true },
       latestTurnId: { type: Sequelize.UUID, allowNull: true },
-    });
+    }, await referenceCharsetCollate(queryInterface));
 
     await queryInterface.addIndex('video_edit_sessions', ['workspaceId']);
     await queryInterface.addIndex('video_edit_sessions', ['createdBy']);

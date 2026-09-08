@@ -1,6 +1,7 @@
 'use strict';
 
 const { baseColumns } = require('./_helpers/base-columns');
+const { referenceCharsetCollate } = require('./_helpers/reference-collation');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -61,7 +62,7 @@ module.exports = {
       },
       editable: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true },
       failureReason: { type: Sequelize.TEXT, allowNull: true },
-    });
+    }, await referenceCharsetCollate(queryInterface));
 
     await queryInterface.addIndex('video_edit_turns', ['sessionId']);
     await queryInterface.addIndex('video_edit_turns', ['parentTurnId']);
