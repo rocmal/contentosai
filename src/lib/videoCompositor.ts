@@ -576,9 +576,21 @@ export async function compositeScenes(
       throw new Error('This browser does not support exporting a canvas as video.');
     }
 
+    // `destination`'s audio track only carries real samples once something
+    // is actually scheduled onto it (globalAudioBuffer, or at least one
+    // scene's own decoded audio) - below, once recording starts. Include it
+    // in the recorded stream only when that's actually going to happen: a
+    // silent slideshow (images, no narration) never connects anything to
+    // `destination`, and combining that dead/silent audio track into the
+    // MediaStream anyway makes Chrome's MediaRecorder (specifically its
+    // video/mp4 muxer) truncate the recording to roughly one second and
+    // keep only the last scene's frame - confirmed by isolating this exact
+    // difference in a minimal repro. A plain video-only stream records the
+    // full multi-scene duration correctly every time.
+    const willHaveAudio = globalAudioBuffer != null || audioBuffers.some((buffer) => buffer != null);
     const combinedStream = new MediaStream([
       ...canvas.captureStream(30).getVideoTracks(),
-      ...destination.stream.getAudioTracks(),
+      ...(willHaveAudio ? destination.stream.getAudioTracks() : []),
     ]);
     const mimeType = pickSupportedMimeType();
     const recorder = new MediaRecorder(combinedStream, { mimeType });
