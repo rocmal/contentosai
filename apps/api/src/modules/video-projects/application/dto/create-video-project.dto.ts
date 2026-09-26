@@ -53,6 +53,11 @@ export class VideoProjectSceneDto {
   @ApiProperty()
   @IsString()
   motion!: string;
+
+  @ApiPropertyOptional({ enum: ['cover', 'contain'] })
+  @IsOptional()
+  @IsIn(['cover', 'contain'])
+  fit?: 'cover' | 'contain';
 }
 
 export class CreateVideoProjectDto {

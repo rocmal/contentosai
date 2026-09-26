@@ -1653,6 +1653,8 @@ export interface VideoProjectScene {
   focalYPct: number;
   filter: string;
   motion: string;
+  /** Optional - absent on drafts saved before "Fit" (letterbox) existed. */
+  fit?: string;
 }
 
 export interface VideoProject {

@@ -33,6 +33,9 @@ export interface VideoProjectScene {
   focalYPct: number;
   filter: string;
   motion: string;
+  /** 'cover' | 'contain' - optional since drafts saved before "Fit"
+   * (letterbox) existed have no value here; the frontend defaults it. */
+  fit?: string;
 }
 
 export interface VideoProject extends BaseTenantEntity {

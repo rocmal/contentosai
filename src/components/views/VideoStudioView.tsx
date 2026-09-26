@@ -242,7 +242,14 @@ interface StudioScene {
   filter: SceneFilterPreset;
   /** Only meaningful for image scenes - video scenes ignore it. */
   motion: SceneMotion;
+  /** 'cover' (default) crops to fill the frame - see focalXPct/focalYPct.
+   * 'contain' shows the whole image/clip letterboxed instead, for source
+   * material whose shape doesn't match the output aspect ratio and
+   * shouldn't lose content (e.g. a tall poster in a 16:9 video). */
+  fit: SceneFit;
 }
+
+type SceneFit = 'cover' | 'contain';
 
 const MAX_SCENE_TOTAL_SECONDS = 30;
 const DEFAULT_SCENE_SECONDS = 4;
@@ -508,6 +515,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
             focalYPct: s.focalYPct,
             filter: s.filter,
             motion: s.motion,
+            fit: s.fit,
           })),
           aspectRatio: sceneAspectRatio,
           transition: sceneTransition,
@@ -549,6 +557,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         focalYPct: s.focalYPct,
         filter: s.filter as SceneFilterPreset,
         motion: s.motion as SceneMotion,
+        // Older drafts saved before "Fit" existed have no field here.
+        fit: (s.fit as SceneFit) ?? 'cover',
       })),
     );
     setSceneAspectRatio(project.aspectRatio as OutputAspectRatio);
@@ -668,6 +678,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     // Opt-in only - a new scene should look exactly like the source image/
     // clip until the user explicitly turns an effect on.
     motion: 'none',
+    fit: 'cover',
   });
 
   /** Actually persists each file to the gallery (via /media/upload) rather
@@ -790,6 +801,15 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     );
   };
 
+  const handleSceneFitToggle = (id: string) => {
+    const nextFit: SceneFit = scenes.find((s) => s.id === id)?.fit === 'contain' ? 'cover' : 'contain';
+    setScenes((prev) => prev.map((s) => (s.id === id ? { ...s, fit: nextFit } : s)));
+    // Contain mode always centers the whole image - the crop/focal-point
+    // editor has nothing to do there, so close it rather than leave a
+    // now-inert control open.
+    if (nextFit === 'contain') setCropEditingSceneId((prev) => (prev === id ? null : prev));
+  };
+
   // Drives both the crop editor's crosshair and the exported crop (see
   // SceneInput.focalXPct/YPct) - held-drag reposition, using the same 0-100
   // "object-position" semantics the live preview renders with via CSS, so
@@ -885,6 +905,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         focalYPct: s.focalYPct,
         filter: s.filter,
         motion: s.motion,
+        fit: s.fit,
       }));
       const { blob, skippedSceneNumbers } = await compositeScenes(sceneInputs, undefined, {
         globalAudioUrl: narrationText.trim() ? sarvamVoiceSampleUrl(previewVoiceId, narrationLanguage) : null,
@@ -946,6 +967,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         focalYPct: s.focalYPct,
         filter: s.filter,
         motion: s.motion,
+        fit: s.fit,
       }));
       const { blob, skippedSceneNumbers } = await compositeScenes(sceneInputs, setCompositeProgress, {
         globalAudioUrl,
@@ -1847,7 +1869,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                               muted
                               className="w-full h-full"
                               style={{
-                                objectFit: 'cover',
+                                objectFit: scene.fit === 'contain' ? 'contain' : 'cover',
                                 objectPosition: `${scene.focalXPct}% ${scene.focalYPct}%`,
                               }}
                             />
@@ -1857,7 +1879,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                               alt=""
                               className="w-full h-full"
                               style={{
-                                objectFit: 'cover',
+                                objectFit: scene.fit === 'contain' ? 'contain' : 'cover',
                                 objectPosition: `${scene.focalXPct}% ${scene.focalYPct}%`,
                               }}
                             />
@@ -1953,9 +1975,31 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
                         <button
                           type="button"
-                          onClick={() => setCropEditingSceneId((prev) => (prev === scene.id ? null : scene.id))}
-                          title="Choose what stays in frame"
+                          onClick={() => handleSceneFitToggle(scene.id)}
+                          title={
+                            scene.fit === 'contain'
+                              ? 'Showing the whole image, letterboxed - click to crop-to-fill instead'
+                              : 'Cropping to fill the frame - click to show the whole image, letterboxed instead'
+                          }
                           className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border font-semibold transition-colors ${
+                            scene.fit === 'contain'
+                              ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
+                              : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
+                          }`}
+                        >
+                          {scene.fit === 'contain' ? 'Fit' : 'Fill'}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setCropEditingSceneId((prev) => (prev === scene.id ? null : scene.id))}
+                          disabled={scene.fit === 'contain'}
+                          title={
+                            scene.fit === 'contain'
+                              ? 'Not used in Fit mode - the whole image is always shown centered'
+                              : 'Choose what stays in frame'
+                          }
+                          className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                             cropEditingSceneId === scene.id
                               ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400'
                               : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'
@@ -2320,10 +2364,14 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                         muted
                         loop
                         autoPlay
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full ${previewScene.fit === 'contain' ? 'object-contain' : 'object-cover'}`}
                       />
                     ) : (
-                      <img src={previewScene.visualUrl} alt="" className="w-full h-full object-cover" />
+                      <img
+                        src={previewScene.visualUrl}
+                        alt=""
+                        className={`w-full h-full ${previewScene.fit === 'contain' ? 'object-contain' : 'object-cover'}`}
+                      />
                     )}
                     {scenes.length > 1 && (
                       <>

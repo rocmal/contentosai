@@ -269,6 +269,12 @@ export interface SceneInput {
   filter?: SceneFilterPreset;
   /** Image scenes only - a slow pan/zoom instead of a static hold. */
   motion?: SceneMotion;
+  /** 'cover' (default) crops the source to fill the frame - see focalXPct/
+   * focalYPct. 'contain' shows the whole source letterboxed on a black
+   * background instead, for source material (e.g. a tall poster) whose
+   * shape doesn't match the chosen output aspect ratio and shouldn't lose
+   * content. */
+  fit?: 'cover' | 'contain';
 }
 
 const DEFAULT_IMAGE_DURATION_SECONDS = 4;
@@ -355,6 +361,8 @@ interface DrawSceneFrameOptions {
   extraScale?: number;
   filter?: string;
   alpha?: number;
+  /** See SceneInput.fit - defaults to 'cover'. */
+  fit?: 'cover' | 'contain';
 }
 
 /** Computes the cover-fit (crop-to-fill) rect for drawImage, honoring an
@@ -397,6 +405,43 @@ function computeCoverRect(
   };
 }
 
+/** Computes the contain-fit (letterboxed, no crop) rect for drawImage - the
+ * whole source is scaled to fit inside the canvas and centered, leaving
+ * (transparent-before-fill, then black-filled by drawSceneFrame) bars on
+ * whichever axis doesn't match. extraScale still zooms past the fitted
+ * size (for Ken Burns), which starts cropping once it exceeds 1 - the same
+ * tradeoff as 'cover', just starting from "whole image visible" instead of
+ * "frame filled". */
+function computeContainRect(
+  canvasWidth: number,
+  canvasHeight: number,
+  sourceWidth: number,
+  sourceHeight: number,
+  extraScale: number,
+): { dx: number; dy: number; dw: number; dh: number } {
+  const canvasRatio = canvasWidth / canvasHeight;
+  const sourceRatio = sourceWidth / sourceHeight || canvasRatio;
+
+  let drawWidth = canvasWidth;
+  let drawHeight = canvasHeight;
+  if (sourceRatio > canvasRatio) {
+    drawWidth = canvasWidth;
+    drawHeight = canvasWidth / sourceRatio;
+  } else {
+    drawHeight = canvasHeight;
+    drawWidth = canvasHeight * sourceRatio;
+  }
+  drawWidth *= extraScale;
+  drawHeight *= extraScale;
+
+  return {
+    dx: (canvasWidth - drawWidth) / 2,
+    dy: (canvasHeight - drawHeight) / 2,
+    dw: drawWidth,
+    dh: drawHeight,
+  };
+}
+
 /** Draws a frame "cover"-fit (crop-to-fill) into the output canvas - scenes
  * can mix differently-shaped clips/images without letterboxing. */
 function drawSceneFrame(
@@ -408,15 +453,18 @@ function drawSceneFrame(
   canvasHeight: number,
   options?: DrawSceneFrameOptions,
 ): void {
-  const { dx, dy, dw, dh } = computeCoverRect(
-    canvasWidth,
-    canvasHeight,
-    sourceWidth,
-    sourceHeight,
-    options?.focalXPct ?? 50,
-    options?.focalYPct ?? 50,
-    options?.extraScale ?? 1,
-  );
+  const { dx, dy, dw, dh } =
+    options?.fit === 'contain'
+      ? computeContainRect(canvasWidth, canvasHeight, sourceWidth, sourceHeight, options?.extraScale ?? 1)
+      : computeCoverRect(
+          canvasWidth,
+          canvasHeight,
+          sourceWidth,
+          sourceHeight,
+          options?.focalXPct ?? 50,
+          options?.focalYPct ?? 50,
+          options?.extraScale ?? 1,
+        );
 
   ctx.save();
   ctx.globalAlpha = options?.alpha ?? 1;
@@ -632,6 +680,7 @@ export async function compositeScenes(
         focalYPct: scene.focalYPct ?? 50,
         filter: FILTER_CSS[scene.filter ?? 'none'],
         extraScale,
+        fit: scene.fit ?? 'cover',
       };
     };
 
