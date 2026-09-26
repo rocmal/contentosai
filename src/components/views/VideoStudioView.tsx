@@ -615,6 +615,23 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     api.listMyVideoProjects(10).then(setPastProjects).catch(() => undefined);
   };
 
+  /** Returns to Scene Builder from the text-overlay/edit step without
+   * losing the draft - unlike resetAll/"Start over", this keeps scenes,
+   * narration, Shape/Transition/Fit and the persisted draft (videoProjectId)
+   * exactly as they were, so tweaking a scene setting and regenerating
+   * doesn't mean rebuilding from scratch. Only the stale composited clip
+   * (from the generation being abandoned) and its overlay are cleared. */
+  const handleBackToScenes = () => {
+    setStep('create');
+    setError(null);
+    setSourceVideoUrl(null);
+    setSourceVideoNaturalAspect(null);
+    setOverlayText('');
+    setOverlayPoint(DEFAULT_OVERLAY_POINT);
+    setIsEditingOverlayText(false);
+    setHasOverlay(false);
+  };
+
   // ---------------------------------------------------------------------
   // Scene Builder: upload multiple images/clips at once, narrate the whole
   // video with a single voice prompt, then generate one combined video.
@@ -2431,12 +2448,32 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
       {step === 'edit' && sourceVideoUrl && (
         <div className="max-w-2xl mx-auto space-y-5">
-          <button
-            onClick={resetAll}
-            className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Start over
-          </button>
+          <div className="flex items-center justify-between">
+            {source === 'scenes' ? (
+              <button
+                onClick={handleBackToScenes}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to editing scenes
+              </button>
+            ) : (
+              <button
+                onClick={resetAll}
+                className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Start over
+              </button>
+            )}
+            {source === 'scenes' && (
+              <button
+                onClick={resetAll}
+                title="Discards the whole draft - scenes, narration, everything"
+                className="text-[11px] font-semibold text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400"
+              >
+                Start over instead
+              </button>
+            )}
+          </div>
 
           <div className="relative mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950">
             <div
