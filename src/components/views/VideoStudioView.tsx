@@ -24,6 +24,7 @@ import {
   Megaphone,
   Mic,
   Pause,
+  Pencil,
   Play,
   RotateCcw,
   Share2,
@@ -354,6 +355,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // so switching to this tab without adding anything never leaves a phantom
   // empty draft in "past projects".
   const [videoProjectId, setVideoProjectId] = useState<string | null>(null);
+  // Editable draft name, shown once videoProjectId exists - see the
+  // "Rename draft" input and its debounced patch below.
+  const [draftTitle, setDraftTitle] = useState('');
+  // Checked in the Scene Builder panel itself (before Generate is even
+  // clicked) - the actual save happens once the generated clip reaches the
+  // result step, since a template needs a finished video to attach to.
+  const [sceneSaveAsTemplate, setSceneSaveAsTemplate] = useState(false);
   const [pastProjects, setPastProjects] = useState<api.VideoProject[]>([]);
   const [isSavingToGallery, setIsSavingToGallery] = useState(false);
   const [savedToGallery, setSavedToGallery] = useState(false);
@@ -402,9 +410,11 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const stylePreset = AI_STYLE_PRESETS.find((t) => t.id === stylePresetId) ?? AI_STYLE_PRESETS[0];
 
   // The "create" step's side preview only really knows a shape for the
-  // prompt tab (from the chosen format) - every other tab just previews at
-  // the default 16:9 frame.
-  const previewAspectRatio: AiStylePreset['aspectRatio'] = source === 'prompt' ? stylePreset.aspectRatio : '16:9';
+  // prompt tab (from the chosen format) and the Scene Builder tab (from the
+  // "Shape" buttons, sceneAspectRatio) - upload/templates just preview at
+  // the default 16:9 frame until a real clip is picked.
+  const previewAspectRatio: AiStylePreset['aspectRatio'] =
+    source === 'prompt' ? stylePreset.aspectRatio : source === 'scenes' ? sceneAspectRatio : '16:9';
   const previewAspectClass = ASPECT_RATIO_CLASSES[previewAspectRatio].split(' ')[0];
 
   const selectedFontFamily = FONT_FAMILY_OPTIONS.find((f) => f.id === overlayFontFamilyId) ?? FONT_FAMILY_OPTIONS[0];
@@ -456,7 +466,10 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     if (!user?.organizationId || !user?.workspaceId) return;
     api
       .createVideoProject({ organizationId: user.organizationId, workspaceId: user.workspaceId })
-      .then((project) => setVideoProjectId(project.id))
+      .then((project) => {
+        setVideoProjectId(project.id);
+        setDraftTitle(project.title);
+      })
       .catch(() => undefined);
   }, [source, scenes.length, videoProjectId, user?.organizationId, user?.workspaceId]);
 
@@ -470,6 +483,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     autoSaveTimeoutRef.current = setTimeout(() => {
       api
         .updateVideoProject(videoProjectId, {
+          ...(draftTitle.trim() ? { title: draftTitle.trim() } : {}),
           scenes: scenes.map((s) => ({
             id: s.id,
             visualUrl: s.visualUrl,
@@ -495,6 +509,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     videoProjectId,
+    draftTitle,
     scenes,
     sceneAspectRatio,
     sceneTransition,
@@ -508,6 +523,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
    * "Continue a draft" (below) can resume it. */
   const handleResumeProject = (project: api.VideoProject) => {
     setVideoProjectId(project.id);
+    setDraftTitle(project.title);
     setScenes(
       project.scenes.map((s) => ({
         id: s.id,
@@ -568,6 +584,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setTemplateVisibility('private');
     setSaveTemplateStatus('idle');
     setVideoProjectId(null);
+    setDraftTitle('');
+    setSceneSaveAsTemplate(false);
     setSavedToGallery(false);
     api.listMyVideoProjects(10).then(setPastProjects).catch(() => undefined);
   };
@@ -1247,7 +1265,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         workspaceId: user.workspaceId,
         title: templateTitle.trim(),
         videoBlob,
-        aspectRatio,
+        aspectRatio: source === 'scenes' ? sceneAspectRatio : aspectRatio,
         visibility: templateVisibility,
       });
       setVideoTemplates((prev) => [saved, ...prev]);
@@ -1258,6 +1276,21 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
       setIsSavingTemplate(false);
     }
   };
+
+  // "Also save as a template" was checked back in the Scene Builder panel,
+  // before Generate was even clicked - the actual save can only happen once
+  // there's a finished clip to attach it to, so it fires here the moment the
+  // scene-builder flow reaches the result step. Reuses the same
+  // save-as-template panel/state as the manual "Save as template" button
+  // (see handleOpenSaveTemplatePanel) so the confirmation/error UI matches.
+  useEffect(() => {
+    if (step !== 'result' || !finalVideoUrl) return;
+    if (source !== 'scenes' || !sceneSaveAsTemplate) return;
+    if (isSavingTemplate || saveTemplateStatus !== 'idle') return;
+    setShowSaveTemplatePanel(true);
+    void handleSaveTemplate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, finalVideoUrl, source, sceneSaveAsTemplate]);
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
@@ -1501,6 +1534,24 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   {scenes.length} scene{scenes.length === 1 ? '' : 's'}
                 </span>
               </div>
+
+              {videoProjectId && (
+                <div className="flex items-center gap-1.5">
+                  <Pencil className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    value={draftTitle}
+                    onChange={(e) => setDraftTitle(e.target.value)}
+                    onBlur={() => {
+                      if (!draftTitle.trim()) setDraftTitle('Untitled video');
+                    }}
+                    placeholder="Untitled video"
+                    maxLength={150}
+                    title="Rename this draft"
+                    className="flex-1 min-w-0 text-sm font-bold text-slate-800 dark:text-slate-100 bg-transparent outline-none border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-blue-500 transition-colors py-0.5"
+                  />
+                </div>
+              )}
 
               {scenes.length === 0 && pastProjects.some((p) => p.status === 'draft') && (
                 <div className="space-y-1.5">
@@ -2064,6 +2115,63 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   </p>
                 </div>
               )}
+
+              <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                <label className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={sceneSaveAsTemplate}
+                    onChange={(e) => {
+                      setSceneSaveAsTemplate(e.target.checked);
+                      if (e.target.checked && !templateTitle.trim()) {
+                        setTemplateTitle(draftTitle.trim() || 'My video template');
+                      }
+                    }}
+                    className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                  />
+                  <Bookmark className="w-3.5 h-3.5 shrink-0" />
+                  <span>Also save as a template</span>
+                </label>
+                {sceneSaveAsTemplate && (
+                  <>
+                    <input
+                      type="text"
+                      value={templateTitle}
+                      onChange={(e) => setTemplateTitle(e.target.value)}
+                      placeholder="Template name..."
+                      maxLength={150}
+                      className="w-full text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTemplateVisibility('private')}
+                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold border transition-all ${
+                          templateVisibility === 'private'
+                            ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        Just me
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTemplateVisibility('team')}
+                        className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold border transition-all ${
+                          templateVisibility === 'team'
+                            ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                            : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                        }`}
+                      >
+                        My whole team
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400">
+                      Saved automatically once Generate Video finishes.
+                    </p>
+                  </>
+                )}
+              </div>
 
               <div className="flex gap-2">
                 <button
