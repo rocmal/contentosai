@@ -2107,8 +2107,18 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <video src={previewVideoUrl} controls autoPlay className="w-full rounded-xl bg-slate-950" />
+                  <div
+                    className="relative mx-auto w-full max-w-sm max-h-[70vh] rounded-xl overflow-hidden bg-slate-950"
+                    style={{ aspectRatio: displayAspectRatio }}
+                  >
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video
+                      src={previewVideoUrl}
+                      controls
+                      autoPlay
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
                   <p className="text-[10px] text-slate-400">
                     Free - uses a sample of the selected voice, not your actual narration text. Click Generate Video
                     for the real thing.
