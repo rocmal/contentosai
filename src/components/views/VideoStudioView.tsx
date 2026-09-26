@@ -246,6 +246,12 @@ interface StudioScene {
 
 const MAX_SCENE_TOTAL_SECONDS = 30;
 const DEFAULT_SCENE_SECONDS = 4;
+/** Rough spoken-word rate used only to estimate narration length before any
+ * audio is generated (same ballpark the "Generate with AI" narration prompts
+ * already target - "30 seconds" / "40-75 words" - see handleGenerateNarration).
+ * The composited video's audio track is hard-cut at the scene total, so a
+ * narration script estimated longer than that will be audibly trimmed. */
+const NARRATION_WORDS_PER_SECOND = 2;
 
 /** Turns compositeScenes()'s skippedSceneNumbers into the sentence shown in
  * the amber banner below the Generate/Preview buttons. */
@@ -443,6 +449,15 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const sceneCappedEstimatedSeconds = Math.max(1, Math.min(sceneRawEstimatedSeconds, MAX_SCENE_TOTAL_SECONDS));
   const sceneEstimateExceedsMax = sceneRawEstimatedSeconds > MAX_SCENE_TOTAL_SECONDS;
   const sceneDurationScale = sceneRawEstimatedSeconds > 0 ? sceneCappedEstimatedSeconds / sceneRawEstimatedSeconds : 1;
+
+  // Estimated spoken length of the narration script, so a too-long script
+  // can be caught before generating (rather than discovered as a trimmed
+  // audio track afterward). Capped display-side at MAX_SCENE_TOTAL_SECONDS
+  // since the video can never run longer than that regardless of scenes.
+  const narrationWordCount = narrationText.trim() ? narrationText.trim().split(/\s+/).length : 0;
+  const narrationEstimatedSeconds = Math.ceil(narrationWordCount / NARRATION_WORDS_PER_SECOND);
+  const narrationFitsCap = narrationEstimatedSeconds <= MAX_SCENE_TOTAL_SECONDS;
+  const narrationWillBeTrimmed = narrationWordCount > 0 && narrationEstimatedSeconds > sceneRawEstimatedSeconds;
   const clampedPreviewSceneIndex = Math.min(previewSceneIndex, Math.max(0, scenes.length - 1));
   const previewScene = scenes[clampedPreviewSceneIndex];
 
@@ -596,6 +611,20 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // ---------------------------------------------------------------------
 
   const handleRemoveScene = (id: string) => setScenes((prev) => prev.filter((s) => s.id !== id));
+
+  /** Scales every scene's duration up proportionally so their sum reaches
+   * the estimated narration length (capped at MAX_SCENE_TOTAL_SECONDS,
+   * since the video can never exceed that) - fixes the "narration gets cut
+   * off" case where the total scene length was left shorter than the
+   * script. Never scales down; if scenes already cover the narration,
+   * this is a no-op. */
+  const handleFitScenesToNarration = () => {
+    if (scenes.length === 0 || sceneRawEstimatedSeconds <= 0) return;
+    const target = Math.min(narrationEstimatedSeconds, MAX_SCENE_TOTAL_SECONDS);
+    if (target <= sceneRawEstimatedSeconds) return;
+    const scale = target / sceneRawEstimatedSeconds;
+    setScenes((prev) => prev.map((s) => ({ ...s, durationSeconds: Math.round(s.durationSeconds * scale * 10) / 10 })));
+  };
 
   const handleMoveScene = (id: string, direction: 'up' | 'down') => {
     setScenes((prev) => {
@@ -2084,9 +2113,35 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   <p className={`text-[10px] ${sceneEstimateExceedsMax ? 'text-red-500 dark:text-red-400' : 'text-slate-400'}`}>
                     ~{sceneCappedEstimatedSeconds}s video total ({MAX_SCENE_TOTAL_SECONDS}s max
                     {sceneEstimateExceedsMax ? ' - slides scaled down to fit' : ''})
-                    {narrationText.trim() && <> - narration may be cut off or end before the video does</>}
                     . Set each slide's length below.
                   </p>
+                )}
+
+                {narrationWillBeTrimmed && (
+                  <div className="flex items-start gap-2 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 text-amber-700 dark:text-amber-400">
+                    <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <div className="space-y-1.5">
+                      <p className="text-[11px] leading-snug">
+                        Narration is ~{narrationEstimatedSeconds}s (~{narrationWordCount} words) but your scenes only
+                        total {sceneRawEstimatedSeconds}s - the audio will be cut off partway through.
+                        {!narrationFitsCap && (
+                          <>
+                            {' '}
+                            Even at the full {MAX_SCENE_TOTAL_SECONDS}s video limit, this script won't fully fit -
+                            trim it to roughly {MAX_SCENE_TOTAL_SECONDS * NARRATION_WORDS_PER_SECOND} words or fewer
+                            to avoid clipping.
+                          </>
+                        )}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleFitScenesToNarration}
+                        className="text-[11px] font-bold text-amber-700 dark:text-amber-400 underline underline-offset-2 hover:no-underline"
+                      >
+                        Extend scenes to {Math.min(narrationEstimatedSeconds, MAX_SCENE_TOTAL_SECONDS)}s
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
 
