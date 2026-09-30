@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { Bot, ChevronDown, Minimize2, Send, Sparkles, X } from 'lucide-react';
 import { ViewType } from '../types';
+import { useAuth } from '../contexts/AuthContext';
+import { ApiError, copilotReply } from '../lib/api';
 
 interface FloatingAIAssistantProps {
   currentView: ViewType;
 }
 
 export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ currentView }) => {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ sender: 'user' | 'assistant'; text: string }[]>([
+  const [messages, setMessages] = useState<{ sender: 'user' | 'assistant'; text: string; isError?: boolean }[]>([
     {
       sender: 'assistant',
-      text: `Hi Alex! I'm your Lumora Co-pilot. I can rewrite text, suggest hooks, optimize your content strategy, or generate campaign ideas for ${currentView}. How can I assist you right now?`,
+      text: `Hi${user?.firstName ? ` ${user.firstName}` : ''}! I'm your Lumora Co-pilot. I can rewrite text, suggest hooks, plan content and explain how to use the platform. Each reply uses 1 credit. How can I help?`,
     },
   ]);
   const [input, setInput] = useState('');
@@ -22,24 +25,26 @@ export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ curren
     if (!input.trim() || isTyping) return;
 
     const userMsg = input;
+    // The greeting and any error bubbles are UI, not conversation - only real turns are sent back.
+    const history = messages
+      .slice(1)
+      .filter((m) => !m.isError)
+      .slice(-8)
+      .map((m) => ({ role: m.sender, text: m.text }));
     setInput('');
     setMessages((prev) => [...prev, { sender: 'user', text: userMsg }]);
     setIsTyping(true);
 
     try {
-      const res = await fetch('/api/copilot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg, context: currentView }),
-      });
-      const data = await res.json();
-      setMessages((prev) => [...prev, { sender: 'assistant', text: data.reply || 'Here is what I recommend for your content strategy!' }]);
-    } catch {
+      const { reply } = await copilotReply({ message: userMsg, screen: currentView, history });
+      setMessages((prev) => [...prev, { sender: 'assistant', text: reply || 'I could not come up with a reply. Please try again.' }]);
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
           sender: 'assistant',
-          text: `I've analyzed your request for "${userMsg}". Check out the AI Studio 6-Step Wizard for an automated multi-channel campaign output!`,
+          isError: true,
+          text: `${err instanceof ApiError || err instanceof Error ? err.message : 'Something went wrong.'} No credit was charged.`,
         },
       ]);
     } finally {

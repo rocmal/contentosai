@@ -8,6 +8,8 @@ import { OpenRouterProvider } from './infrastructure/providers/openrouter.provid
 import { SarvamProvider } from './infrastructure/providers/sarvam.provider';
 import { AIProviderFactory } from './infrastructure/ai-provider.factory';
 import { ContentStudioService } from './application/services/content-studio.service';
+import { CopilotService } from './application/services/copilot.service';
+import { BrandExtractorService } from './application/services/brand-extractor.service';
 import { AiService } from './application/services/ai.service';
 import { AiController } from './presentation/ai.controller';
 
@@ -23,6 +25,8 @@ import { AiController } from './presentation/ai.controller';
     AIProviderFactory,
     AiService,
     ContentStudioService,
+    CopilotService,
+    BrandExtractorService,
   ],
   exports: [AiService, AIProviderFactory],
 })

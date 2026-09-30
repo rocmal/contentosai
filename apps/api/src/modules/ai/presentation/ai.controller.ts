@@ -6,6 +6,10 @@ import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { AiService } from '../application/services/ai.service';
 import { GenerateContentDto } from '../application/dto/generate-content.dto';
 import { ContentStudioService, StudioGenerateResult } from '../application/services/content-studio.service';
+import { CopilotService } from '../application/services/copilot.service';
+import { BrandExtractorService, BrandExtraction } from '../application/services/brand-extractor.service';
+import { CopilotMessageDto } from '../application/dto/copilot.dto';
+import { ExtractBrandDto } from '../application/dto/extract-brand.dto';
 import { StudioGenerateDto } from '../application/dto/studio-generate.dto';
 import { GenerateContentResponseDto } from '../application/dto/generate-content-response.dto';
 
@@ -16,6 +20,8 @@ export class AiController {
   constructor(
     private readonly aiService: AiService,
     private readonly contentStudioService: ContentStudioService,
+    private readonly copilotService: CopilotService,
+    private readonly brandExtractorService: BrandExtractorService,
   ) {}
 
   @Post('generate')
@@ -39,6 +45,20 @@ export class AiController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<StudioGenerateResult> {
     return this.contentStudioService.generate(dto, user);
+  }
+
+  @Post('copilot')
+  @RequirePermissions('ai.generate')
+  @ApiOperation({ summary: 'Co-pilot chat reply, aware of the workspace Brand Brain (1 credit)' })
+  copilot(@Body() dto: CopilotMessageDto, @CurrentUser() user: AuthenticatedUser): Promise<{ reply: string }> {
+    return this.copilotService.reply(dto, user);
+  }
+
+  @Post('brand/extract')
+  @RequirePermissions('ai.generate')
+  @ApiOperation({ summary: 'Draft a Brand Brain from a public website (not saved; 1 credit)' })
+  extractBrand(@Body() dto: ExtractBrandDto, @CurrentUser() user: AuthenticatedUser): Promise<BrandExtraction> {
+    return this.brandExtractorService.extract(dto.websiteUrl, user);
   }
 
   @Get('providers')

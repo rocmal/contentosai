@@ -10,7 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { BrandBrain } from '../../types';
-import { saveBrandProfile, uploadToGallery, ApiError } from '../../lib/api';
+import { extractBrandFromWebsite, saveBrandProfile, uploadToGallery, ApiError } from '../../lib/api';
 import { applyBrandTemplate, BRAND_TEMPLATES } from '../../lib/brandTemplates';
 
 interface BrandBrainViewProps {
@@ -80,6 +80,8 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractNote, setExtractNote] = useState<string | null>(null);
 
   const handleLogoFileChange = async (file: File | undefined) => {
     if (!file) return;
@@ -97,6 +99,35 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
 
   const set = <K extends keyof BrandBrain>(key: K, value: BrandBrain[K]) =>
     setFormState((prev) => ({ ...prev, [key]: value }));
+
+  const handleExtract = async () => {
+    if (!formState.websiteUrl.trim()) return;
+    setIsExtracting(true);
+    setExtractNote(null);
+    setError(null);
+    try {
+      const { draft, source } = await extractBrandFromWebsite(formState.websiteUrl.trim());
+      // Only overwrite with what the page actually supported; leave the rest as it was.
+      setFormState((prev) => ({
+        ...prev,
+        businessName: draft.businessName || prev.businessName,
+        industry: draft.industry || prev.industry,
+        tagline: draft.tagline || prev.tagline,
+        mission: draft.mission || prev.mission,
+        toneOfVoice: draft.toneOfVoice.length ? draft.toneOfVoice : prev.toneOfVoice,
+        primaryCTA: draft.primaryCTA || prev.primaryCTA,
+        targetAudience: draft.targetAudience || prev.targetAudience,
+        productsAndServices: draft.productsAndServices.length ? draft.productsAndServices : prev.productsAndServices,
+        keywords: draft.keywords.length ? draft.keywords : prev.keywords,
+        brandColors: prev.brandColors.length ? prev.brandColors : draft.brandColors,
+      }));
+      setExtractNote(`Drafted from "${source.title || source.url}". Review every field, then click Save Changes.`);
+    } catch (err) {
+      setError(err instanceof ApiError || err instanceof Error ? err.message : 'Could not read that website.');
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   const applyTemplate = (templateId: string) => {
     const template = BRAND_TEMPLATES.find((t) => t.id === templateId);
@@ -192,6 +223,61 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
               value={formState.businessName}
               onChange={(e) => set('businessName', e.target.value)}
               className="w-full text-xs px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-900 dark:text-white">Industry</label>
+              <input
+                type="text"
+                value={formState.industry}
+                onChange={(e) => set('industry', e.target.value)}
+                placeholder="e.g. Life Insurance"
+                className="w-full text-xs px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-slate-900 dark:text-white">Tagline</label>
+              <input
+                type="text"
+                value={formState.tagline}
+                onChange={(e) => set('tagline', e.target.value)}
+                className="w-full text-xs px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-900 dark:text-white">Website</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={formState.websiteUrl}
+                onChange={(e) => set('websiteUrl', e.target.value)}
+                placeholder="https://yourbrand.com"
+                className="flex-1 min-w-0 text-xs px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+              <button
+                type="button"
+                onClick={handleExtract}
+                disabled={isExtracting || !formState.websiteUrl.trim()}
+                className="shrink-0 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 disabled:opacity-50 text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5"
+              >
+                {isExtracting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                {isExtracting ? 'Reading...' : 'Fill from website (1 credit)'}
+              </button>
+            </div>
+            {extractNote && <p className="text-[11px] text-emerald-600 dark:text-emerald-400">{extractNote}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-900 dark:text-white">Products & Services</label>
+            <ChipList
+              values={formState.productsAndServices}
+              onAdd={(v) => set('productsAndServices', [...formState.productsAndServices, v])}
+              onRemove={(idx) => set('productsAndServices', formState.productsAndServices.filter((_, i) => i !== idx))}
+              placeholder="Add product or service"
             />
           </div>
 

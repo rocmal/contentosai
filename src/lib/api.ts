@@ -400,6 +400,37 @@ export function studioGenerate(input: {
 }
 
 // ---------------------------------------------------------------------------
+// Co-pilot chat + Brand Brain website import
+// ---------------------------------------------------------------------------
+
+export interface CopilotTurn {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+export function copilotReply(input: { message: string; screen?: string; history?: CopilotTurn[] }): Promise<{ reply: string }> {
+  return apiRequest<{ reply: string }>('/ai/copilot', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export interface BrandDraft {
+  businessName: string;
+  industry: string;
+  tagline: string;
+  mission: string;
+  toneOfVoice: string[];
+  primaryCTA: string;
+  targetAudience: string;
+  productsAndServices: string[];
+  keywords: string[];
+  brandColors: string[];
+}
+
+/** Reads a public website and drafts Brand Brain fields from what the page says. Nothing is saved. */
+export function extractBrandFromWebsite(websiteUrl: string): Promise<{ draft: BrandDraft; source: { url: string; title: string } }> {
+  return apiRequest('/ai/brand/extract', { method: 'POST', body: JSON.stringify({ websiteUrl }) });
+}
+
+// ---------------------------------------------------------------------------
 // AI Agents (saved, brand-aware text agents)
 // ---------------------------------------------------------------------------
 
