@@ -112,18 +112,6 @@ export interface IntegrationItem {
   apiKey?: string;
 }
 
-export interface IndustryPack {
-  id: string;
-  title: string;
-  category: string;
-  description: string;
-  icon: string;
-  badge: string;
-  downloads: number;
-  rating: number;
-  includedTemplates: string[];
-}
-
 export interface VoiceProfile {
   id: string;
   name: string;

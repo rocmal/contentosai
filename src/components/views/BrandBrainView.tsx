@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { BrandBrain } from '../../types';
 import { saveBrandProfile, uploadToGallery, ApiError } from '../../lib/api';
-import { BRAND_TEMPLATES } from '../../lib/brandTemplates';
+import { applyBrandTemplate, BRAND_TEMPLATES } from '../../lib/brandTemplates';
 
 interface BrandBrainViewProps {
   brandBrain: BrandBrain;
@@ -102,12 +102,7 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
     const template = BRAND_TEMPLATES.find((t) => t.id === templateId);
     if (!template) return;
     if (!window.confirm(`Load the "${template.label}" template? This replaces the fields below (your logo and social accounts are kept). Nothing is saved until you click Save Changes.`)) return;
-    setFormState((prev) => ({
-      ...template.profile,
-      id: prev.id,
-      logoUrl: prev.logoUrl || template.profile.logoUrl,
-      socialAccounts: prev.socialAccounts.length ? prev.socialAccounts : template.profile.socialAccounts,
-    }));
+    setFormState((prev) => applyBrandTemplate(prev, template));
   };
 
   const handleSave = async () => {

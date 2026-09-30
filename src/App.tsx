@@ -360,7 +360,11 @@ export function App() {
           )}
 
           {currentView === 'marketplace' && (
-            <MarketplaceView onNavigate={(v) => setCurrentView(v)} />
+            <MarketplaceView
+              brandBrain={brandBrain}
+              onUpdateBrandBrain={(nb) => setBrandBrain(nb)}
+              onNavigate={(v) => setCurrentView(v)}
+            />
           )}
 
           {currentView === 'team' && (
