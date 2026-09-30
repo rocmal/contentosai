@@ -4,7 +4,6 @@ import {
   IndustryPack,
   IntegrationItem,
   MediaAsset,
-  Project,
   TeamMember,
   VoiceProfile,
 } from './types';
@@ -36,49 +35,6 @@ export const initialBrandBrain: BrandBrain = {
     { platform: 'Instagram', handle: '@acmetech_hq', connected: false },
   ],
 };
-
-export const initialProjects: Project[] = [
-  {
-    id: 'proj-1',
-    title: 'Q3 Enterprise AI Product Launch',
-    category: 'Product Launch',
-    status: 'In Progress',
-    itemCount: 14,
-    lastUpdated: '12 mins ago',
-    campaign: 'Q3 Product Expansion',
-    thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'proj-2',
-    title: 'Weekly Tech Insights Newsletter & Blog',
-    category: 'Thought Leadership',
-    status: 'In Progress',
-    itemCount: 8,
-    lastUpdated: '1 hour ago',
-    campaign: 'Organic Growth 2026',
-    thumbnail: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'proj-3',
-    title: 'Social Media Video Ads Series (LinkedIn/TikTok)',
-    category: 'Paid Acquisition',
-    status: 'Review',
-    itemCount: 6,
-    lastUpdated: '3 hours ago',
-    campaign: 'Q3 Lead Generation',
-    thumbnail: 'https://images.unsplash.com/photo-1536240478700-b869070f9279?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'proj-4',
-    title: 'Customer Case Study Video & PDF eBook',
-    category: 'Customer Stories',
-    status: 'Completed',
-    itemCount: 5,
-    lastUpdated: 'Yesterday',
-    campaign: 'Trust & Reputation',
-    thumbnail: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=400&auto=format&fit=crop&q=80',
-  },
-];
 
 export const initialAIAgents: AIAgent[] = [
   {

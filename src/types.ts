@@ -58,15 +58,20 @@ export interface BrandBrain {
   }[];
 }
 
+export type ProjectStatus = 'in_progress' | 'review' | 'completed' | 'archived';
+
+/** Backed by apps/api's projects module. */
 export interface Project {
   id: string;
+  organizationId: string;
+  workspaceId: string;
+  campaignId: string | null;
   title: string;
   category: string;
-  status: 'In Progress' | 'Review' | 'Completed' | 'Archived';
-  itemCount: number;
-  lastUpdated: string;
-  campaign?: string;
-  thumbnail?: string;
+  description: string | null;
+  status: ProjectStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type CampaignStatus = 'draft' | 'active' | 'completed' | 'archived';

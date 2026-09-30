@@ -18,14 +18,18 @@ import {
   Zap,
 } from 'lucide-react';
 import {
+  Campaign,
   Project,
   ViewType,
 } from '../../types';
+import { PROJECT_STATUS_LABELS, PROJECT_STATUS_STYLES } from '../../lib/projectDisplay';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   getMyCreditWallet,
+  listCampaigns,
   listContent,
   listMyGallery,
+  listProjects,
   listScheduledPosts,
   listTeamMembers,
   MediaAsset,
@@ -34,7 +38,6 @@ import {
 
 interface DashboardViewProps {
   onNavigate: (view: ViewType) => void;
-  projects: Project[];
 }
 
 interface QueueItem {
@@ -66,12 +69,13 @@ function timeOfDayGreeting(): string {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
-  projects,
 }) => {
   const { user } = useAuth();
   const [generations, setGenerations] = useState<MediaAsset[] | null>(null);
   const [jobs, setJobs] = useState<PublishingJob[] | null>(null);
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
+  const [projects, setProjects] = useState<Project[] | null>(null);
+  const [campaignNames, setCampaignNames] = useState<Map<string, string>>(new Map());
   const [teamSize, setTeamSize] = useState<number | null>(null);
   const [creditsRemaining, setCreditsRemaining] = useState<number | null | undefined>(undefined);
 
@@ -103,6 +107,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           setJobs([]);
           setQueue([]);
         }
+      });
+    Promise.all([listProjects({ limit: 6 }), listCampaigns()])
+      .then(([p, c]) => {
+        if (cancelled) return;
+        setProjects(p.items.filter((proj) => proj.status !== 'archived'));
+        setCampaignNames(new Map(c.items.map((camp: Campaign) => [camp.id, camp.name])));
+      })
+      .catch(() => {
+        if (!cancelled) setProjects([]);
       });
     listTeamMembers().then((m) => {
       if (!cancelled) setTeamSize(m.length);
@@ -282,37 +295,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {projects.map((proj) => (
-              <div
-                key={proj.id}
+          {projects === null ? (
+            <div className="flex items-center justify-center py-10 text-slate-400">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
+          ) : projects.length === 0 ? (
+            <div className="p-8 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
+              <FolderKanban className="w-6 h-6 mx-auto text-slate-400 mb-2" />
+              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No projects yet</p>
+              <p className="text-[11px] text-slate-500 mt-1">Create a project to group the content for a launch or initiative.</p>
+              <button
                 onClick={() => onNavigate('projects')}
-                className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 transition-all cursor-pointer group flex flex-col justify-between"
+                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold"
               >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-                      {proj.category}
-                    </span>
-                    <span className="text-[10px] text-slate-400">{proj.lastUpdated}</span>
+                <Plus className="w-3.5 h-3.5" /> New Project
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {projects.map((proj) => (
+                <div
+                  key={proj.id}
+                  onClick={() => onNavigate('projects')}
+                  className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 transition-all cursor-pointer group flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
+                        {proj.category}
+                      </span>
+                      <span className="text-[10px] text-slate-400">{timeAgo(proj.updatedAt)}</span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
+                      {proj.title}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                      Campaign:{' '}
+                      <span className="text-slate-700 dark:text-slate-300 font-medium">
+                        {(proj.campaignId && campaignNames.get(proj.campaignId)) || 'None'}
+                      </span>
+                    </p>
                   </div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
-                    {proj.title}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                    Campaign: <span className="text-slate-700 dark:text-slate-300 font-medium">{proj.campaign}</span>
-                  </p>
-                </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
-                  <span>{proj.itemCount} assets generated</span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
-                    {proj.status}
-                  </span>
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-end text-[11px]">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${PROJECT_STATUS_STYLES[proj.status]}`}>
+                      {PROJECT_STATUS_LABELS[proj.status]}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Scheduled Content & Today's Tasks */}

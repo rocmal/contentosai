@@ -37,12 +37,10 @@ import { CharacterStudioView } from './components/views/CharacterStudioView';
 import {
   initialAIAgents,
   initialBrandBrain,
-  initialProjects,
 } from './mockData';
 import {
   AIAgent,
   BrandBrain,
-  Project,
   ViewType,
 } from './types';
 
@@ -156,7 +154,6 @@ export function App() {
     });
   };
 
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [aiAgents, setAiAgents] = useState<AIAgent[]>(initialAIAgents);
 
   // Sync dark mode class
@@ -300,7 +297,6 @@ export function App() {
           {currentView === 'dashboard' && (
             <DashboardView
               onNavigate={(v) => setCurrentView(v)}
-              projects={projects}
             />
           )}
 
@@ -320,7 +316,6 @@ export function App() {
 
           {currentView === 'projects' && (
             <ProjectsView
-              projects={projects}
               onNavigate={(v) => setCurrentView(v)}
             />
           )}

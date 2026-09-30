@@ -13,7 +13,7 @@
  *   attempt before the request is retried once.
  */
 
-import type { BrandBrain, Campaign, CampaignStatus } from '../types';
+import type { BrandBrain, Campaign, CampaignStatus, Project, ProjectStatus } from '../types';
 
 const API_BASE_URL =
   ((import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_URL as
@@ -344,6 +344,58 @@ export function updateCampaign(
 
 export function deleteCampaign(id: string): Promise<{ deleted: boolean }> {
   return apiRequest(`/campaigns/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+// ---------------------------------------------------------------------------
+// Projects
+// ---------------------------------------------------------------------------
+
+export interface ProjectListResult {
+  items: Project[];
+  meta: { totalItems: number; itemCount: number; itemsPerPage: number; totalPages: number; currentPage: number };
+}
+
+export function listProjects(input: { page?: number; limit?: number } = {}): Promise<ProjectListResult> {
+  const params = new URLSearchParams();
+  params.set('page', String(input.page ?? 1));
+  params.set('limit', String(input.limit ?? 50));
+  params.set('sortBy', 'updatedAt');
+  params.set('sortOrder', 'DESC');
+  return apiRequest<ProjectListResult>(`/projects?${params.toString()}`);
+}
+
+export async function createProject(input: {
+  title: string;
+  category?: string;
+  description?: string;
+  campaignId?: string;
+}): Promise<Project> {
+  const user = await getCurrentUser();
+  if (!user.organizationId || !user.workspaceId) {
+    throw new ApiError(400, 'Your account is not attached to an organization workspace yet.');
+  }
+  return apiRequest<Project>('/projects', {
+    method: 'POST',
+    body: JSON.stringify({
+      organizationId: user.organizationId,
+      workspaceId: user.workspaceId,
+      ...input,
+    }),
+  });
+}
+
+export function updateProject(
+  id: string,
+  input: Partial<{ title: string; category: string; description: string; campaignId: string; status: ProjectStatus }>,
+): Promise<Project> {
+  return apiRequest<Project>(`/projects/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteProject(id: string): Promise<{ deleted: boolean }> {
+  return apiRequest(`/projects/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
 // ---------------------------------------------------------------------------
