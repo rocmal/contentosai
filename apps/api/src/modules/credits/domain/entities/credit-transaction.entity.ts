@@ -1,6 +1,7 @@
 import { BaseTenantEntity } from '@shared/domain/base-tenant.entity';
 
 export enum CreditTransactionReason {
+  GENERATION_TEXT = 'generation.text',
   GENERATION_IMAGE = 'generation.image',
   GENERATION_VOICE = 'generation.voice',
   GENERATION_VIDEO = 'generation.video',

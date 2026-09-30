@@ -16,6 +16,28 @@ export class BrandSocialAccountDto {
   connected!: boolean;
 }
 
+export class BrandAdvisorProfileDto {
+  @ApiProperty()
+  @IsString()
+  @MaxLength(150)
+  name!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(30)
+  phone!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(100)
+  city!: string;
+
+  @ApiProperty({ description: 'Licence / agent / registration number shown on advertising' })
+  @IsString()
+  @MaxLength(60)
+  licenceNumber!: string;
+}
+
 export class CreateBrandProfileDto {
   @ApiProperty()
   @IsUUID('4')
@@ -121,4 +143,10 @@ export class CreateBrandProfileDto {
   @ValidateNested({ each: true })
   @Type(() => BrandSocialAccountDto)
   socialAccounts?: BrandSocialAccountDto[];
+
+  @ApiPropertyOptional({ type: BrandAdvisorProfileDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => BrandAdvisorProfileDto)
+  advisorProfile?: BrandAdvisorProfileDto;
 }

@@ -347,6 +347,59 @@ export function deleteCampaign(id: string): Promise<{ deleted: boolean }> {
 }
 
 // ---------------------------------------------------------------------------
+// AI Studio (brand-aware, compliance-checked text generation)
+// ---------------------------------------------------------------------------
+
+export type StudioFormat =
+  | 'reel'
+  | 'poster'
+  | 'whatsapp'
+  | 'advisor_post'
+  | 'social_post'
+  | 'ad_copy'
+  | 'blog_article'
+  | 'newsletter'
+  | 'custom';
+
+export type StudioLanguage = 'english' | 'hindi' | 'hinglish' | 'punjabi';
+export type StudioProvider = 'openai' | 'gemini' | 'claude' | 'openrouter';
+
+export interface StudioComplianceFlag {
+  severity: 'block' | 'warn';
+  message: string;
+  match: string;
+}
+
+export interface StudioResult {
+  headline: string;
+  body: string;
+  hashtags: string[];
+  cta: string;
+  visualPrompt: string;
+  suggestedPlatforms: string[];
+  footer: string;
+  compliance: { regulated: boolean; flags: StudioComplianceFlag[] };
+  provider: string;
+  model: string;
+}
+
+export function studioGenerate(input: {
+  format: StudioFormat;
+  topic: string;
+  goal?: string;
+  audience?: string;
+  customPrompt?: string;
+  language?: StudioLanguage;
+  provider?: StudioProvider;
+  includeAdvisorDetails?: boolean;
+}): Promise<StudioResult> {
+  return apiRequest<StudioResult>('/ai/studio/generate', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Projects
 // ---------------------------------------------------------------------------
 
@@ -427,6 +480,7 @@ interface BrandProfileDto {
   competitors: string[] | null;
   keywords: string[] | null;
   socialAccounts: BrandBrain['socialAccounts'] | null;
+  advisorProfile: BrandBrain['advisorProfile'] | null;
 }
 
 function brandProfileToBrandBrain(p: BrandProfileDto): BrandBrain {
@@ -449,6 +503,7 @@ function brandProfileToBrandBrain(p: BrandProfileDto): BrandBrain {
     keywords: p.keywords ?? [],
     guidelines: p.guidelines ?? '',
     socialAccounts: p.socialAccounts ?? [],
+    advisorProfile: p.advisorProfile ?? null,
   };
 }
 
@@ -471,6 +526,10 @@ function brandBrainToDto(b: BrandBrain) {
     keywords: b.keywords,
     guidelines: b.guidelines || undefined,
     socialAccounts: b.socialAccounts,
+    advisorProfile:
+      b.advisorProfile && b.advisorProfile.name && b.advisorProfile.phone && b.advisorProfile.city && b.advisorProfile.licenceNumber
+        ? b.advisorProfile
+        : undefined,
   };
 }
 

@@ -13,6 +13,7 @@ export const DEFAULT_PLAN = 'starter';
  * ~10 seconds of video." Voice/video costs are computed from actual duration
  * at generation time; these are the per-unit rates that computation uses. */
 export const CREDIT_COST = {
+  TEXT_PER_GENERATION: 1,
   IMAGE_PER_GENERATION: 1,
   VOICE_PER_MINUTE: 1,
   VIDEO_PER_10_SECONDS: 1,

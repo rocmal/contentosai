@@ -30,6 +30,7 @@ describe('BrandProfilesService', () => {
     competitors: null,
     keywords: null,
     socialAccounts: null,
+    advisorProfile: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,

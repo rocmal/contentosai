@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { BrandProfile, BrandSocialAccount } from '../../domain/entities/brand-profile.entity';
+import { BrandAdvisorProfile, BrandProfile, BrandSocialAccount } from '../../domain/entities/brand-profile.entity';
 
 export class BrandProfileResponseDto {
   @ApiProperty() id: string;
@@ -22,6 +22,7 @@ export class BrandProfileResponseDto {
   @ApiProperty({ type: [String], nullable: true }) competitors: string[] | null;
   @ApiProperty({ type: [String], nullable: true }) keywords: string[] | null;
   @ApiProperty({ nullable: true }) socialAccounts: BrandSocialAccount[] | null;
+  @ApiProperty({ nullable: true }) advisorProfile: BrandAdvisorProfile | null;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
 
@@ -46,6 +47,7 @@ export class BrandProfileResponseDto {
     this.competitors = brandProfile.competitors;
     this.keywords = brandProfile.keywords;
     this.socialAccounts = brandProfile.socialAccounts;
+    this.advisorProfile = brandProfile.advisorProfile;
     this.createdAt = brandProfile.createdAt;
     this.updatedAt = brandProfile.updatedAt;
   }

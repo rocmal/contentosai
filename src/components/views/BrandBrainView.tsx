@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { BrandBrain } from '../../types';
 import { saveBrandProfile, uploadToGallery, ApiError } from '../../lib/api';
+import { BRAND_TEMPLATES } from '../../lib/brandTemplates';
 
 interface BrandBrainViewProps {
   brandBrain: BrandBrain;
@@ -97,6 +98,18 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
   const set = <K extends keyof BrandBrain>(key: K, value: BrandBrain[K]) =>
     setFormState((prev) => ({ ...prev, [key]: value }));
 
+  const applyTemplate = (templateId: string) => {
+    const template = BRAND_TEMPLATES.find((t) => t.id === templateId);
+    if (!template) return;
+    if (!window.confirm(`Load the "${template.label}" template? This replaces the fields below (your logo and social accounts are kept). Nothing is saved until you click Save Changes.`)) return;
+    setFormState((prev) => ({
+      ...template.profile,
+      id: prev.id,
+      logoUrl: prev.logoUrl || template.profile.logoUrl,
+      socialAccounts: prev.socialAccounts.length ? prev.socialAccounts : template.profile.socialAccounts,
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -126,6 +139,19 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
         </div>
 
         <div className="flex items-center gap-3">
+          <select
+            value=""
+            onChange={(e) => applyTemplate(e.target.value)}
+            aria-label="Load a brand template"
+            className="text-xs px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none outline-none cursor-pointer"
+          >
+            <option value="">Load template...</option>
+            {BRAND_TEMPLATES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
           {error && (
             <span className="flex items-center gap-1.5 text-[11px] text-red-500 font-semibold">
               <AlertCircle className="w-3.5 h-3.5" /> {error}
@@ -382,6 +408,46 @@ export const BrandBrainView: React.FC<BrandBrainViewProps> = ({
               onRemove={(idx) => set('competitors', formState.competitors.filter((_, i) => i !== idx))}
               placeholder="Add competitor"
             />
+          </div>
+        </div>
+
+        {/* CARD 5: Advisor Details */}
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs lg:col-span-2">
+          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-wider">
+            <Brain className="w-4 h-4" />
+            <span>Advisor / Agent Details</span>
+          </div>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Regulated advertising must identify the advisor. These details are appended to every generated piece automatically,
+            so the AI can never omit or alter them. Fill in all four fields to enable it.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {([
+              ['name', 'Advisor name', 'Rajni Mehra'],
+              ['phone', 'Phone', '9988117283'],
+              ['city', 'City', 'Amritsar'],
+              ['licenceNumber', 'Licence / Agent No.', '17499150'],
+            ] as const).map(([key, label, placeholder]) => (
+              <div key={key} className="space-y-1.5">
+                <label className="block text-xs font-bold text-slate-900 dark:text-white">{label}</label>
+                <input
+                  type="text"
+                  value={formState.advisorProfile?.[key] ?? ''}
+                  onChange={(e) =>
+                    set('advisorProfile', {
+                      name: '',
+                      phone: '',
+                      city: '',
+                      licenceNumber: '',
+                      ...formState.advisorProfile,
+                      [key]: e.target.value,
+                    })
+                  }
+                  placeholder={placeholder}
+                  className="w-full text-xs px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                />
+              </div>
+            ))}
           </div>
         </div>
 

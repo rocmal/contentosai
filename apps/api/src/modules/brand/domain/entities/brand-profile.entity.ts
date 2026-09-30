@@ -6,6 +6,15 @@ export interface BrandSocialAccount {
   connected: boolean;
 }
 
+/** The individual advisor/agent a brand's content is published on behalf of -
+ * regulated industries (e.g. insurance) require these details on advertising. */
+export interface BrandAdvisorProfile {
+  name: string;
+  phone: string;
+  city: string;
+  licenceNumber: string;
+}
+
 export interface BrandProfile extends BaseTenantEntity {
   name: string;
   industry: string | null;
@@ -24,4 +33,5 @@ export interface BrandProfile extends BaseTenantEntity {
   competitors: string[] | null;
   keywords: string[] | null;
   socialAccounts: BrandSocialAccount[] | null;
+  advisorProfile: BrandAdvisorProfile | null;
 }

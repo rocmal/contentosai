@@ -40,6 +40,7 @@ export class BrandProfilesService {
         competitors: dto.competitors ?? null,
         keywords: dto.keywords ?? null,
         socialAccounts: dto.socialAccounts ?? null,
+        advisorProfile: dto.advisorProfile ?? null,
       },
       actorId,
     );
@@ -90,6 +91,7 @@ export class BrandProfilesService {
         competitors: dto.competitors,
         keywords: dto.keywords,
         socialAccounts: dto.socialAccounts,
+        advisorProfile: dto.advisorProfile,
       },
       actorId,
     );

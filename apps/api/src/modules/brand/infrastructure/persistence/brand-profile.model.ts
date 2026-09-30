@@ -2,7 +2,7 @@ import { Column, DataType, ForeignKey, Table } from 'sequelize-typescript';
 import { BaseModel } from '@database/base.model';
 import { OrganizationModel } from '@modules/organizations/infrastructure/persistence/organization.model';
 import { WorkspaceModel } from '@modules/workspaces/infrastructure/persistence/workspace.model';
-import { BrandSocialAccount } from '../../domain/entities/brand-profile.entity';
+import { BrandAdvisorProfile, BrandSocialAccount } from '../../domain/entities/brand-profile.entity';
 
 @Table({ tableName: 'brand_profiles', version: true })
 export class BrandProfileModel extends BaseModel {
@@ -64,4 +64,7 @@ export class BrandProfileModel extends BaseModel {
 
   @Column({ type: DataType.JSON, allowNull: true })
   declare socialAccounts: BrandSocialAccount[] | null;
+
+  @Column({ type: DataType.JSON, allowNull: true })
+  declare advisorProfile: BrandAdvisorProfile | null;
 }

@@ -31,6 +31,14 @@ export interface UserProfile {
   workspaceName: string;
 }
 
+/** The individual advisor the brand's content is published on behalf of - appended to generated content by the server. */
+export interface AdvisorProfile {
+  name: string;
+  phone: string;
+  city: string;
+  licenceNumber: string;
+}
+
 export interface BrandBrain {
   /** Present once loaded from/saved to the real brand-profiles backend; absent for the local mock default shown before that fetch resolves. */
   id?: string;
@@ -56,6 +64,7 @@ export interface BrandBrain {
     handle: string;
     connected: boolean;
   }[];
+  advisorProfile?: AdvisorProfile | null;
 }
 
 export type ProjectStatus = 'in_progress' | 'review' | 'completed' | 'archived';
@@ -160,23 +169,12 @@ export interface TeamMember {
 }
 
 export interface WizardState {
+  /** A StudioFormat id (see lib/api.ts). */
   contentType: string;
   goal: string;
   audience: string;
-  brandContext: string;
+  language: string;
   aiProvider: string;
   customPrompt?: string;
   topic: string;
-}
-
-export interface AIResponsePayload {
-  id: string;
-  contentType: string;
-  headline: string;
-  body: string;
-  hashtags: string[];
-  cta: string;
-  imagePromptSuggestions: string[];
-  suggestedPlatforms: string[];
-  estimatedReachScore: number;
 }

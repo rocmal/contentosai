@@ -51,6 +51,7 @@ export class BrandProfilesRepository
       competitors: plain.competitors,
       keywords: plain.keywords,
       socialAccounts: plain.socialAccounts,
+      advisorProfile: plain.advisorProfile,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       deletedAt: plain.deletedAt,

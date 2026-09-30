@@ -18,8 +18,16 @@ import {
   Target,
   Users,
 } from 'lucide-react';
-import { AIResponsePayload, BrandBrain, ViewType, WizardState } from '../../types';
-import { scheduleGeneratedContent } from '../../lib/api';
+import { BrandBrain, ViewType, WizardState } from '../../types';
+import {
+  ApiError,
+  scheduleGeneratedContent,
+  studioGenerate,
+  StudioFormat,
+  StudioLanguage,
+  StudioProvider,
+  StudioResult,
+} from '../../lib/api';
 
 interface AIStudioViewProps {
   brandBrain: BrandBrain;
@@ -33,32 +41,38 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
   const [step, setStep] = useState<number>(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [output, setOutput] = useState<AIResponsePayload | null>(null);
+  const [output, setOutput] = useState<StudioResult | null>(null);
+  const [generateError, setGenerateError] = useState<string | null>(null);
   const [scheduling, setScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   const [wizardState, setWizardState] = useState<WizardState>({
-    contentType: 'LinkedIn Post',
+    contentType: 'reel',
     goal: 'Lead Generation',
-    audience: brandBrain.targetAudience || 'Tech Decision Makers & Product Managers',
-    brandContext: `${brandBrain.businessName} - ${brandBrain.tagline}`,
-    aiProvider: 'Gemini 3.6 Flash',
-    topic: 'How AI Content Operating Systems supercharge B2B SaaS teams in 2026',
+    audience: brandBrain.targetAudience || '',
+    language: 'english',
+    aiProvider: 'auto',
+    topic: '',
     customPrompt: '',
   });
 
-  const contentTypes = [
-    { id: 'LinkedIn Post', label: 'LinkedIn Post / Carousel', desc: 'Thought leadership & lead gen' },
-    { id: 'Instagram Reel', label: 'Instagram Reel / Story', desc: 'Short-form visual reel script' },
-    { id: 'YouTube Video', label: 'YouTube Video / Short', desc: 'Hook, script & thumbnail prompt' },
-    { id: 'TikTok', label: 'TikTok Short', desc: 'Viral hook & short video concept' },
-    { id: 'Blog Article', label: 'Blog / SEO Article', desc: 'Long-form structured article' },
-    { id: 'Newsletter', label: 'Email Newsletter', desc: 'High-open newsletter issue' },
-    { id: 'Podcast Script', label: 'Podcast Script', desc: 'Talking points & host questions' },
-    { id: 'Presentation', label: 'Slide Deck / Pitch', desc: 'Slide-by-slide layout & copy' },
-    { id: 'Advertisement', label: 'Social Ad Copy', desc: 'High-converting ad variations' },
-    { id: 'Landing Page', label: 'Landing Page Copy', desc: 'Hero section, features, & CTAs' },
-    { id: 'Custom Format', label: 'Custom Format', desc: 'Define custom prompt parameters' },
+  const contentTypes: { id: StudioFormat; label: string; desc: string }[] = [
+    { id: 'reel', label: 'Reel / Short Video Script', desc: 'Scene-by-scene script with hook, voiceover & CTA' },
+    { id: 'poster', label: 'Poster / Social Creative', desc: 'Short poster copy plus an image prompt' },
+    { id: 'whatsapp', label: 'WhatsApp Message', desc: 'Short, personal, forwardable message' },
+    { id: 'advisor_post', label: 'Advisor Trust Post', desc: 'Educational first-person post that builds trust' },
+    { id: 'social_post', label: 'Social Media Post', desc: 'Facebook / LinkedIn / Instagram post' },
+    { id: 'ad_copy', label: 'Ad Copy', desc: 'Three ad variations with headlines' },
+    { id: 'blog_article', label: 'Blog / SEO Article', desc: 'Long-form structured article' },
+    { id: 'newsletter', label: 'Email Newsletter', desc: 'Subject line and newsletter issue' },
+    { id: 'custom', label: 'Custom Format', desc: 'Describe the format in your own words' },
+  ];
+
+  const languages: { id: StudioLanguage; label: string }[] = [
+    { id: 'english', label: 'English' },
+    { id: 'hindi', label: 'Hindi (हिन्दी)' },
+    { id: 'hinglish', label: 'Hinglish' },
+    { id: 'punjabi', label: 'Punjabi (ਪੰਜਾਬੀ)' },
   ];
 
   const goals = [
@@ -71,51 +85,42 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
   ];
 
   const aiProviders = [
-    { id: 'Gemini 3.6 Flash', label: 'Gemini 3.6 Flash (Recommended)', badge: 'Server Native', desc: 'Lightning fast multi-modal engine' },
-    { id: 'OpenAI GPT-4o', label: 'OpenAI GPT-4o', badge: 'Popular', desc: 'High accuracy structured formatting' },
-    { id: 'Claude 3.5 Sonnet', label: 'Claude 3.5 Sonnet', badge: 'Editorial', desc: 'Nuanced long-form copywriter' },
-    { id: 'Auto-Select AI Engine', label: 'Auto-Select AI Engine', badge: 'Smart', desc: 'Lumora automatically selects best model' },
+    { id: 'auto', label: 'Auto (server default)', badge: 'Recommended', desc: 'Uses the provider configured on the server' },
+    { id: 'gemini', label: 'Google Gemini', badge: 'Fast', desc: 'Fast multi-modal engine' },
+    { id: 'openai', label: 'OpenAI', badge: 'Popular', desc: 'High accuracy structured formatting' },
+    { id: 'claude', label: 'Anthropic Claude', badge: 'Editorial', desc: 'Nuanced long-form copywriter' },
   ];
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setGenerateError(null);
+    setOutput(null);
     setStep(6);
 
     try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(wizardState),
+      const result = await studioGenerate({
+        format: wizardState.contentType as StudioFormat,
+        topic: wizardState.topic,
+        goal: wizardState.goal,
+        audience: wizardState.audience || undefined,
+        customPrompt: wizardState.customPrompt || undefined,
+        language: wizardState.language as StudioLanguage,
+        provider: wizardState.aiProvider === 'auto' ? undefined : (wizardState.aiProvider as StudioProvider),
       });
-      const json = await res.json();
-      if (json.success && json.data) {
-        setOutput(json.data);
-      }
-    } catch {
-      // Fallback response
-      setOutput({
-        id: 'out-1',
-        contentType: wizardState.contentType,
-        headline: `🚀 Why ${wizardState.topic || 'AI Content Operating Systems'} are mandatory for ${brandBrain.businessName} in 2026`,
-        body: `Traditional marketing workflows were built for an era of manual content creation.\n\nAt ${brandBrain.businessName}, we realized that scaling content requires an integrated Brand Memory.\n\n3 key transformations we unlocked:\n1. Zero-Prompt Creation: Pre-configured Brand Brain tone eliminates generic AI responses.\n2. Multi-Channel Orchestration: Generate LinkedIn posts, video scripts, and email newsletters simultaneously.\n3. Autonomous AI Agents: Research, drafting, and publishing happen continuously.\n\nHow is your team scaling content this quarter?`,
-        hashtags: ['#LumoraAI', '#ContentOS', '#Productivity', '#B2BSaaS', '#AI2026'],
-        cta: brandBrain.primaryCTA || 'Start 14-Day Free Trial at acmetech.io',
-        imagePromptSuggestions: [
-          '3D sleek glassmorphism dashboard with blue neon nodes and high-tech typography',
-          'Modern tech workspace with glowing hologram interface showing analytics trends',
-        ],
-        suggestedPlatforms: ['LinkedIn', 'Twitter/X', 'YouTube Shorts', 'Newsletter'],
-        estimatedReachScore: 95,
-      });
+      setOutput(result);
+    } catch (err) {
+      setGenerateError(err instanceof ApiError || err instanceof Error ? err.message : 'Generation failed. Please try again.');
     } finally {
       setIsGenerating(false);
     }
   };
 
+  const fullText = (o: StudioResult) =>
+    [o.headline, o.body, o.hashtags.join(' '), o.cta, o.footer].filter(Boolean).join('\n\n');
+
   const handleCopy = () => {
     if (!output) return;
-    const textToCopy = `${output.headline}\n\n${output.body}\n\n${output.hashtags.join(' ')}\n\n${output.cta}`;
-    navigator.clipboard.writeText(textToCopy);
+    navigator.clipboard.writeText(fullText(output));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -127,9 +132,9 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
     try {
       await scheduleGeneratedContent({
         title: output.headline,
-        body: `${output.body}\n\n${output.hashtags.join(' ')}\n\n${output.cta}`,
-        contentType: output.contentType,
-        aiProvider: wizardState.aiProvider,
+        body: [output.body, output.hashtags.join(' '), output.cta, output.footer].filter(Boolean).join('\n\n'),
+        contentType: wizardState.contentType,
+        aiProvider: output.provider,
       });
       onNavigate('calendar');
     } catch (err) {
@@ -302,7 +307,7 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
                 value={wizardState.audience}
                 onChange={(e) => setWizardState({ ...wizardState, audience: e.target.value })}
                 className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                placeholder="e.g., Tech Founders, Product Managers, CTOs at 50-2000 employee tech firms"
+                placeholder="Leave as-is to use your Brand Brain audience"
               />
             </div>
 
@@ -315,8 +320,25 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
                 value={wizardState.topic}
                 onChange={(e) => setWizardState({ ...wizardState, topic: e.target.value })}
                 className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                placeholder="e.g., How AI Agents replace static SaaS automation in 2026"
+                placeholder="e.g., Why young parents should plan for their child's education early"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+                Language
+              </label>
+              <select
+                value={wizardState.language}
+                onChange={(e) => setWizardState({ ...wizardState, language: e.target.value })}
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              >
+                {languages.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -328,7 +350,7 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
                 value={wizardState.customPrompt}
                 onChange={(e) => setWizardState({ ...wizardState, customPrompt: e.target.value })}
                 className="w-full text-xs p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                placeholder="Include 3 key stats, keep paragraphs short, end with a question..."
+                placeholder="Add verified facts to use (product name, figures) or style notes. Anything not given here will not be invented."
               />
             </div>
           </div>
@@ -342,7 +364,8 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
             </button>
             <button
               onClick={() => setStep(4)}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-2 shadow-sm"
+              disabled={!wizardState.topic.trim()}
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-semibold text-xs flex items-center gap-2 shadow-sm"
             >
               Next: Brand Context <ArrowRight className="w-4 h-4" />
             </button>
@@ -499,10 +522,10 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
-                      {output.contentType}
+                      {contentTypes.find((t) => t.id === wizardState.contentType)?.label ?? wizardState.contentType}
                     </span>
-                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">
-                      Est. Reach Score: {output.estimatedReachScore}/100
+                    <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                      {output.provider} / {output.model}
                     </span>
                   </div>
                   <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">
@@ -558,27 +581,59 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
                 <div className="p-3 rounded-lg bg-blue-100/50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-200 text-xs font-semibold">
                   Primary CTA: {output.cta}
                 </div>
+
+                {output.footer && (
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-line pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    {output.footer}
+                  </div>
+                )}
               </div>
 
-              {/* Suggested Image / Thumbnail Prompts */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                  AI Image & Thumbnail Prompts
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {output.imagePromptSuggestions.map((prompt, i) => (
-                    <div key={i} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-2">
-                      <p className="line-clamp-2">"{prompt}"</p>
-                      <button
-                        onClick={() => onNavigate('image-studio')}
-                        className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        Open in Image Studio →
-                      </button>
-                    </div>
-                  ))}
+              {/* Compliance check */}
+              {output.compliance.regulated && (
+                <div
+                  className={`p-4 rounded-xl border text-xs space-y-2 ${
+                    output.compliance.flags.length === 0
+                      ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300'
+                      : output.compliance.flags.some((f) => f.severity === 'block')
+                      ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-900/50 text-red-800 dark:text-red-300'
+                      : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-900/50 text-amber-800 dark:text-amber-300'
+                  }`}
+                >
+                  <p className="font-bold">
+                    {output.compliance.flags.length === 0
+                      ? 'Automated compliance check passed. Still get this reviewed and approved before publishing.'
+                      : output.compliance.flags.some((f) => f.severity === 'block')
+                      ? 'Do not publish: this draft contains claims your compliance rules prohibit.'
+                      : 'Review before publishing:'}
+                  </p>
+                  {output.compliance.flags.length > 0 && (
+                    <ul className="list-disc pl-4 space-y-1">
+                      {output.compliance.flags.map((f, i) => (
+                        <li key={i}>
+                          {f.message} <span className="font-mono opacity-80">({f.match})</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Visual direction */}
+              {output.visualPrompt && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-slate-900 dark:text-white">Visual Direction / Image Prompt</h4>
+                  <div className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-400 space-y-2">
+                    <p>"{output.visualPrompt}"</p>
+                    <button
+                      onClick={() => onNavigate('image-studio')}
+                      className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Open in Image Studio →
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Re-run Wizard Button */}
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between">
@@ -590,7 +645,29 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
                 </button>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <div className="py-12 text-center space-y-4">
+              <AlertCircle className="w-8 h-8 mx-auto text-red-500" />
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">Couldn't generate content</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                {generateError ?? 'Something went wrong. Please try again.'} No credits are charged for a failed generation.
+              </p>
+              <div className="flex justify-center gap-2">
+                <button
+                  onClick={() => setStep(5)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleGenerate}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -21,6 +21,7 @@ export interface CreateBrandProfileData {
   competitors?: string[] | null;
   keywords?: string[] | null;
   socialAccounts?: BrandProfile['socialAccounts'];
+  advisorProfile?: BrandProfile['advisorProfile'];
 }
 
 export type UpdateBrandProfileData = Partial<
