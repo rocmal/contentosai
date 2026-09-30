@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Public } from '@common/decorators/public.decorator';
 import { AuthService } from '../application/services/auth.service';
@@ -26,7 +27,11 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
+  // Auth endpoints get much tighter per-IP limits than the global 100/min: they
+  // are the brute-force and abuse targets (credential stuffing, signup spam,
+  // email bombing via forgot-password).
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   @ApiOperation({ summary: 'Register a new account' })
   async register(@Body() dto: RegisterDto): Promise<AuthTokensResponseDto> {
@@ -35,6 +40,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Log in with email and password' })
@@ -70,6 +76,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Request a password reset email' })
@@ -79,6 +86,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Reset a password using the emailed token' })

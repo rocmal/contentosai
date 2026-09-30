@@ -1,5 +1,7 @@
 'use strict';
 
+const { shouldSeedDemoData } = require('./_helpers/demo-data');
+
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -27,6 +29,9 @@ async function findOne(queryInterface, Sequelize, table, where) {
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Demo data has publicly-known credentials - never seed it into production.
+    if (!shouldSeedDemoData()) return;
+
     const now = new Date();
     const oneMonthFromNow = new Date(now);
     oneMonthFromNow.setMonth(oneMonthFromNow.getMonth() + 1);

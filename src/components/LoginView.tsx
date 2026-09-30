@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Loader2, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { requestMyPasswordReset } from '../lib/api';
 
-type Mode = 'signin' | 'signup';
+type Mode = 'signin' | 'signup' | 'forgot';
 
 interface LoginViewProps {
   initialMode?: Mode;
@@ -14,16 +15,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode = 'signin', on
   const [mode, setMode] = useState<Mode>(initialMode);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState(initialMode === 'signin' ? 'admin@lumora.ai' : '');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
 
   const switchMode = (next: Mode) => {
     setMode(next);
     setLocalError(null);
-    setEmail(next === 'signin' ? 'admin@lumora.ai' : '');
     setPassword('');
+    setResetSent(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,7 +33,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode = 'signin', on
     setSubmitting(true);
     setLocalError(null);
     try {
-      if (mode === 'signup') {
+      if (mode === 'forgot') {
+        await requestMyPasswordReset(email);
+        setResetSent(true);
+      } else if (mode === 'signup') {
         await register({ email, password, firstName, lastName });
       } else {
         await login(email, password);
@@ -86,12 +91,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode = 'signin', on
 
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">
-              {mode === 'signup' ? 'Create your account' : 'Sign in'}
+              {mode === 'signup' ? 'Create your account' : mode === 'forgot' ? 'Reset your password' : 'Sign in'}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {mode === 'signup'
                 ? 'Start free. Cancel anytime, no setup fees.'
-                : 'Sign in to generate real AI content in Video, Image & Voice Studio.'}
+                : mode === 'forgot'
+                  ? "Enter your email and we'll send you a link to choose a new password."
+                  : 'Sign in to your Lumora workspace.'}
             </p>
           </div>
 
@@ -130,6 +137,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode = 'signin', on
                 className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
               />
             </div>
+            {mode !== 'forgot' && (
             <div>
               <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">Password</label>
               <input
@@ -140,7 +148,23 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode = 'signin', on
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
               />
+              {mode === 'signin' && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('forgot')}
+                  className="mt-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  Forgot password?
+                </button>
+              )}
             </div>
+            )}
+
+            {resetSent && (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                If an account exists for that email, a reset link is on its way. It expires in 1 hour.
+              </p>
+            )}
 
             {(localError || error) && (
               <p className="text-[11px] text-red-500 font-medium">{localError || error}</p>
@@ -156,27 +180,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ initialMode = 'signin', on
                 {submitting
                   ? mode === 'signup'
                     ? 'Creating account...'
-                    : 'Signing in...'
+                    : mode === 'forgot'
+                      ? 'Sending...'
+                      : 'Signing in...'
                   : mode === 'signup'
                     ? 'Create free account'
-                    : 'Sign In'}
+                    : mode === 'forgot'
+                      ? 'Send reset link'
+                      : 'Sign In'}
               </span>
             </button>
           </form>
 
-          {mode === 'signin' && (
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 space-y-0.5">
-              <p className="font-semibold text-slate-500 dark:text-slate-400">Demo credentials (local dev seed)</p>
-              <p>Admin: admin@lumora.ai / Admin@12345</p>
-              <p>Member: user@lumora.ai / User@12345</p>
-            </div>
+          {mode === 'forgot' && (
+            <button
+              type="button"
+              onClick={() => switchMode('signin')}
+              className="text-[11px] font-semibold text-slate-500 hover:underline"
+            >
+              Back to sign in
+            </button>
           )}
         </div>
 
-        <p className="text-center text-[10px] text-slate-400">
-          Connecting to the API at the address configured in VITE_API_URL (defaults to
-          http://localhost:3000). Make sure the backend is running.
-        </p>
       </div>
     </div>
   );

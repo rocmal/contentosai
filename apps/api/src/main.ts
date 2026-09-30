@@ -31,6 +31,17 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService);
   app.useLogger(app.get(Logger));
 
+  // In production the API sits behind a reverse proxy (Apache). Without this,
+  // req.ip is always the proxy's address, so the rate limiter would treat every
+  // visitor as one client and throttle the whole site together. TRUST_PROXY is
+  // the number of proxy hops in front of the app (default 1 in production).
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy !== undefined && trustProxy !== '') {
+    app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === 'true');
+  } else if (config.get<boolean>('app.isProduction')) {
+    app.set('trust proxy', 1);
+  }
+
   // Registered before useStaticAssets below - Express/Nest middleware runs
   // in registration order, and useStaticAssets fully handles matching
   // requests itself. If CORS were registered after it, every response from
@@ -90,7 +101,11 @@ async function bootstrap(): Promise<void> {
   // APP_INTERCEPTOR just for this one constructor argument.
   app.useGlobalInterceptors(new TransformInterceptor(new Reflector()));
 
-  setupSwagger(app);
+  // The interactive API docs describe every endpoint - keep them off the public
+  // internet in production unless explicitly enabled.
+  if (!config.get<boolean>('app.isProduction') || process.env.SWAGGER_ENABLED === 'true') {
+    setupSwagger(app);
+  }
 
   const port = config.get<number>('app.port') ?? 3000;
   const host = config.get<string>('app.host') ?? 'localhost';

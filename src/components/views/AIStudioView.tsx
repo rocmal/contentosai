@@ -419,12 +419,28 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
             </p>
           </div>
 
+          {!brandBrain.id && (
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 text-xs text-amber-800 dark:text-amber-300 space-y-2">
+              <p className="font-bold">You haven't set up your Brand Brain yet.</p>
+              <p>
+                Content will still generate, but it won't use your voice, audience or content rules. Setting it up takes a
+                couple of minutes - you can start from an industry pack or import from your website.
+              </p>
+              <button
+                onClick={() => onNavigate('brand-brain')}
+                className="font-semibold underline"
+              >
+                Set up Brand Brain →
+              </button>
+            </div>
+          )}
+
           <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className={`w-2 h-2 rounded-full ${brandBrain.id ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
                 <h3 className="text-xs font-bold text-slate-900 dark:text-white">
-                  Active Brand: {brandBrain.businessName}
+                  Active Brand: {brandBrain.businessName || 'Not set up'}
                 </h3>
               </div>
               <button
@@ -546,7 +562,7 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
                 Lumora Engine Orchestrating Content...
               </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Applying Brand Brain memory ({brandBrain.businessName}), optimizing for {wizardState.goal}, and structuring multi-platform hooks.
+                Applying Brand Brain memory ({brandBrain.businessName || 'no brand set up yet'}), optimizing for {wizardState.goal}, and structuring multi-platform hooks.
               </p>
             </div>
           ) : output ? (

@@ -1107,6 +1107,24 @@ export async function updateMyProfile(input: {
   return getCurrentUser();
 }
 
+/** Completes a password reset using the token from the emailed link. */
+export function confirmPasswordReset(token: string, newPassword: string): Promise<{ reset: boolean }> {
+  return rawRequest<{ reset: boolean }>('/auth/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword }),
+  });
+}
+
+/** Confirms an email address using the token from the emailed link. */
+export function confirmEmailVerification(token: string): Promise<{ verified: boolean }> {
+  return rawRequest<{ verified: boolean }>('/auth/verify-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+}
+
 /** Reuses the existing forgot-password email flow as the self-service
  * "change my password" action - there is no separate authenticated
  * change-password endpoint, and this one already works end to end. */

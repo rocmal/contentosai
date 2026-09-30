@@ -18,6 +18,7 @@ import {
   Zap,
 } from 'lucide-react';
 import {
+  BrandBrain,
   Campaign,
   Project,
   ViewType,
@@ -26,6 +27,7 @@ import { PROJECT_STATUS_LABELS, PROJECT_STATUS_STYLES } from '../../lib/projectD
 import { useAuth } from '../../contexts/AuthContext';
 import {
   getMyCreditWallet,
+  getSocialConnectionStatus,
   listCampaigns,
   listContent,
   listMyGallery,
@@ -38,6 +40,7 @@ import {
 
 interface DashboardViewProps {
   onNavigate: (view: ViewType) => void;
+  brandBrain: BrandBrain;
 }
 
 interface QueueItem {
@@ -69,6 +72,7 @@ function timeOfDayGreeting(): string {
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
+  brandBrain,
 }) => {
   const { user } = useAuth();
   const [generations, setGenerations] = useState<MediaAsset[] | null>(null);
@@ -76,6 +80,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [queue, setQueue] = useState<QueueItem[] | null>(null);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [campaignNames, setCampaignNames] = useState<Map<string, string>>(new Map());
+  const [campaignCount, setCampaignCount] = useState<number | null>(null);
+  const [contentCount, setContentCount] = useState<number | null>(null);
+  const [socialConnected, setSocialConnected] = useState<boolean | null>(null);
+  const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('lumora.onboarding.dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [teamSize, setTeamSize] = useState<number | null>(null);
   const [creditsRemaining, setCreditsRemaining] = useState<number | null | undefined>(undefined);
 
@@ -95,6 +109,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       .then(([allJobs, content]) => {
         if (cancelled) return;
         setJobs(allJobs);
+        setContentCount(content.length);
         const contentById = new Map(content.map((c) => [c.id, c]));
         const items = allJobs
           .filter((job) => job.status === 'scheduled')
@@ -113,9 +128,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         if (cancelled) return;
         setProjects(p.items.filter((proj) => proj.status !== 'archived'));
         setCampaignNames(new Map(c.items.map((camp: Campaign) => [camp.id, camp.name])));
+        setCampaignCount(c.items.length);
       })
       .catch(() => {
         if (!cancelled) setProjects([]);
+      });
+    getSocialConnectionStatus()
+      .then((s) => {
+        if (!cancelled) setSocialConnected(Object.values(s).some((p) => p.connected));
+      })
+      .catch(() => {
+        if (!cancelled) setSocialConnected(false);
       });
     listTeamMembers().then((m) => {
       if (!cancelled) setTeamSize(m.length);
@@ -132,6 +155,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, []);
 
+  const onboardingSteps: { label: string; hint: string; done: boolean | null; view: ViewType; action: string }[] = [
+    { label: 'Set up your Brand Brain', hint: 'Teach Lumora your voice, audience and content rules.', done: Boolean(brandBrain.id), view: 'brand-brain', action: 'Open Brand Brain' },
+    { label: 'Create your first campaign', hint: 'A campaign groups the goal behind your content.', done: campaignCount === null ? null : campaignCount > 0, view: 'campaigns', action: 'New campaign' },
+    { label: 'Create a project', hint: 'Projects keep each launch or initiative organised.', done: projects === null ? null : projects.length > 0, view: 'projects', action: 'New project' },
+    { label: 'Generate your first content', hint: 'Use AI Studio to draft a post, reel script or WhatsApp message.', done: contentCount === null ? null : contentCount > 0, view: 'ai-studio', action: 'Open AI Studio' },
+    { label: 'Connect a social account', hint: 'Needed to schedule and publish from Lumora.', done: socialConnected, view: 'integrations', action: 'Connect' },
+  ];
+  const onboardingLoaded = onboardingSteps.every((s) => s.done !== null);
+  const onboardingDoneCount = onboardingSteps.filter((s) => s.done).length;
+  const showOnboarding = onboardingLoaded && !onboardingDismissed && onboardingDoneCount < onboardingSteps.length;
+
+  const dismissOnboarding = () => {
+    setOnboardingDismissed(true);
+    try {
+      window.localStorage.setItem('lumora.onboarding.dismissed', '1');
+    } catch {
+      // Dismissal just won't persist across reloads.
+    }
+  };
+
   const publishedCount = (jobs ?? []).filter((j) => j.status === 'published').length;
   const scheduledCount = (jobs ?? []).filter((j) => j.status === 'scheduled').length;
   const recentGenerations = (generations ?? []).slice(0, 5);
@@ -144,7 +187,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold backdrop-blur-xs">
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Lumora Content OS v3.2 Active
+              <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Your content workspace
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
               {timeOfDayGreeting()}{user?.firstName ? `, ${user.firstName}` : ''} 👋
@@ -179,6 +222,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Getting started checklist - driven by what the workspace actually has */}
+      {showOnboarding && (
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/50 space-y-3 shadow-xs">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Get started</h3>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {onboardingDoneCount} of {onboardingSteps.length} done
+              </p>
+            </div>
+            <button onClick={dismissOnboarding} className="text-[11px] text-slate-400 hover:text-slate-600">
+              Dismiss
+            </button>
+          </div>
+          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+            <div
+              className="h-full bg-blue-600 transition-all"
+              style={{ width: `${(onboardingDoneCount / onboardingSteps.length) * 100}%` }}
+            />
+          </div>
+          <ul className="space-y-2">
+            {onboardingSteps.map((step) => (
+              <li key={step.label} className="flex items-center justify-between gap-3">
+                <div className="flex items-start gap-2 min-w-0">
+                  <CheckCircle2
+                    className={`w-4 h-4 mt-0.5 shrink-0 ${step.done ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600'}`}
+                  />
+                  <div className="min-w-0">
+                    <p className={`text-xs font-semibold ${step.done ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
+                      {step.label}
+                    </p>
+                    {!step.done && <p className="text-[11px] text-slate-500 dark:text-slate-400">{step.hint}</p>}
+                  </div>
+                </div>
+                {!step.done && (
+                  <button
+                    onClick={() => onNavigate(step.view)}
+                    className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold"
+                  >
+                    {step.action}
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Quick Actions Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">

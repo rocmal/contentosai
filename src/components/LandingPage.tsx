@@ -39,9 +39,9 @@ const FEATURES: { icon: LucideIcon; tint: 'blue' | 'indigo' | 'teal'; title: str
   { icon: UserRound, tint: 'teal', title: 'Character Studio', desc: 'Turn a single photo and a script into a talking avatar with accurate lip-sync. No camera, actor, or studio required.' },
   { icon: Video, tint: 'blue', title: 'Video Studio', desc: 'Script, storyboard, and edit video end-to-end with AI B-roll, auto captions, and voiceover in one timeline.' },
   { icon: Brain, tint: 'indigo', title: 'Brand Brain', desc: 'Teach the platform your brand once: voice, colors, tone, positioning. Every generation stays on-brand automatically.' },
-  { icon: Bot, tint: 'teal', title: 'AI Agents & Automation', desc: 'Autonomous agents research topics, draft campaigns, repurpose one video into ten platform-ready clips, and publish on schedule.' },
-  { icon: Calendar, tint: 'blue', title: 'Calendar & Publishing', desc: 'Plan, review, approve, and auto-publish across every connected channel from one shared calendar.' },
-  { icon: BarChart3, tint: 'blue', title: 'Analytics', desc: 'Executive insights, engagement scores, and CTR across every channel, with AI-recommended strategy adjustments.' },
+  { icon: Bot, tint: 'teal', title: 'AI Agents & Automation', desc: 'Specialised agents research topics, plan campaigns, draft copy, repurpose one piece of content into many platform-ready versions, and review drafts against your brand rules.' },
+  { icon: Calendar, tint: 'blue', title: 'Calendar & Publishing', desc: 'Plan your content and schedule it to Facebook, Instagram, LinkedIn and YouTube from one calendar.' },
+  { icon: BarChart3, tint: 'blue', title: 'Analytics', desc: 'See what you have created, scheduled and published, and how many credits you are using, in one dashboard.' },
 ];
 
 const TINT_CLASSES: Record<'blue' | 'indigo' | 'teal', { bg: string; border: string; stroke: string }> = {
@@ -53,31 +53,31 @@ const TINT_CLASSES: Record<'blue' | 'indigo' | 'teal', { bg: string; border: str
 const STEPS = [
   { n: '01', title: 'Set up Brand Brain', desc: 'Add your brand voice, colors, and audience once.' },
   { n: '02', title: 'Generate', desc: 'Create images, voice, video, or talking avatars from a prompt or script.' },
-  { n: '03', title: 'Review & approve', desc: 'Your team reviews drafts together in one shared workspace.' },
-  { n: '04', title: 'Publish everywhere', desc: 'Auto-schedule and publish across every connected channel.' },
+  { n: '03', title: 'Review & refine', desc: 'Edit drafts and run them through the Compliance Reviewer before anything goes out.' },
+  { n: '04', title: 'Schedule & publish', desc: 'Schedule to your connected Facebook, Instagram, LinkedIn and YouTube accounts.' },
 ];
 
 const AI_MODELS = ['Gemini', 'GPT-4o', 'Claude', 'Flux / Stable Diffusion', 'ElevenLabs'];
-const PUBLISH_CHANNELS = ['LinkedIn', 'YouTube', 'Twitter / X', 'Instagram', 'Slack', 'WordPress'];
+const PUBLISH_CHANNELS = ['Facebook', 'Instagram', 'LinkedIn', 'YouTube'];
 
 const COMPARISON_ROWS = [
   { bad: '5+ separate subscriptions to manage', good: 'One platform, one bill' },
-  { bad: 'Brand guidelines re-explained in every tool', good: 'Brand Brain enforces it automatically' },
+  { bad: 'Brand guidelines re-explained in every tool', good: 'Brand Brain applies it automatically' },
   { bad: 'Separate editors for image, voice & video', good: 'One unified studio' },
-  { bad: 'Manual scheduling across every channel', good: 'Auto-publish everywhere from one calendar' },
-  { bad: 'Generic, off-brand AI output', good: 'Generation trained on your brand' },
+  { bad: 'Manual scheduling across every channel', good: 'Schedule to your connected channels from one calendar' },
+  { bad: 'Generic, off-brand AI output', good: 'Generation guided by your brand rules' },
 ];
 
 const ABOUT_PILLARS = [
   { border: 'border-[#2563EB]', title: 'Speed', desc: 'Minutes from brief to a full set of ready-to-publish assets.' },
-  { border: 'border-[#6366F1]', title: 'Brand consistency', desc: 'Every output checked against the same brand memory, every time.' },
+  { border: 'border-[#6366F1]', title: 'Brand consistency', desc: 'Every generation is guided by the same saved brand memory and content rules.' },
   { border: 'border-[#14B8A6]', title: 'Scale', desc: 'One campaign becomes ten assets across every channel you publish to.' },
 ];
 
 const FAQ_ITEMS = [
   { q: 'What are AI credits and how do they work?', a: 'Credits are the platform’s single unit of usage across every studio. Generating an image, a minute of voice, or a video clip each consumes a different number of credits depending on the model and resolution. Unused credits do not roll over.' },
   { q: 'Can I clone my own voice or use my own likeness for talking avatars?', a: 'Yes. Voice cloning and Character Studio avatars are built from media you upload, and you must have the right to use that voice or likeness. We require consent confirmation before any clone or avatar is generated.' },
-  { q: 'Which platforms can I publish to directly?', a: 'LumoraOS publishes to LinkedIn, YouTube, Twitter/X, Instagram, and WordPress, with Slack notifications for team approvals. More channels are added over time.' },
+  { q: 'Which platforms can I publish to directly?', a: 'LumoraOS can schedule and publish to Facebook, Instagram, LinkedIn and YouTube once you connect your accounts. More channels are added over time.' },
   { q: 'Can I switch or cancel my plan anytime?', a: 'Yes. You can upgrade, downgrade, or cancel from Billing at any time. Changes apply at the start of your next billing cycle.' },
   { q: 'Who owns the content I generate?', a: 'You own the rights to content generated from your account, subject to the usage terms of the underlying AI providers for any third-party training data restrictions.' },
   { q: 'Do you offer a free trial?', a: 'Yes, every new workspace starts with a free trial period on the Starter plan so you can test Image, Voice, and Video Studio before adding a payment method.' },

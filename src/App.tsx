@@ -24,6 +24,7 @@ import { DashboardView } from './components/views/DashboardView';
 import { HelpGuideView } from './components/views/HelpGuideView';
 import { ImageStudioView } from './components/views/ImageStudioView';
 import { IntegrationsView } from './components/views/IntegrationsView';
+import { ResetPasswordPage, VerifyEmailPage } from './components/AuthLinkPages';
 import { MarketplaceView } from './components/views/MarketplaceView';
 import { MediaLibraryView } from './components/views/MediaLibraryView';
 import { ProjectsView } from './components/views/ProjectsView';
@@ -35,7 +36,7 @@ import { VoiceStudioView } from './components/views/VoiceStudioView';
 import { CharacterStudioView } from './components/views/CharacterStudioView';
 
 import {
-  initialBrandBrain,
+  emptyBrandBrain,
 } from './mockData';
 import {
   BrandBrain,
@@ -85,18 +86,22 @@ function getViewFromHash(): ViewType | null {
  * via plain pushState instead of a router dependency, since server.ts
  * already falls back to index.html for any unmatched path in both dev
  * (Vite's appType: 'spa') and prod (its explicit `app.get('*', ...)`). */
-function getPublicRouteFromPath(): 'landing' | 'login' | 'signup' | 'privacy' | 'terms' {
+type PublicRoute = 'landing' | 'login' | 'signup' | 'privacy' | 'terms' | 'reset-password' | 'verify-email';
+
+function getPublicRouteFromPath(): PublicRoute {
   if (window.location.pathname === '/login') return 'login';
   if (window.location.pathname === '/signup') return 'signup';
   if (window.location.pathname === '/privacy') return 'privacy';
   if (window.location.pathname === '/terms') return 'terms';
+  if (window.location.pathname === '/reset-password') return 'reset-password';
+  if (window.location.pathname === '/verify-email') return 'verify-email';
   return 'landing';
 }
 
 export function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromHash() ?? 'dashboard');
-  const [publicRoute, setPublicRoute] = useState<'landing' | 'login' | 'signup' | 'privacy' | 'terms'>(() => getPublicRouteFromPath());
+  const [publicRoute, setPublicRoute] = useState<PublicRoute>(() => getPublicRouteFromPath());
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
@@ -112,7 +117,7 @@ export function App() {
   // Starts as the local mock so every view has something to render
   // immediately; replaced by the real persisted profile (if any exists yet)
   // once the fetch below resolves.
-  const [brandBrain, setBrandBrain] = useState<BrandBrain>(initialBrandBrain);
+  const [brandBrain, setBrandBrain] = useState<BrandBrain>(emptyBrandBrain);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -120,7 +125,7 @@ export function App() {
     getMyBrandProfile().then((profile) => {
       if (!cancelled && profile) setBrandBrain(profile);
     }).catch(() => {
-      // No brand profile yet, or a transient fetch error - the mock default stays as a starting point.
+      // No brand profile yet, or a transient fetch error - the empty starting point stays.
     });
     return () => {
       cancelled = true;
@@ -247,6 +252,15 @@ export function App() {
     return <TermsOfServicePage onBack={navigateToLanding} />;
   }
 
+  // Emailed links (password reset, email verification) work whether or not
+  // the visitor is signed in; "continue" drops the token from the URL.
+  if (publicRoute === 'reset-password') {
+    return <ResetPasswordPage onContinue={navigateToLogin} />;
+  }
+  if (publicRoute === 'verify-email') {
+    return <VerifyEmailPage onContinue={isAuthenticated ? navigateToLanding : navigateToLogin} />;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
@@ -294,6 +308,7 @@ export function App() {
           {currentView === 'dashboard' && (
             <DashboardView
               onNavigate={(v) => setCurrentView(v)}
+              brandBrain={brandBrain}
             />
           )}
 

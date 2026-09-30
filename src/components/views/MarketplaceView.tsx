@@ -21,7 +21,7 @@ export const MarketplaceView: React.FC<MarketplaceViewProps> = ({ brandBrain, on
   const handleInstall = async (template: BrandTemplate) => {
     if (
       !window.confirm(
-        `Install "${template.label}"?\n\nThis replaces your current Brand Brain identity, voice and rules (${brandBrain.businessName}). Your logo, social accounts and advisor details are kept.`,
+        `Install "${template.label}"?\n\nThis replaces your current Brand Brain identity, voice and rules${brandBrain.businessName ? ` (${brandBrain.businessName})` : ''}. Your logo, social accounts and advisor details are kept.`,
       )
     ) {
       return;
