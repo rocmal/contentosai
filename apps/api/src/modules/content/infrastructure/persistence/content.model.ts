@@ -19,6 +19,9 @@ export class ContentModel extends BaseModel {
   @Column({ type: DataType.UUID, allowNull: true })
   declare campaignId: string | null;
 
+  @Column({ type: DataType.UUID, allowNull: true })
+  declare projectId: string | null;
+
   @Column({ type: DataType.STRING(255), allowNull: false })
   declare title: string;
 

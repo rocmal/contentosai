@@ -1602,6 +1602,8 @@ export interface ContentItem {
   title: string;
   body: string;
   type: string;
+  projectId?: string | null;
+  createdAt?: string;
   metadata: { videoUrl?: string; caption?: string } | null;
 }
 
@@ -1613,18 +1615,53 @@ export async function listContent(): Promise<ContentItem[]> {
   return result.items;
 }
 
+/** Content items saved to one project, newest first. */
+export async function listProjectContent(projectId: string): Promise<ContentItem[]> {
+  const result = await apiRequest<{ items: ContentItem[] }>(
+    `/content?limit=50&sortBy=createdAt&sortOrder=DESC&projectId=${encodeURIComponent(projectId)}`,
+  );
+  return result.items;
+}
+
+/** Saves AI Studio output as a real Content record (optionally inside a
+ * project) without scheduling it anywhere. */
+export async function saveGeneratedContent(input: {
+  title: string;
+  body: string;
+  contentType: string;
+  aiProvider?: string;
+  projectId?: string;
+}): Promise<ContentItem> {
+  const user = await getCurrentUser();
+  if (!user.organizationId || !user.workspaceId) {
+    throw new ApiError(400, 'Your account is not attached to an organization workspace yet.');
+  }
+  return apiRequest<ContentItem>('/content', {
+    method: 'POST',
+    body: JSON.stringify({
+      organizationId: user.organizationId,
+      workspaceId: user.workspaceId,
+      projectId: input.projectId,
+      title: input.title.slice(0, 255) || 'AI Studio content',
+      body: input.body,
+      type: 'text',
+      aiGenerated: true,
+      aiProvider: input.aiProvider,
+      metadata: { source: 'ai-studio', contentType: input.contentType },
+    }),
+  });
+}
+
+/** AI Studio format id -> the platform tag stored on the publishing job. A
+ * format only implies a platform when it is platform-specific (a reel is an
+ * Instagram-style format); everything else is tagged "other" and the user
+ * decides where it goes when they publish. */
 const CONTENT_TYPE_TO_PLATFORM: Record<string, string> = {
-  'LinkedIn Post': 'linkedin',
-  'Instagram Reel': 'instagram',
-  'YouTube Video': 'youtube',
-  TikTok: 'tiktok',
-  'Blog Article': 'blog',
-  Newsletter: 'newsletter',
-  'Podcast Script': 'podcast',
-  Presentation: 'presentation',
-  Advertisement: 'ad',
-  'Landing Page': 'landing-page',
-  'Custom Format': 'other',
+  reel: 'instagram',
+  whatsapp: 'whatsapp',
+  ad_copy: 'ad',
+  blog_article: 'blog',
+  newsletter: 'newsletter',
 };
 
 /** AI Studio's "Schedule to Calendar" - persists the generated text as real
@@ -1643,24 +1680,13 @@ export async function scheduleGeneratedContent(input: {
   body: string;
   contentType: string;
   aiProvider?: string;
+  projectId?: string;
 }): Promise<{ content: ContentItem; job: PublishingJob }> {
   const user = await getCurrentUser();
   if (!user.organizationId || !user.workspaceId) {
     throw new ApiError(400, 'Your account is not attached to an organization workspace yet.');
   }
-  const content = await apiRequest<ContentItem>('/content', {
-    method: 'POST',
-    body: JSON.stringify({
-      organizationId: user.organizationId,
-      workspaceId: user.workspaceId,
-      title: input.title.slice(0, 255) || 'AI Studio content',
-      body: input.body,
-      type: 'text',
-      aiGenerated: true,
-      aiProvider: input.aiProvider,
-      metadata: { source: 'ai-studio', contentType: input.contentType },
-    }),
-  });
+  const content = await saveGeneratedContent(input);
   const job = await apiRequest<PublishingJob>('/publishing/jobs', {
     method: 'POST',
     body: JSON.stringify({

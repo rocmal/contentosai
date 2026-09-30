@@ -337,7 +337,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </p>
                   </div>
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-end text-[11px]">
+                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
+                    <span>{proj.contentCount} content item{proj.contentCount === 1 ? '' : 's'}</span>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${PROJECT_STATUS_STYLES[proj.status]}`}>
                       {PROJECT_STATUS_LABELS[proj.status]}
                     </span>

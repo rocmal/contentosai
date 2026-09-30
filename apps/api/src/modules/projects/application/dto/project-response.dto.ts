@@ -10,10 +10,11 @@ export class ProjectResponseDto {
   @ApiProperty() category: string;
   @ApiProperty({ nullable: true }) description: string | null;
   @ApiProperty({ enum: ProjectStatus }) status: ProjectStatus;
+  @ApiProperty({ description: 'Content items linked to this project' }) contentCount: number;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
 
-  constructor(project: Project) {
+  constructor(project: Project, contentCount = 0) {
     this.id = project.id;
     this.organizationId = project.organizationId;
     this.workspaceId = project.workspaceId;
@@ -22,6 +23,7 @@ export class ProjectResponseDto {
     this.category = project.category;
     this.description = project.description;
     this.status = project.status;
+    this.contentCount = contentCount;
     this.createdAt = project.createdAt;
     this.updatedAt = project.updatedAt;
   }

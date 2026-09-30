@@ -36,8 +36,9 @@ export class ProjectsController {
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
     });
+    const counts = await this.projectsService.contentCounts(result.items);
     return {
-      items: result.items.map((project) => new ProjectResponseDto(project)),
+      items: result.items.map((project) => new ProjectResponseDto(project, counts[project.id] ?? 0)),
       meta: result.meta,
     };
   }
@@ -47,7 +48,8 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Get a project by id' })
   async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<ProjectResponseDto> {
     const project = await this.projectsService.findById(id);
-    return new ProjectResponseDto(project);
+    const counts = await this.projectsService.contentCounts([project]);
+    return new ProjectResponseDto(project, counts[project.id] ?? 0);
   }
 
   @Patch(':id')

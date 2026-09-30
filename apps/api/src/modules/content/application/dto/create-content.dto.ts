@@ -16,6 +16,11 @@ export class CreateContentDto {
   @IsUUID('4')
   campaignId?: string;
 
+  @ApiPropertyOptional({ description: 'Project this content belongs to' })
+  @IsOptional()
+  @IsUUID('4')
+  projectId?: string;
+
   @ApiProperty({ example: 'Launch announcement tweet' })
   @IsString()
   @MaxLength(255)

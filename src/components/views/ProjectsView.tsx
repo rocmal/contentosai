@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { FolderKanban, Loader2, Plus, Search, Trash2 } from 'lucide-react';
 import { Campaign, Project, ProjectStatus, ViewType } from '../../types';
-import { createProject, deleteProject, listCampaigns, listProjects, updateProject } from '../../lib/api';
+import {
+  ContentItem,
+  createProject,
+  deleteProject,
+  listCampaigns,
+  listProjectContent,
+  listProjects,
+  updateProject,
+} from '../../lib/api';
 import { PROJECT_STATUS_LABELS, PROJECT_STATUS_OPTIONS, PROJECT_STATUS_STYLES } from '../../lib/projectDisplay';
 
 interface ProjectsViewProps {
@@ -18,6 +26,8 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onNavigate }) => {
   const [category, setCategory] = useState('');
   const [campaignId, setCampaignId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [contentByProject, setContentByProject] = useState<Record<string, ContentItem[] | 'loading'>>({});
 
   const load = async () => {
     setError(null);
@@ -65,6 +75,22 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onNavigate }) => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update project');
       await load();
+    }
+  };
+
+  const toggleContent = async (id: string) => {
+    if (openId === id) {
+      setOpenId(null);
+      return;
+    }
+    setOpenId(id);
+    setContentByProject((prev) => ({ ...prev, [id]: 'loading' }));
+    try {
+      const items = await listProjectContent(id);
+      setContentByProject((prev) => ({ ...prev, [id]: items }));
+    } catch (err) {
+      setContentByProject((prev) => ({ ...prev, [id]: [] }));
+      setError(err instanceof Error ? err.message : 'Failed to load project content');
     }
   };
 
@@ -230,7 +256,12 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onNavigate }) => {
               <p className="text-xs text-slate-500">Campaign: {campaignName(proj.campaignId)}</p>
 
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
-                <span>Updated {new Date(proj.updatedAt).toLocaleDateString()}</span>
+                <button
+                  onClick={() => toggleContent(proj.id)}
+                  className="font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                >
+                  {proj.contentCount} content item{proj.contentCount === 1 ? '' : 's'}
+                </button>
                 <select
                   value={proj.status}
                   onChange={(e) => handleStatusChange(proj.id, e.target.value as ProjectStatus)}
@@ -243,6 +274,28 @@ export const ProjectsView: React.FC<ProjectsViewProps> = ({ onNavigate }) => {
                   ))}
                 </select>
               </div>
+
+              {openId === proj.id && (
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-1.5">
+                  {contentByProject[proj.id] === 'loading' ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                  ) : (contentByProject[proj.id] as ContentItem[] | undefined)?.length ? (
+                    (contentByProject[proj.id] as ContentItem[]).map((item) => (
+                      <p key={item.id} className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-1">
+                        {item.title}
+                      </p>
+                    ))
+                  ) : (
+                    <p className="text-[11px] text-slate-400">
+                      Nothing saved here yet. Generate content in{' '}
+                      <button onClick={() => onNavigate('ai-studio')} className="text-blue-600 dark:text-blue-400 hover:underline">
+                        AI Studio
+                      </button>{' '}
+                      and choose this project.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -29,12 +29,13 @@ export class ContentController {
   @Get()
   @RequirePermissions('content.read')
   @ApiOperation({ summary: 'List content items' })
-  async findAll(@Query() query: PaginationQueryDto) {
+  async findAll(@Query() query: PaginationQueryDto, @Query('projectId') projectId?: string) {
     const result = await this.contentService.findAll({
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+      filters: projectId ? { projectId } : undefined,
     });
     return {
       items: result.items.map((content) => new ContentResponseDto(content)),

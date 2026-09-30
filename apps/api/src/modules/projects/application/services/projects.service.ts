@@ -1,5 +1,9 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { FindAllOptions, PaginatedResult } from '@shared/interfaces/base-repository.interface';
+import {
+  CONTENT_REPOSITORY,
+  IContentRepository,
+} from '@modules/content/domain/repositories/content-repository.interface';
 import { Project } from '../../domain/entities/project.entity';
 import {
   IProjectsRepository,
@@ -12,7 +16,13 @@ import { UpdateProjectDto } from '../dto/update-project.dto';
 export class ProjectsService {
   constructor(
     @Inject(PROJECTS_REPOSITORY) private readonly projectsRepository: IProjectsRepository,
+    @Inject(CONTENT_REPOSITORY) private readonly contentRepository: IContentRepository,
   ) {}
+
+  /** Content-item counts for the given projects, keyed by project id. */
+  async contentCounts(projects: Project[]): Promise<Record<string, number>> {
+    return this.contentRepository.countByProject(projects.map((p) => p.id));
+  }
 
   async create(dto: CreateProjectDto, actorId?: string): Promise<Project> {
     return this.projectsRepository.create(

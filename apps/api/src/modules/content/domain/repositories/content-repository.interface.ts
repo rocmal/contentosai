@@ -5,6 +5,7 @@ export interface CreateContentData {
   organizationId: string;
   workspaceId: string;
   campaignId?: string | null;
+  projectId?: string | null;
   title: string;
   body: string;
   type: ContentType;
@@ -24,4 +25,6 @@ export interface IContentRepository extends IBaseRepository<
   UpdateContentData
 > {
   listByCampaign(campaignId: string): Promise<Content[]>;
+  /** Number of (non-deleted) content items per project id; projects with none are omitted. */
+  countByProject(projectIds: string[]): Promise<Record<string, number>>;
 }

@@ -15,6 +15,7 @@ export enum ContentStatus {
 
 export interface Content extends BaseTenantEntity {
   campaignId: string | null;
+  projectId: string | null;
   title: string;
   body: string;
   type: ContentType;

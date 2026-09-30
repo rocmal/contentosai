@@ -6,6 +6,7 @@ export class ContentResponseDto {
   @ApiProperty() organizationId: string;
   @ApiProperty() workspaceId: string;
   @ApiProperty({ nullable: true }) campaignId: string | null;
+  @ApiProperty({ nullable: true }) projectId: string | null;
   @ApiProperty() title: string;
   @ApiProperty() body: string;
   @ApiProperty({ enum: ContentType }) type: ContentType;
@@ -21,6 +22,7 @@ export class ContentResponseDto {
     this.organizationId = content.organizationId;
     this.workspaceId = content.workspaceId;
     this.campaignId = content.campaignId;
+    this.projectId = content.projectId;
     this.title = content.title;
     this.body = content.body;
     this.type = content.type;

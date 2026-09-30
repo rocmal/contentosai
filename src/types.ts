@@ -79,6 +79,8 @@ export interface Project {
   category: string;
   description: string | null;
   status: ProjectStatus;
+  /** Content items linked to this project. */
+  contentCount: number;
   createdAt: string;
   updatedAt: string;
 }

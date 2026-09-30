@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -18,9 +18,11 @@ import {
   Target,
   Users,
 } from 'lucide-react';
-import { BrandBrain, ViewType, WizardState } from '../../types';
+import { BrandBrain, Project, ViewType, WizardState } from '../../types';
 import {
   ApiError,
+  listProjects,
+  saveGeneratedContent,
   scheduleGeneratedContent,
   studioGenerate,
   StudioFormat,
@@ -45,6 +47,16 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [scheduling, setScheduling] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectId, setProjectId] = useState('');
+  const [savingToProject, setSavingToProject] = useState(false);
+  const [savedToProject, setSavedToProject] = useState<string | null>(null);
+
+  useEffect(() => {
+    listProjects({ limit: 50 })
+      .then((r) => setProjects(r.items.filter((p) => p.status !== 'archived')))
+      .catch(() => setProjects([]));
+  }, []);
 
   const [wizardState, setWizardState] = useState<WizardState>({
     contentType: 'reel',
@@ -125,6 +137,27 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleSaveToProject = async () => {
+    if (!output || !projectId) return;
+    setSavingToProject(true);
+    setScheduleError(null);
+    setSavedToProject(null);
+    try {
+      await saveGeneratedContent({
+        title: output.headline,
+        body: [output.body, output.hashtags.join(' '), output.cta, output.footer].filter(Boolean).join('\n\n'),
+        contentType: wizardState.contentType,
+        aiProvider: output.provider,
+        projectId,
+      });
+      setSavedToProject(projects.find((p) => p.id === projectId)?.title ?? 'project');
+    } catch (err) {
+      setScheduleError(err instanceof Error ? err.message : 'Failed to save to project');
+    } finally {
+      setSavingToProject(false);
+    }
+  };
+
   const handleScheduleToCalendar = async () => {
     if (!output) return;
     setScheduling(true);
@@ -135,6 +168,7 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
         body: [output.body, output.hashtags.join(' '), output.cta, output.footer].filter(Boolean).join('\n\n'),
         contentType: wizardState.contentType,
         aiProvider: output.provider,
+        projectId: projectId || undefined,
       });
       onNavigate('calendar');
     } catch (err) {
@@ -586,6 +620,48 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
                   <div className="text-[11px] text-slate-500 dark:text-slate-400 whitespace-pre-line pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                     {output.footer}
                   </div>
+                )}
+              </div>
+
+              {/* Save to project */}
+              <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                <span className="text-xs font-bold text-slate-900 dark:text-white">Project</span>
+                <select
+                  value={projectId}
+                  onChange={(e) => {
+                    setProjectId(e.target.value);
+                    setSavedToProject(null);
+                  }}
+                  aria-label="Project to save this content to"
+                  className="text-xs px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none"
+                >
+                  <option value="">No project</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleSaveToProject}
+                  disabled={!projectId || savingToProject}
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 disabled:opacity-50 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5"
+                >
+                  {savingToProject && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {savingToProject ? 'Saving...' : 'Save draft to project'}
+                </button>
+                {savedToProject && (
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                    Saved to "{savedToProject}"
+                  </span>
+                )}
+                {projects.length === 0 && (
+                  <button
+                    onClick={() => onNavigate('projects')}
+                    className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Create a project first
+                  </button>
                 )}
               </div>
 
