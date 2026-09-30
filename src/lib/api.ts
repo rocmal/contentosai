@@ -400,6 +400,52 @@ export function studioGenerate(input: {
 }
 
 // ---------------------------------------------------------------------------
+// AI Agents (saved, brand-aware text agents)
+// ---------------------------------------------------------------------------
+
+export interface AgentSummary {
+  id: string;
+  name: string;
+  role: string;
+  description: string;
+  inputHint: string;
+  runCount: number;
+  lastRunAt: string | null;
+}
+
+export interface AgentRun {
+  id: string;
+  agentId: string;
+  input: string;
+  output: string;
+  provider: string;
+  model: string;
+  complianceFlags: StudioComplianceFlag[] | null;
+  createdAt: string;
+}
+
+export async function listAgents(): Promise<AgentSummary[]> {
+  return (await apiRequest<{ items: AgentSummary[] }>('/agents')).items;
+}
+
+export function listAgentRuns(input: { agentId?: string; limit?: number } = {}): Promise<{ items: AgentRun[] }> {
+  const params = new URLSearchParams();
+  params.set('limit', String(input.limit ?? 20));
+  if (input.agentId) params.set('agentId', input.agentId);
+  return apiRequest<{ items: AgentRun[] }>(`/agents/runs?${params.toString()}`);
+}
+
+export function runAgent(
+  agentId: string,
+  input: { input: string; language?: StudioLanguage; provider?: StudioProvider },
+): Promise<AgentRun> {
+  return apiRequest<AgentRun>(`/agents/${encodeURIComponent(agentId)}/run`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Projects
 // ---------------------------------------------------------------------------
 

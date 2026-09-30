@@ -101,19 +101,6 @@ export interface Campaign {
   updatedAt: string;
 }
 
-export interface AIAgent {
-  id: string;
-  name: string;
-  role: string;
-  description: string;
-  status: 'Idle' | 'Active' | 'Running' | 'Paused';
-  icon: string;
-  lastRun: string;
-  tasksCompleted: number;
-  accuracy: string;
-  currentTask?: string;
-}
-
 export interface IntegrationItem {
   id: string;
   name: string;

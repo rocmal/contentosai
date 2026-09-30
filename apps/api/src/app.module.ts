@@ -24,6 +24,7 @@ import { RolesModule } from '@modules/roles/roles.module';
 import { PermissionsModule } from '@modules/permissions/permissions.module';
 import { CampaignsModule } from '@modules/campaigns/campaigns.module';
 import { ProjectsModule } from '@modules/projects/projects.module';
+import { AgentsModule } from '@modules/agents/agents.module';
 import { ContentModule } from '@modules/content/content.module';
 import { AiModule } from '@modules/ai/ai.module';
 import { ImageModule } from '@modules/image/image.module';
@@ -100,6 +101,7 @@ import { QueuesModule } from '@queues/queues.module';
     BrandModule,
     CampaignsModule,
     ProjectsModule,
+    AgentsModule,
     ContentModule,
     MediaModule,
     AnalyticsModule,

@@ -35,11 +35,9 @@ import { VoiceStudioView } from './components/views/VoiceStudioView';
 import { CharacterStudioView } from './components/views/CharacterStudioView';
 
 import {
-  initialAIAgents,
   initialBrandBrain,
 } from './mockData';
 import {
-  AIAgent,
   BrandBrain,
   ViewType,
 } from './types';
@@ -154,7 +152,6 @@ export function App() {
     });
   };
 
-  const [aiAgents, setAiAgents] = useState<AIAgent[]>(initialAIAgents);
 
   // Sync dark mode class
   useEffect(() => {
@@ -354,7 +351,6 @@ export function App() {
 
           {currentView === 'ai-agents' && (
             <AIAgentsView
-              agents={aiAgents}
               onNavigate={(v) => setCurrentView(v)}
             />
           )}

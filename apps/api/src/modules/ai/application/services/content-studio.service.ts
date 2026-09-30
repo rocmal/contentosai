@@ -9,6 +9,7 @@ import { CREDIT_COST } from '@modules/credits/credits.constants';
 import { AIProviderFactory } from '../../infrastructure/ai-provider.factory';
 import { AIContentGeneratedEvent } from '../events/ai-content-generated.event';
 import { StudioGenerateDto } from '../dto/studio-generate.dto';
+import { buildBrandPromptParts, isRegulatedBrand } from '../content-studio/brand-context';
 import { CONTENT_FORMATS, LANGUAGE_INSTRUCTIONS } from '../content-studio/content-formats';
 import {
   ComplianceFlag,
@@ -120,7 +121,7 @@ export class ContentStudioService {
     const cta = asString(parsed?.cta);
     const hashtags = asStringArray(parsed?.hashtags);
 
-    const regulated = this.isRegulated(brand);
+    const regulated = isRegulatedBrand(brand);
     const flags = regulated ? scanForComplianceIssues([headline, body, cta, hashtags.join(' ')].join('\n')) : [];
 
     return {
@@ -143,11 +144,6 @@ export class ContentStudioService {
     return profiles[0] ?? null;
   }
 
-  private isRegulated(brand: BrandProfile | null): boolean {
-    if (!brand) return false;
-    return /insur/i.test(brand.industry ?? '') || /compliance rules/i.test(brand.guidelines ?? '');
-  }
-
   private buildFooter(brand: BrandProfile | null, regulated: boolean): string {
     const lines: string[] = [];
     const advisor = brand?.advisorProfile;
@@ -166,22 +162,7 @@ export class ContentStudioService {
       'You are the content engine of Lumora, writing on behalf of the brand described below. Follow the brand voice and every rule in the guidelines exactly.',
     ];
 
-    if (brand) {
-      const brandLines = [
-        `Brand: ${brand.name}`,
-        brand.tagline && `Tagline: ${brand.tagline}`,
-        brand.industry && `Industry: ${brand.industry}`,
-        brand.toneOfVoice?.length && `Tone of voice: ${brand.toneOfVoice.join(', ')}`,
-        brand.productsAndServices?.length && `Product categories: ${brand.productsAndServices.join(', ')}`,
-        brand.mission && `Mission: ${brand.mission}`,
-        brand.primaryCTA && `Preferred call-to-action style: ${brand.primaryCTA}`,
-        brand.keywords?.length && `Keywords: ${brand.keywords.join(', ')}`,
-      ].filter(Boolean);
-      parts.push(`BRAND\n${brandLines.join('\n')}`);
-      if (brand.guidelines) {
-        parts.push(`BRAND GUIDELINES AND COMPLIANCE RULES (mandatory)\n${brand.guidelines}`);
-      }
-    }
+    parts.push(...buildBrandPromptParts(brand));
 
     parts.push(
       `FORMAT: ${format.label}\n${format.instructions}`,

@@ -194,35 +194,6 @@ app.post('/api/copilot', async (req, res) => {
   }
 });
 
-// 5. Run AI Agent Task
-app.post('/api/agents/run', async (req, res) => {
-  try {
-    const { agentId, agentName, prompt } = req.body;
-    const ai = getGeminiClient();
-
-    let output = '';
-    if (ai) {
-      try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.6-flash',
-          contents: `You are acting as the autonomous agent "${agentName || 'Research Agent'}". Execute this task and return clear step-by-step findings and executable recommendations: "${prompt || 'Scan top trending topics in B2B AI'}".`,
-        });
-        output = response.text || '';
-      } catch (err) {
-        console.warn('Agent run error:', err);
-      }
-    }
-
-    if (!output) {
-      output = `[${agentName || 'Agent'} Execution Log]\n✓ Step 1: Querying data sources & brand context\n✓ Step 2: Analyzing sentiment and engagement signals\n✓ Step 3: Synthesis complete.\n\nKey Finding: B2B audiences on LinkedIn are experiencing 48% higher engagement on visual carousel breakdowns detailing "AI Agents vs Static Zapier Workflows". Recommended next action: Schedule a 5-slide carousel for Tuesday morning.`;
-    }
-
-    res.json({ success: true, agentId, output, timestamp: new Date().toLocaleTimeString() });
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // --- Vite Integration ---
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
