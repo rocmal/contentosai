@@ -116,6 +116,15 @@ export class IntegrationsService {
     return integration;
   }
 
+  /** Removes this workspace's saved connection (and its stored tokens) for a
+   * publishing platform. Returns false if nothing was connected. */
+  async disconnect(workspaceId: string, provider: string, actorId?: string): Promise<boolean> {
+    const existing = await this.integrationsRepository.findOne({ workspaceId, provider });
+    if (!existing) return false;
+    await this.integrationsRepository.delete(existing.id, actorId);
+    return true;
+  }
+
   async getDecryptedCredentials(
     workspaceId: string,
     provider: string,

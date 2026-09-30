@@ -281,9 +281,40 @@ const SetupGuide: React.FC = () => {
   );
 };
 
+/** Small "Disconnect" action for a connected publishing account. Confirms first,
+ * because scheduled posts for that platform will fail until it is reconnected. */
+const DisconnectButton: React.FC<{
+  platform: api.SocialPlatform;
+  label: string;
+  onDisconnected: (platform: api.SocialPlatform) => void;
+  onError: (message: string) => void;
+}> = ({ platform, label, onDisconnected, onError }) => {
+  const [busy, setBusy] = useState(false);
+  const handleClick = async () => {
+    if (!window.confirm(`Disconnect ${label}? Scheduled posts to it will fail until you reconnect.`)) return;
+    setBusy(true);
+    try {
+      await api.disconnectSocialPlatform(platform);
+      onDisconnected(platform);
+    } catch (err) {
+      onError(err instanceof api.ApiError ? err.message : `Could not disconnect ${label}.`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <button
+      onClick={handleClick}
+      disabled={busy}
+      className="text-[10px] font-semibold text-slate-400 hover:text-red-500 transition-colors disabled:opacity-50"
+    >
+      {busy ? 'Disconnecting...' : 'Disconnect'}
+    </button>
+  );
+};
+
 /** Facebook/Instagram publishing connection, backed by the real Meta OAuth
- * flow (GET /integrations/meta/connect + /callback) - everything else on
- * this page remains the pre-existing illustrative mock list. */
+ * flow (GET /integrations/meta/connect + /callback). */
 const SocialPublishingConnect: React.FC = () => {
   const [status, setStatus] = useState<Record<api.SocialPlatform, api.SocialConnectionStatus> | null>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
@@ -398,17 +429,27 @@ const SocialPublishingConnect: React.FC = () => {
                   )}
                 </div>
               </div>
-              <span
-                className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
-                  isLoadingStatus
-                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                    : connected
-                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                }`}
-              >
-                {isLoadingStatus ? '...' : connected ? 'Connected' : 'Not connected'}
-              </span>
+              <div className="shrink-0 flex items-center gap-2">
+                {connected && (
+                  <DisconnectButton
+                    platform={id}
+                    label={label}
+                    onDisconnected={(p) => setStatus((prev) => (prev ? { ...prev, [p]: { connected: false } } : prev))}
+                    onError={(message) => setBanner({ kind: 'error', message })}
+                  />
+                )}
+                <span
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
+                    isLoadingStatus
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                      : connected
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                  }`}
+                >
+                  {isLoadingStatus ? '...' : connected ? 'Connected' : 'Not connected'}
+                </span>
+              </div>
             </div>
           );
         })}
@@ -535,17 +576,27 @@ const LinkedInYouTubeConnect: React.FC = () => {
                     )}
                   </div>
                 </div>
-                <span
-                  className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
-                    isLoadingStatus
-                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                      : connected
-                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                  }`}
-                >
-                  {isLoadingStatus ? '...' : connected ? 'Connected' : 'Not connected'}
-                </span>
+                <div className="shrink-0 flex items-center gap-2">
+                  {connected && (
+                    <DisconnectButton
+                      platform={id}
+                      label={label}
+                      onDisconnected={(p) => setStatus((prev) => (prev ? { ...prev, [p]: { connected: false } } : prev))}
+                      onError={(message) => setBanners((prev) => ({ ...prev, [id]: { kind: 'error', message } }))}
+                    />
+                  )}
+                  <span
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
+                      isLoadingStatus
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                        : connected
+                          ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                    }`}
+                  >
+                    {isLoadingStatus ? '...' : connected ? 'Connected' : 'Not connected'}
+                  </span>
+                </div>
               </div>
 
               {banner?.kind === 'connected' && (
@@ -586,6 +637,7 @@ const LinkedInYouTubeConnect: React.FC = () => {
 const AI_ENGINE_ITEMS: { id: string; name: string; category: string; source: 'ai' | 'voice' }[] = [
   { id: 'gemini', name: 'Gemini', category: 'AI Engine', source: 'ai' },
   { id: 'openai', name: 'OpenAI GPT', category: 'AI Engine', source: 'ai' },
+  { id: 'claude', name: 'Anthropic Claude', category: 'AI Engine', source: 'ai' },
   { id: 'elevenlabs', name: 'ElevenLabs Voice', category: 'Audio Synthesis', source: 'voice' },
 ];
 
@@ -593,9 +645,9 @@ const AI_ENGINE_ITEMS: { id: string; name: string; category: string; source: 'ai
 // provider adapter) - shown as an honest static list rather than a toggle
 // that doesn't actually connect anything.
 const NOT_YET_CONNECTED_ITEMS: { id: string; name: string; category: string }[] = [
+  { id: 'whatsapp', name: 'WhatsApp Business (send & schedule)', category: 'Messaging' },
   { id: 'slack', name: 'Slack Notifications', category: 'Operations' },
   { id: 'hubspot', name: 'HubSpot CRM', category: 'Lead Gen' },
-  { id: 'stripe', name: 'Stripe Billing API', category: 'Finance' },
 ];
 
 export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ onNavigate }) => {
@@ -624,7 +676,7 @@ export const IntegrationsView: React.FC<IntegrationsViewProps> = ({ onNavigate }
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Connect AI model providers, social publishing accounts, and CRM webhooks.
+            See which AI engines are configured and connect the social accounts you publish to.
           </p>
         </div>
       </div>

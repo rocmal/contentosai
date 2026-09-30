@@ -1498,6 +1498,11 @@ export function getSocialConnectionStatus(): Promise<Record<SocialPlatform, Soci
   return apiRequest('/integrations/meta/status');
 }
 
+/** Removes this workspace's saved connection and stored tokens for one publishing platform. */
+export function disconnectSocialPlatform(platform: SocialPlatform): Promise<{ disconnected: boolean }> {
+  return apiRequest(`/integrations/connections/${encodeURIComponent(platform)}`, { method: 'DELETE' });
+}
+
 /** Resolves the Facebook/Instagram OAuth "connect" URL - navigate the
  * top-level window to it (not fetch) so Meta's login dialog can render. */
 export async function getMetaConnectUrl(): Promise<string> {

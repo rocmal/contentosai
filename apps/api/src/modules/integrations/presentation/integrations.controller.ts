@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
@@ -60,6 +60,20 @@ export class IntegrationsController {
   ): Promise<IntegrationResponseDto> {
     const integration = await this.integrationsService.update(id, dto, userId);
     return new IntegrationResponseDto(integration);
+  }
+
+  @Delete('connections/:platform')
+  @RequirePermissions('integrations.create')
+  @ApiOperation({ summary: "Disconnect one of this workspace's social publishing accounts" })
+  async disconnect(
+    @Param('platform') platform: string,
+    @CurrentUser('workspaceId') workspaceId: string,
+    @CurrentUser('id') userId: string,
+  ): Promise<{ disconnected: boolean }> {
+    if (!['facebook', 'instagram', 'linkedin', 'youtube'].includes(platform)) {
+      throw new BadRequestException(`Unknown platform "${platform}"`);
+    }
+    return { disconnected: await this.integrationsService.disconnect(workspaceId, platform, userId) };
   }
 
   @Delete(':id')

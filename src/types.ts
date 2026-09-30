@@ -101,17 +101,6 @@ export interface Campaign {
   updatedAt: string;
 }
 
-export interface IntegrationItem {
-  id: string;
-  name: string;
-  category: 'AI Models' | 'Voice & Audio' | 'Image & Media' | 'Social Platforms' | 'Storage & Sync' | 'Automation';
-  description: string;
-  icon: string;
-  connected: boolean;
-  status: 'Connected' | 'Not Configured' | 'Key Required';
-  apiKey?: string;
-}
-
 export interface VoiceProfile {
   id: string;
   name: string;
