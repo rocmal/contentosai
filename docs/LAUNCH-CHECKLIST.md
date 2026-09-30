@@ -29,6 +29,41 @@ secrets, third-party dashboards or legal/business decisions.
 - [ ] **Brand Brain saved** for your own workspace (Brand Brain -> Load template -> LIC ->
       Save Changes) before generating LIC content.
 
+## 1b. Vendor accounts and keys (what to buy, in priority order)
+
+Set keys as environment variables on the production server (`apps/api/.env.production`
+on the host, never in git). The app reports which AI engines are configured on the
+Integrations page.
+
+| Priority | What | Why / which key | Notes |
+| --- | --- | --- | --- |
+| Required | **Text AI** - `GEMINI_API_KEY` (set `AI_DEFAULT_PROVIDER=gemini`) | Powers AI Studio, Agents, Co-pilot, website import | Use a **paid/billing-enabled** Google key, not the free tier (free-tier rate limits are far too low and free-tier prompts may be used to improve Google products - unsuitable for customer content). |
+| Strongly recommended | **Sarvam AI** - `SARVAM_API_KEY` | Better Hindi / Punjabi / Indian-English writing and text-to-speech; one key covers chat and voice | The best fit for your LIC audience. |
+| Required if you sell Image Studio | **One image vendor**: `OPENAI_API_KEY` (gpt-image) **or** `STABILITY_API_KEY` **or** `FLUX_API_KEY` | Image Studio, poster visuals | OpenAI is simplest; it also works as a text fallback. |
+| Required | **Email (SMTP)**: Brevo / Amazon SES / Resend - `SMTP_*`, `SMTP_FROM` on your domain | Password reset, verification | Free tiers are enough to start. Add SPF + DKIM for lumoraos.in. |
+| Required to take money | **Razorpay live account** (business KYC): `RAZORPAY_KEY_ID/SECRET/WEBHOOK_SECRET` | Checkout | KYC can take days - start now. Also decide GST invoicing. |
+| Optional at launch | **Voice**: ElevenLabs (`ELEVENLABS_API_KEY`) | Premium English voices + cloning | The default free "Edge" voice uses an unofficial Microsoft endpoint - fine for demos, but switch to Sarvam / Azure / ElevenLabs before selling voice to customers. |
+| Optional at launch | **AI video**: Veo (Google key) / Runway / Kling / Pika / Luma | Video Studio "create from prompt" | Expensive per clip. The Scene Builder (your own images + voice) needs **no video vendor**. Don't enable a paid video provider until credit costs are set so video is profitable (see `credits.constants.ts`). |
+| Optional at launch | **Talking avatars**: D-ID or HeyGen (`DID_API_KEY` / `HEYGEN_API_KEY`) | Character Studio | Paid per minute. Skip for launch unless customers ask; the UI errors clearly without a key. |
+| Recommended | **Sentry** (free tier) - `SENTRY_DSN` | Error alerts | Needs a small code change to wire in. |
+| Needed for social publishing | Meta developer app (+ App Review), LinkedIn app, Google Cloud OAuth client (YouTube) | Scheduling/publishing | Free; approvals take time. |
+
+Minimum to start selling LIC-style content: **Gemini (paid) + Sarvam + SMTP + Razorpay live**.
+Add an image vendor if you sell Image Studio.
+
+### How billing works today (important for what you promise customers)
+
+- Plans are paid **month by month with a one-off Razorpay payment - there is no auto-renewal.**
+  When the paid month ends without a new payment, the plan shows **Expired** and its
+  remaining credits are removed until the customer renews (Billing page -> Renew).
+  Previously the system silently re-granted credits every month without payment; that is fixed.
+- Only monthly billing exists (the annual toggle was removed from the pricing page).
+- New signups get **150 free trial credits** (was the full 2,500). Change with `TRIAL_CREDITS`.
+- Automatic renewal reminders by email are **not built**; build them (or move to Razorpay
+  Subscriptions / autopay) before you have many customers.
+- Credit prices: 1 credit = 1 image, ~1 min of voice, ~10 s of video, 1 text generation. Check
+  these against your real vendor costs before relying on the Starter/Pro prices for margin.
+
 ## 2. Operations
 
 - [ ] **Error monitoring.** `SENTRY_DSN` is read from config but Sentry is not wired into the

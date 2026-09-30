@@ -23,7 +23,7 @@ import {
 } from '@modules/billing/domain/repositories/subscription-repository.interface';
 import { SubscriptionStatus } from '@modules/billing/domain/entities/subscription.entity';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
-import { DEFAULT_PLAN } from '@modules/credits/credits.constants';
+import { DEFAULT_PLAN, TRIAL_CREDITS } from '@modules/credits/credits.constants';
 import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
@@ -130,7 +130,7 @@ export class AuthService {
     );
 
     try {
-      await this.creditsService.grantInitial(organization.id, workspace.id, DEFAULT_PLAN, userId);
+      await this.creditsService.grantInitial(organization.id, workspace.id, DEFAULT_PLAN, userId, TRIAL_CREDITS);
     } catch (err) {
       // The org/workspace/subscription are real and usable even if this one
       // step fails - don't fail the whole signup over it, but don't hide it either.

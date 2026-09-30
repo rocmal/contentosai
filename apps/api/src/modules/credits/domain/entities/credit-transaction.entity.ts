@@ -8,6 +8,7 @@ export enum CreditTransactionReason {
   GENERATION_CHARACTER = 'generation.character',
   PLAN_INITIAL_GRANT = 'plan.initial_grant',
   PLAN_MONTHLY_GRANT = 'plan.monthly_grant',
+  PLAN_EXPIRED = 'plan.expired',
   REFUND = 'refund',
   ADMIN_ADJUSTMENT = 'admin.adjustment',
 }

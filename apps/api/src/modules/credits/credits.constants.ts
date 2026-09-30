@@ -9,6 +9,14 @@ export const PLAN_CREDIT_ALLOTMENTS: Record<string, number | null> = {
 
 export const DEFAULT_PLAN = 'starter';
 
+/** Credits a brand-new (unpaid) workspace gets once, at signup. Deliberately
+ * far below the Starter allotment: generations cost real money per credit, and
+ * signup is not email-verified, so a full paid-plan allotment here would be a
+ * free giveaway to anyone with a throwaway address. Override with TRIAL_CREDITS. */
+export const TRIAL_CREDITS = Number.isFinite(Number(process.env.TRIAL_CREDITS)) && process.env.TRIAL_CREDITS !== undefined
+  ? Number(process.env.TRIAL_CREDITS)
+  : 150;
+
 /** Per the landing page FAQ: "1 credit ~= 1 image, ~1 minute of AI voice, or
  * ~10 seconds of video." Voice/video costs are computed from actual duration
  * at generation time; these are the per-unit rates that computation uses. */

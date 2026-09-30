@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthService } from './auth.service';
+import { TRIAL_CREDITS } from '@modules/credits/credits.constants';
 import { TokenService } from './token.service';
 import { UsersService } from '@modules/users/application/services/users.service';
 import { RolesService } from '@modules/roles/application/services/roles.service';
@@ -287,7 +288,7 @@ describe('AuthService', () => {
         expect.objectContaining({ organizationId: 'org-1', plan: 'starter', status: SubscriptionStatus.TRIALING }),
         activeUser.id,
       );
-      expect(creditsService.grantInitial).toHaveBeenCalledWith('org-1', 'workspace-1', 'starter', activeUser.id);
+      expect(creditsService.grantInitial).toHaveBeenCalledWith('org-1', 'workspace-1', 'starter', activeUser.id, TRIAL_CREDITS);
     });
 
     it('does not fail registration when the initial credit grant errors', async () => {

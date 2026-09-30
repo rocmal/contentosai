@@ -148,6 +148,12 @@ const STOCK_TEMPLATES: StockTemplate[] = [
   },
 ];
 
+/** The no-cost "mock" provider is refused by the production backend, so it is
+ * only offered (and used as the default) in local development builds. */
+const SELECTABLE_VIDEO_PROVIDERS: api.VideoProvider[] = import.meta.env.PROD
+  ? api.VIDEO_PROVIDERS.filter((p) => p !== 'mock')
+  : [...api.VIDEO_PROVIDERS];
+
 const PROVIDER_LABELS: Record<api.VideoProvider, string> = {
   mock: 'Mock (local, no cost)',
   veo: 'Google Veo',
@@ -310,7 +316,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // "Create from prompt" state
   const [prompt, setPrompt] = useState('');
   const [stylePresetId, setStylePresetId] = useState(AI_STYLE_PRESETS[0].id);
-  const [provider, setProvider] = useState<api.VideoProvider>('mock');
+  const [provider, setProvider] = useState<api.VideoProvider>(SELECTABLE_VIDEO_PROVIDERS[0]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [progressLabel, setProgressLabel] = useState('');
 
@@ -1478,15 +1484,16 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                       onChange={(e) => setProvider(e.target.value as api.VideoProvider)}
                       className="w-full text-xs px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none"
                     >
-                      {api.VIDEO_PROVIDERS.map((p) => (
+                      {SELECTABLE_VIDEO_PROVIDERS.map((p) => (
                         <option key={p} value={p}>
                           {PROVIDER_LABELS[p]}
                         </option>
                       ))}
                     </select>
                     <p className="text-[10px] text-slate-400 mt-1.5">
-                      Veo/Runway/Kling/Pika need a paid API key configured on the backend; Mock
-                      always works and is meant for trying the flow out.
+                      {import.meta.env.PROD
+                        ? 'Each provider needs its own API key configured on the server, and AI video uses more credits than images or voice.'
+                        : 'Veo/Runway/Kling/Pika need a paid API key configured on the backend; Mock always works and is meant for trying the flow out.'}
                     </p>
                   </div>
                 )}

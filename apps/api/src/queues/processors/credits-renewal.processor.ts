@@ -3,6 +3,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { SubscriptionsService } from '@modules/billing/application/services/subscriptions.service';
 import { SubscriptionStatus } from '@modules/billing/domain/entities/subscription.entity';
+import { isPurchasablePlan } from '@modules/billing/billing.constants';
 import { WorkspacesService } from '@modules/workspaces/application/services/workspaces.service';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
 import { QueueName } from '../queue-names';
@@ -14,10 +15,15 @@ function addOneMonth(date: Date): Date {
 }
 
 /** Runs on a schedule (registered as a BullMQ repeatable job, see
- * QueuesModule) and resets every workspace's credit wallet to its plan's
- * monthly allotment once a subscription's currentPeriodEnd has passed - the
- * same "no rollover" reset the initial grant does, just repeating on a
- * cadence instead of once at signup. */
+ * QueuesModule) and handles subscriptions whose period has ended.
+ *
+ * Self-serve plans (Starter/Pro) are paid by a one-off Razorpay order per
+ * month - there is no recurring charge - so when the period ends without a
+ * new payment the plan lapses: the subscription becomes PAST_DUE and the
+ * remaining credits are removed until the customer renews. (Renewing through
+ * checkout re-activates it and grants a fresh allotment.) Invoice-billed
+ * plans (Enterprise) keep the old behaviour of rolling the period and
+ * resetting credits, since they are paid outside the checkout. */
 @Processor(QueueName.CREDITS_RENEWAL)
 export class CreditsRenewalProcessor extends WorkerHost {
   private readonly logger = new Logger(CreditsRenewalProcessor.name);
@@ -34,12 +40,13 @@ export class CreditsRenewalProcessor extends WorkerHost {
     const now = new Date();
     let page = 1;
     let renewed = 0;
+    let expired = 0;
 
     for (;;) {
       const result = await this.subscriptionsService.findAll({ page, limit: 100 });
       const due = result.items.filter(
         (sub) =>
-          (sub.status === SubscriptionStatus.ACTIVE || sub.status === SubscriptionStatus.TRIALING) &&
+          sub.status === SubscriptionStatus.ACTIVE &&
           sub.currentPeriodEnd !== null &&
           sub.currentPeriodEnd.getTime() <= now.getTime(),
       );
@@ -47,6 +54,16 @@ export class CreditsRenewalProcessor extends WorkerHost {
       for (const subscription of due) {
         try {
           const workspaces = await this.workspacesService.findByOrganization(subscription.organizationId);
+
+          if (isPurchasablePlan(subscription.plan)) {
+            for (const workspace of workspaces) {
+              await this.creditsService.expire(subscription.organizationId, workspace.id);
+            }
+            await this.subscriptionsService.update(subscription.id, { status: SubscriptionStatus.PAST_DUE });
+            expired += 1;
+            continue;
+          }
+
           const cycleStartAt = now;
           const cycleEndAt = addOneMonth(now);
 
@@ -79,6 +96,9 @@ export class CreditsRenewalProcessor extends WorkerHost {
 
     if (renewed > 0) {
       this.logger.log(`Renewed credits for ${renewed} subscription(s)`);
+    }
+    if (expired > 0) {
+      this.logger.log(`Expired ${expired} unpaid subscription(s)`);
     }
   }
 }

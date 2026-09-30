@@ -186,7 +186,9 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
       period: custom ? '' : '/month',
       credits: plan.credits,
       custom,
-      active: subscription?.plan === plan.key,
+      // Only a paid, in-period plan counts as "active" - a trial on the same plan
+      // (or a lapsed one) must still be able to buy it.
+      active: subscription?.plan === plan.key && subscription.status === 'active',
     };
   });
 
@@ -220,7 +222,8 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
               <span className="flex items-center gap-1">
                 <Sparkles className="w-4 h-4 text-blue-400" />
                 Current Plan: {subscription ? PRICING_PLANS.find((p) => p.key === subscription.plan)?.name ?? subscription.plan : 'None'}
-                {subscription?.status === 'trialing' && ' (trial)'}
+                {subscription?.status === 'trialing' && ' (free trial)'}
+                {subscription?.status === 'past_due' && ' (expired)'}
               </span>
               <span className="font-mono text-blue-300">
                 {wallet
@@ -230,6 +233,23 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
                   : 'No wallet yet'}
               </span>
             </div>
+
+            {subscription?.status === 'past_due' && (
+              <p className="text-xs text-amber-300">
+                Your plan has expired and its credits were removed. Choose a plan below to renew - a new month of credits is added as soon as payment clears.
+              </p>
+            )}
+            {subscription?.status === 'active' && subscription.currentPeriodEnd && (
+              <p className="text-xs text-slate-300">
+                Paid through {new Date(subscription.currentPeriodEnd).toLocaleDateString()}. Plans are paid month by month
+                and do not renew automatically - renew before this date to keep your credits.
+              </p>
+            )}
+            {subscription?.status === 'trialing' && (
+              <p className="text-xs text-slate-300">
+                You are on the free trial with a small credit allowance. Choose a plan below to unlock your full monthly credits.
+              </p>
+            )}
 
             {wallet?.balance !== null && wallet && (() => {
               const allotment = PRICING_PLANS.find((p) => p.key === subscription?.plan)?.creditsPerMonth;
@@ -268,9 +288,19 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
             <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">{p.credits}</p>
 
             {p.active ? (
-              <span className="block text-center w-full py-2.5 rounded-xl font-semibold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                Active Plan
-              </span>
+              <div className="space-y-2">
+                <span className="block text-center w-full py-2.5 rounded-xl font-semibold text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                  Active Plan
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleUpgrade(p.key as PurchasablePlan)}
+                  disabled={checkoutPlan !== null}
+                  className="w-full text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-60"
+                >
+                  {checkoutPlan === p.key && checkoutStage ? 'Processing...' : 'Renew for another month'}
+                </button>
+              </div>
             ) : p.custom ? (
               <button
                 type="button"
@@ -292,7 +322,11 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
                     {checkoutStage === 'opening' ? 'Opening checkout...' : 'Confirming payment...'}
                   </>
                 ) : (
-                  `Switch to ${p.name}`
+                  subscription?.plan === p.key
+                    ? subscription.status === 'past_due'
+                      ? `Renew ${p.name}`
+                      : `Subscribe to ${p.name}`
+                    : `Switch to ${p.name}`
                 )}
               </button>
             )}

@@ -80,7 +80,7 @@ const FAQ_ITEMS = [
   { q: 'Which platforms can I publish to directly?', a: 'LumoraOS can schedule and publish to Facebook, Instagram, LinkedIn and YouTube once you connect your accounts. More channels are added over time.' },
   { q: 'Can I switch or cancel my plan anytime?', a: 'Yes. You can upgrade, downgrade, or cancel from Billing at any time. Changes apply at the start of your next billing cycle.' },
   { q: 'Who owns the content I generate?', a: 'You own the rights to content generated from your account, subject to the usage terms of the underlying AI providers for any third-party training data restrictions.' },
-  { q: 'Do you offer a free trial?', a: 'Yes, every new workspace starts with a free trial period on the Starter plan so you can test Image, Voice, and Video Studio before adding a payment method.' },
+  { q: 'Do you offer a free trial?', a: 'Yes. Every new workspace starts with a small allowance of free trial credits so you can try the studios and AI Studio before paying. Paid plans are billed month by month and do not renew automatically.' },
 ];
 
 const SALES_EMAIL = 'mailto:sales@lumoraos.in';
@@ -99,7 +99,8 @@ function PillButton({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignupClick }) => {
-  const [billingCycle, setBillingCycle] = useState<BillingCycle>('monthly');
+  // Only monthly billing is wired up in checkout, so there is no annual toggle.
+  const billingCycle: BillingCycle = 'monthly';
   const [faqOpen, setFaqOpen] = useState<number>(-1);
   const [localizedRate, setLocalizedRate] = useState<LocalizedRate | null>(null);
   const [salesModalOpen, setSalesModalOpen] = useState(false);
@@ -327,17 +328,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
               Simple plans that scale with your content output.
             </h2>
             <p className="text-base text-[#94A3B8]">Every plan includes Brand Brain, so generations always stay on-brand.</p>
-          </div>
-
-          <div className="flex justify-center mb-12">
-            <div className="inline-flex bg-white/5 border border-white/10 rounded-full p-1 gap-0.5">
-              <PillButton active={billingCycle === 'monthly'} onClick={() => setBillingCycle('monthly')}>
-                Monthly
-              </PillButton>
-              <PillButton active={billingCycle === 'annual'} onClick={() => setBillingCycle('annual')}>
-                Annual · save ~20%
-              </PillButton>
-            </div>
           </div>
 
           <div className="grid gap-6 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))' }}>

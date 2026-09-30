@@ -69,7 +69,13 @@ export class CheckoutService {
     }
 
     const now = new Date();
-    const currentPeriodEnd = addOneMonth(now);
+    // Renewing early keeps the days already paid for: the new month starts when
+    // the current one ends, not today.
+    const stillPaidUntil =
+      existing?.status === SubscriptionStatus.ACTIVE && existing.currentPeriodEnd && existing.currentPeriodEnd > now
+        ? existing.currentPeriodEnd
+        : now;
+    const currentPeriodEnd = addOneMonth(stillPaidUntil);
 
     if (existing) {
       await this.subscriptionsRepository.update(existing.id, {

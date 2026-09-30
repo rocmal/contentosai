@@ -61,8 +61,10 @@ export class CreditsService {
     workspaceId: string,
     plan: string,
     actorId?: string,
+    /** Grant this many credits instead of the plan's full allotment (used for the signup trial). */
+    amountOverride?: number,
   ): Promise<CreditWallet> {
-    const allotment = planAllotment(plan);
+    const allotment = amountOverride ?? planAllotment(plan);
     const cycleStartAt = new Date();
     const cycleEndAt = addOneMonth(cycleStartAt);
 
@@ -87,6 +89,25 @@ export class CreditsService {
     );
 
     return wallet;
+  }
+
+  /** A paid plan lapsed without a renewal payment: remove the remaining
+   * credits so usage stops until the customer renews. No-op for unlimited
+   * wallets and workspaces with nothing left. */
+  async expire(organizationId: string, workspaceId: string): Promise<void> {
+    const wallet = await this.walletsRepository.findByWorkspace(workspaceId);
+    if (!wallet || wallet.balance === null || wallet.balance <= 0) return;
+
+    const removed = wallet.balance;
+    await this.walletsRepository.setBalance(workspaceId, 0, wallet.cycleStartAt ?? new Date(), wallet.cycleEndAt);
+    await this.transactionsRepository.create({
+      organizationId,
+      workspaceId,
+      userId: null,
+      amount: -removed,
+      reason: CreditTransactionReason.PLAN_EXPIRED,
+      balanceAfter: 0,
+    });
   }
 
   /** Resets the wallet to the plan's monthly allotment (no rollover, per the
