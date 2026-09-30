@@ -328,6 +328,14 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // canvas compositor does (which always draws the clip's true, uncropped
   // native resolution), making dragged text land in the wrong spot on export.
   const [sourceVideoNaturalAspect, setSourceVideoNaturalAspect] = useState<number | null>(null);
+  // Raw encoded pixel size of the composited clip, shown next to the edit-
+  // step player as a debugging aid - lets a mismatch between the requested
+  // Shape and what MediaRecorder actually produced be spotted directly from
+  // a screenshot, without needing devtools. Purely diagnostic display; only
+  // sourceVideoNaturalAspect (above) drives any actual layout/export math.
+  const [sourceVideoNaturalDims, setSourceVideoNaturalDims] = useState<{ width: number; height: number } | null>(
+    null,
+  );
 
   // "Scene Builder" - multiple uploaded images/clips, narrated by a single
   // voice prompt for the whole video, combined via compositeScenes() in
@@ -2475,6 +2483,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
             )}
           </div>
 
+          {sourceVideoNaturalDims && (
+            <p className="text-center text-[10px] text-slate-400">
+              Encoded at {sourceVideoNaturalDims.width}×{sourceVideoNaturalDims.height}px
+              {source === 'scenes' && ` (requested Shape: ${sceneAspectRatio})`}
+            </p>
+          )}
+
           <div className="relative mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950">
             <div
               ref={overlayPreviewRef}
@@ -2489,6 +2504,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   const el = e.currentTarget;
                   if (el.videoWidth && el.videoHeight) {
                     setSourceVideoNaturalAspect(el.videoWidth / el.videoHeight);
+                    setSourceVideoNaturalDims({ width: el.videoWidth, height: el.videoHeight });
                   }
                 }}
                 className="w-full h-full object-cover"
