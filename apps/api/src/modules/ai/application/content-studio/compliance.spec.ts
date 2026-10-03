@@ -31,6 +31,11 @@ describe('scanForComplianceIssues', () => {
     expect(flags.map((f) => f.match)).toContain('[VERIFY]');
   });
 
+  it('warns when insurance is described as an investment, in English and Hindi', () => {
+    expect(scanForComplianceIssues('Start investing early in your plan').some((f) => f.severity === 'warn')).toBe(true);
+    expect(scanForComplianceIssues('आज ही निवेश शुरू करें').some((f) => f.severity === 'warn')).toBe(true);
+  });
+
   it('returns no flags for clean educational copy', () => {
     expect(
       scanForComplianceIssues('Planning early helps protect your family. Talk to an advisor to understand your needs.'),

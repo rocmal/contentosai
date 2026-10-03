@@ -101,6 +101,7 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
     { id: 'gemini', label: 'Google Gemini', badge: 'Fast', desc: 'Fast multi-modal engine' },
     { id: 'openai', label: 'OpenAI', badge: 'Popular', desc: 'High accuracy structured formatting' },
     { id: 'claude', label: 'Anthropic Claude', badge: 'Editorial', desc: 'Nuanced long-form copywriter' },
+    { id: 'sarvam', label: 'Sarvam AI', badge: 'Indic', desc: 'Built for Hindi, Punjabi and other Indian languages' },
   ];
 
   const handleGenerate = async () => {

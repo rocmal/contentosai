@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
-export const AI_PROVIDER_NAMES = ['openai', 'gemini', 'claude', 'openrouter'] as const;
+export const AI_PROVIDER_NAMES = ['openai', 'gemini', 'claude', 'openrouter', 'sarvam'] as const;
 
 export class GenerateContentDto {
   @ApiProperty({ example: 'Write a 3-line product launch tweet for a productivity app.' })

@@ -362,7 +362,7 @@ export type StudioFormat =
   | 'custom';
 
 export type StudioLanguage = 'english' | 'hindi' | 'hinglish' | 'punjabi';
-export type StudioProvider = 'openai' | 'gemini' | 'claude' | 'openrouter';
+export type StudioProvider = 'openai' | 'gemini' | 'claude' | 'openrouter' | 'sarvam';
 
 export interface StudioComplianceFlag {
   severity: 'block' | 'warn';

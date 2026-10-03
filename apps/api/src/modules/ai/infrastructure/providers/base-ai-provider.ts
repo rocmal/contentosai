@@ -10,6 +10,8 @@ export abstract class BaseAIProvider {
     url: string,
     body: unknown,
     headers: Record<string, string>,
+    /** Give up after this long, so a slow vendor fails cleanly (and the caller refunds) before the reverse proxy's own timeout turns it into an opaque 504. */
+    timeoutMs?: number,
   ): Promise<T> {
     let response: Response;
     try {
@@ -17,8 +19,14 @@ export abstract class BaseAIProvider {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...headers },
         body: JSON.stringify(body),
+        signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
       });
     } catch (error) {
+      if ((error as Error).name === 'TimeoutError') {
+        throw new ServiceUnavailableException(
+          `${this.constructor.name} took longer than ${Math.round((timeoutMs ?? 0) / 1000)} seconds to answer. Please try again, or pick a faster provider.`,
+        );
+      }
       throw new ServiceUnavailableException(
         `Failed to reach ${this.constructor.name}: ${(error as Error).message}`,
       );

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AIGenerationRequest,
@@ -6,6 +6,14 @@ import {
   IAIProvider,
 } from '../../domain/interfaces/ai-provider.interface';
 import { BaseAIProvider } from './base-ai-provider';
+
+/** Floor for max_tokens: reasoning tokens are spent from the same budget as the answer. */
+const SARVAM_MIN_MAX_TOKENS = 8000;
+
+/** Reasoning makes long answers slow (a Hindi reel script took about 48 s in testing). Stop just
+ * under the 60 s the production Apache proxy allows an API request, so a slow run fails with a
+ * clear message and a refund instead of a bare gateway error after the credit was taken. */
+const SARVAM_TIMEOUT_MS = 55_000;
 
 interface SarvamChatCompletionResponse {
   model: string;
@@ -45,14 +53,28 @@ export class SarvamProvider extends BaseAIProvider implements IAIProvider {
       {
         model,
         messages,
-        max_tokens: request.maxTokens ?? 2048,
+        // sarvam-105b reasons before it answers, and that reasoning counts
+        // against max_tokens (about 1,000 to 2,000+ tokens even for a trivial
+        // prompt, more for a long brand prompt). With the caller's usual cap
+        // the whole budget goes on thinking and the visible answer comes back
+        // empty, so never go below a floor that leaves room for the answer.
+        max_tokens: Math.max(request.maxTokens ?? 2048, SARVAM_MIN_MAX_TOKENS),
         temperature: request.temperature ?? 0.2,
       },
       { 'api-subscription-key': apiKey, Authorization: `Bearer ${apiKey}` },
+      SARVAM_TIMEOUT_MS,
     );
 
+    const choice = response.choices[0];
+    const text = choice?.message?.content ?? '';
+    if (!text.trim() && choice?.finish_reason === 'length') {
+      throw new ServiceUnavailableException(
+        'Sarvam AI ran out of tokens while reasoning and returned no answer. Please try again or shorten the request.',
+      );
+    }
+
     return {
-      text: response.choices[0]?.message?.content ?? '',
+      text,
       provider: this.name,
       model: response.model ?? model,
       usage: response.usage

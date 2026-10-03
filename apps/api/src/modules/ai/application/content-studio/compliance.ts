@@ -27,6 +27,9 @@ const PROHIBITED_PHRASES: Rule[] = [
   { pattern: /suitable\s+for\s+(?:everyone|all)/i, severity: 'warn', message: 'Claims a plan suits everyone' },
   { pattern: /दोगुना|दुगना|दुगुना/, severity: 'block', message: 'Implies doubling of money (Hindi)' },
   { pattern: /गारंटीड\s*रिटर्न|पक्का\s*मुनाफा|100\s*%\s*गारंटी/, severity: 'block', message: 'Guaranteed-returns claim (Hindi)' },
+  // Models drift into "invest" language for savings-type plans. Insurance copy should describe protection and plan features, not an investment return.
+  { pattern: /\binvest(?:ment|ments|ing|s|ed)?\b/i, severity: 'warn', message: 'Describes insurance as an investment - check the wording against the approved product document' },
+  { pattern: /निवेश/, severity: 'warn', message: 'Describes insurance as an investment (Hindi) - check the wording against the approved product document' },
 ];
 
 const FIGURE_PATTERN = /(?:₹|rs\.?|inr)\s?[\d,]+|[\d,.]+\s?(?:lakh|lakhs|crore|crores|लाख|करोड़|%)/i;
