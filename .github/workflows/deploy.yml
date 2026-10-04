@@ -11,10 +11,12 @@ name: Deploy (Docker)
 # current main, or - by filling in rollback_to - to redeploy an existing,
 # already-built image tag without rebuilding anything (rollback path).
 #
-# .env.production and apps/api/.env.production (real secrets) are NEVER
-# read, generated, or transmitted by this workflow - they're created once,
-# by hand, directly on the server (see deploy/README.md). Only application
-# code and the deploy/ orchestration files move through CI.
+# .env.production and apps/api/.env.production are created once, by hand,
+# directly on the server (see deploy/README.md) and are never generated or
+# overwritten by this workflow. The one exception is the "Apply managed keys"
+# step: vendor keys/settings you define as GitHub secrets/variables (list in
+# that step) are upserted, line by line, into apps/api/.env.production. Empty
+# or unset ones are skipped, so everything else in the file is left alone.
 
 on:
   push:
@@ -194,6 +196,60 @@ jobs:
           VPS_SSH_USERNAME: ${{ secrets.VPS_SSH_USERNAME }}
           VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
           DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+
+      # Vendor keys managed from GitHub. Only NON-EMPTY secrets/variables are
+      # sent, and each one overwrites just its own line in
+      # apps/api/.env.production on the server (deploy/scripts/apply-managed-env.sh);
+      # anything not set in GitHub keeps whatever the server file already has.
+      # GitHub masks secret values in these logs.
+      - name: Apply managed keys to the server env (secrets/variables, non-empty only)
+        run: |
+          umask 077
+          echo "$VPS_SSH_PRIVATE_KEY" > deploy_key
+          chmod 600 deploy_key
+          : > managed.env
+          for name in $MANAGED_NAMES; do
+            value="${!name:-}"
+            if [ -n "$value" ]; then printf '%s=%s\n' "$name" "$value" >> managed.env; fi
+          done
+          SSH="ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=15 -i deploy_key -p $VPS_SSH_PORT $VPS_SSH_USERNAME@$VPS_SSH_HOST"
+          $SSH "bash '$DEPLOY_PATH/deploy/scripts/apply-managed-env.sh'" < managed.env
+          rm -f deploy_key managed.env
+        working-directory: deploy
+        env:
+          VPS_SSH_HOST: ${{ secrets.VPS_SSH_HOST }}
+          VPS_SSH_PORT: ${{ secrets.VPS_SSH_PORT }}
+          VPS_SSH_USERNAME: ${{ secrets.VPS_SSH_USERNAME }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          MANAGED_NAMES: >-
+            GEMINI_API_KEY SARVAM_API_KEY OPENAI_API_KEY STABILITY_API_KEY FLUX_API_KEY
+            ELEVENLABS_API_KEY SMTP_PASSWORD GOOGLE_CLIENT_SECRET RAZORPAY_KEY_SECRET
+            RAZORPAY_WEBHOOK_SECRET SENTRY_DSN
+            AI_DEFAULT_PROVIDER OPENAI_IMAGE_MODEL SMTP_HOST SMTP_PORT SMTP_USERNAME
+            SMTP_FROM GOOGLE_CLIENT_ID RAZORPAY_KEY_ID TRUST_PROXY
+          # Secrets (sensitive)
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          STABILITY_API_KEY: ${{ secrets.STABILITY_API_KEY }}
+          FLUX_API_KEY: ${{ secrets.FLUX_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          # Variables (not sensitive)
+          AI_DEFAULT_PROVIDER: ${{ vars.AI_DEFAULT_PROVIDER }}
+          OPENAI_IMAGE_MODEL: ${{ vars.OPENAI_IMAGE_MODEL }}
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_USERNAME: ${{ vars.SMTP_USERNAME }}
+          SMTP_FROM: ${{ vars.SMTP_FROM }}
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          RAZORPAY_KEY_ID: ${{ vars.RAZORPAY_KEY_ID }}
+          TRUST_PROXY: ${{ vars.TRUST_PROXY }}
 
       - name: Pull, migrate, recreate (with automatic rollback on failure)
         uses: appleboy/ssh-action@v1.2.0

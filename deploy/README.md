@@ -167,6 +167,24 @@ The WHM Include Editor / userdata vhost method
 alternative when root access is convenient - survives cPanel's own config
 rebuilds, unlike `.htaccess`. Use only one method, never both.
 
+## Managing vendor keys from GitHub
+
+Vendor keys and settings can be kept in GitHub (repo -> Settings -> Secrets and
+variables -> Actions) instead of being edited on the server. On every deploy the
+"Apply managed keys" step upserts each **non-empty** one into
+`apps/api/.env.production`; anything unset in GitHub is left as it is on the server.
+
+- **Secrets:** `GEMINI_API_KEY`, `SARVAM_API_KEY`, `OPENAI_API_KEY`, `STABILITY_API_KEY`,
+  `FLUX_API_KEY`, `ELEVENLABS_API_KEY`, `SMTP_PASSWORD`, `GOOGLE_CLIENT_SECRET`,
+  `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `SENTRY_DSN`
+- **Variables:** `AI_DEFAULT_PROVIDER`, `OPENAI_IMAGE_MODEL`, `SMTP_HOST`, `SMTP_PORT`,
+  `SMTP_USERNAME`, `SMTP_FROM`, `GOOGLE_CLIENT_ID`, `RAZORPAY_KEY_ID`, `TRUST_PROXY`
+
+Set one with `gh secret set OPENAI_API_KEY` (it prompts, so the value never lands in
+shell history) or `gh variable set AI_DEFAULT_PROVIDER --body sarvam`, then push or
+re-run the "Deploy (Docker)" workflow. To add another name, extend `MANAGED_NAMES`
+and the env list in that step of `.github/workflows/deploy.yml`.
+
 ## One-time secrets setup
 
 These files are **never** touched by CI - created once, by hand, on the
