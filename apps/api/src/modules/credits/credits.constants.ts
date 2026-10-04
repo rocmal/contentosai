@@ -28,6 +28,26 @@ export const CREDIT_COST = {
   CHARACTER_PER_10_SECONDS: 1,
 } as const;
 
+/** Credits per generated image, by vendor and quality tier. Set from vendor
+ * prices (about 1.3 megapixels, converted at an assumed Rs 88 per USD) so each
+ * tier earns roughly 50-60% gross margin at the Starter plan's Rs 1.56 net per
+ * credit: OpenAI gpt-image-2 low/medium/high is about $0.008/$0.07/$0.27 per
+ * image; Stability Core is $0.03 and Ultra $0.08. Re-check against current
+ * vendor pricing before changing plan prices. A tier a vendor does not offer
+ * is simply absent from its row. */
+export const IMAGE_CREDIT_COST: Record<string, Partial<Record<'draft' | 'standard' | 'high', number>>> = {
+  openai: { draft: 1, standard: 8, high: 30 },
+  stability: { standard: 4, high: 10 },
+  flux: { standard: 8 },
+};
+
+const DEFAULT_IMAGE_TIER_COST = 8;
+
+export function imageCreditCost(provider: string, quality: 'draft' | 'standard' | 'high'): number {
+  const row = IMAGE_CREDIT_COST[provider];
+  return row?.[quality] ?? row?.standard ?? DEFAULT_IMAGE_TIER_COST;
+}
+
 export function creditsForDurationSeconds(durationSeconds: number, secondsPerCredit: number): number {
   return Math.max(1, Math.ceil(durationSeconds / secondsPerCredit));
 }

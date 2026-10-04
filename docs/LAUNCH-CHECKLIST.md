@@ -61,7 +61,7 @@ Add an image vendor if you sell Image Studio.
 - New signups get **150 free trial credits** (was the full 2,500). Change with `TRIAL_CREDITS`.
 - Automatic renewal reminders by email are **not built**; build them (or move to Razorpay
   Subscriptions / autopay) before you have many customers.
-- Credit prices: 1 credit = 1 image, ~1 min of voice, ~10 s of video, 1 text generation. Check
+- Credit prices: a text generation is 1 credit; an image is 1 / 8 / 30 credits (OpenAI draft / standard / high) or 4 / 10 (Stability standard / high); voice ~1 credit per minute; video ~1 credit per 10 s (too low - see the cost document). Check
   these against your real vendor costs before relying on the Starter/Pro prices for margin.
 
 ## 2. Operations

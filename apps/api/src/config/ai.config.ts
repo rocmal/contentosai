@@ -19,7 +19,9 @@ export default registerAs('ai', () => ({
     },
   },
   image: {
-    openai: { apiKey: process.env.OPENAI_API_KEY ?? '' },
+    // OPENAI_IMAGE_MODEL: DALL-E 3 is shut down; gpt-image-1.5 and -1-mini retire on
+    // 2026-12-01. Change this (not code) when OpenAI renames or replaces the model.
+    openai: { apiKey: process.env.OPENAI_API_KEY ?? '', model: process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-2' },
     flux: { apiKey: process.env.FLUX_API_KEY ?? '' },
     stability: { apiKey: process.env.STABILITY_API_KEY ?? '' },
   },

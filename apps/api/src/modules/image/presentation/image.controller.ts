@@ -19,6 +19,13 @@ export class ImageController {
     return this.imageService.generateImage(dto, user);
   }
 
+  @Get('options')
+  @RequirePermissions('image.generate')
+  @ApiOperation({ summary: 'Image vendors, whether each is configured, and credits per quality tier' })
+  options() {
+    return this.imageService.getOptions();
+  }
+
   @Get('providers')
   @ApiOperation({ summary: 'List available image providers' })
   listProviders(): { providers: string[] } {

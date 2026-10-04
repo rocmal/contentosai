@@ -1177,12 +1177,17 @@ export async function getAiProviderStatuses(): Promise<ProviderStatus[]> {
 export const IMAGE_PROVIDERS = ['openai', 'stability', 'flux'] as const;
 export type ImageProvider = (typeof IMAGE_PROVIDERS)[number];
 
+export type ImageAspectRatio = '1:1' | '4:5' | '16:9' | '9:16' | '2:3';
+export type ImageQuality = 'draft' | 'standard' | 'high';
+
 export interface ImageGenerationResult {
   provider: string;
   model: string;
   status: 'completed' | 'processing';
   images: string[];
   jobId?: string;
+  /** Credits taken for this request (0 for a cache hit). */
+  creditsUsed?: number;
 }
 
 export async function generateImage(input: {
@@ -1190,12 +1195,31 @@ export async function generateImage(input: {
   provider: ImageProvider;
   model?: string;
   size?: string;
+  aspectRatio?: ImageAspectRatio;
+  quality?: ImageQuality;
   count?: number;
+  /** false = preview only: images come back inline and nothing is stored in the gallery. */
+  saveToGallery?: boolean;
 }): Promise<ImageGenerationResult> {
   return apiRequest<ImageGenerationResult>('/image/generate', {
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export interface ImageProviderOption {
+  id: ImageProvider;
+  label: string;
+  note: string;
+  /** False when this server has no API key for the vendor. */
+  configured: boolean;
+  recommended: boolean;
+  qualities: { id: ImageQuality; label: string; credits: number }[];
+}
+
+/** The vendors Image Studio offers, whether each is configured, and the credits per quality tier. */
+export function getImageOptions(): Promise<{ providers: ImageProviderOption[] }> {
+  return apiRequest<{ providers: ImageProviderOption[] }>('/image/options');
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { StorageService } from '@modules/storage/application/services/storage.service';
@@ -7,10 +8,26 @@ import { MediaAssetType } from '@modules/media/domain/entities/media-asset.entit
 import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
 import { CreditTransactionReason } from '@modules/credits/domain/entities/credit-transaction.entity';
-import { CREDIT_COST } from '@modules/credits/credits.constants';
+import { IMAGE_CREDIT_COST, imageCreditCost } from '@modules/credits/credits.constants';
 import { ImageProviderFactory } from '../../infrastructure/image-provider.factory';
 import { ImageGenerationResult } from '../../domain/interfaces/image-provider.interface';
+import { ImageQuality } from '../../domain/image-formats';
 import { GenerateImageDto } from '../dto/generate-image.dto';
+
+export interface ImageProviderOption {
+  id: string;
+  label: string;
+  note: string;
+  configured: boolean;
+  recommended: boolean;
+  qualities: { id: ImageQuality; label: string; credits: number }[];
+}
+
+const QUALITY_LABELS: Record<ImageQuality, string> = {
+  draft: 'Draft - fast and cheap, for trying ideas',
+  standard: 'Standard - good for most posts',
+  high: 'High - best detail, for hero images',
+};
 
 @Injectable()
 export class ImageService {
@@ -20,6 +37,7 @@ export class ImageService {
     private readonly mediaAssetsService: MediaAssetsService,
     private readonly eventEmitter: EventEmitter2,
     private readonly creditsService: CreditsService,
+    private readonly configService: ConfigService,
   ) {}
 
   async generateImage(
@@ -27,11 +45,22 @@ export class ImageService {
     user: AuthenticatedUser,
   ): Promise<ImageGenerationResult> {
     const count = dto.count ?? 1;
-    // Only a single-image request is cacheable - "the same prompt" isn't a
-    // well-defined match against a multi-image batch.
+    const quality = dto.quality ?? 'standard';
+    const saveToGallery = dto.saveToGallery ?? true;
+
+    // Only a single-image request that is going to the gallery is cacheable -
+    // "the same prompt" isn't a well-defined match against a multi-image batch,
+    // and a preview is never stored, so there is nothing to find for it.
     const cacheKeyHash =
-      count === 1
-        ? buildGenerationCacheKey(['image', dto.provider, dto.model, dto.size, dto.prompt])
+      count === 1 && saveToGallery
+        ? buildGenerationCacheKey([
+            'image',
+            dto.provider,
+            dto.model,
+            dto.aspectRatio ?? dto.size,
+            quality,
+            dto.prompt,
+          ])
         : null;
 
     if (cacheKeyHash) {
@@ -43,6 +72,7 @@ export class ImageService {
           model: cached.model ?? dto.model ?? '',
           status: 'completed',
           images: [cached.url],
+          creditsUsed: 0,
         };
       }
     }
@@ -51,7 +81,7 @@ export class ImageService {
     // balance must block the call from ever happening, not get charged
     // retroactively for a generation the user can't afford.
     const canCharge = Boolean(user.organizationId && user.workspaceId);
-    const cost = CREDIT_COST.IMAGE_PER_GENERATION * count;
+    const cost = imageCreditCost(dto.provider, quality) * count;
     if (canCharge) {
       await this.creditsService.reserve({
         organizationId: user.organizationId!,
@@ -69,6 +99,8 @@ export class ImageService {
         prompt: dto.prompt,
         model: dto.model,
         size: dto.size,
+        aspectRatio: dto.aspectRatio,
+        quality,
         count: dto.count,
       });
     } catch (err) {
@@ -89,8 +121,22 @@ export class ImageService {
       userId: user.id,
     });
 
-    if (!user.organizationId || !user.workspaceId || result.status !== 'completed') {
-      return result;
+    const creditsUsed = canCharge ? cost : 0;
+
+    if (result.status !== 'completed') {
+      return { ...result, creditsUsed };
+    }
+
+    // Preview mode: hand the images back inline and store nothing. The user
+    // saves the ones they want (cropped to a platform's size) with an explicit
+    // upload, so the gallery only holds images they chose to keep.
+    if (!saveToGallery || !user.organizationId || !user.workspaceId) {
+      const inline: string[] = [];
+      for (const image of result.images) {
+        const { buffer, mimeType } = await this.resolveImageToBuffer(image);
+        inline.push(`data:${mimeType};base64,${buffer.toString('base64')}`);
+      }
+      return { ...result, images: inline, creditsUsed };
     }
 
     // Persist each image to our own storage (provider URLs can expire) and
@@ -99,7 +145,7 @@ export class ImageService {
     const persistedUrls: string[] = [];
     for (let index = 0; index < result.images.length; index += 1) {
       const { buffer, mimeType } = await this.resolveImageToBuffer(result.images[index]);
-      const extension = mimeType.split('/')[1] ?? 'png';
+      const extension = mimeType.split('/')[1]?.replace('jpeg', 'jpg') ?? 'png';
       const stored = await this.storageService.uploadFile(
         { originalname: `image-${Date.now()}-${index}.${extension}`, buffer, mimetype: mimeType },
         'gallery/images',
@@ -125,11 +171,45 @@ export class ImageService {
       );
     }
 
-    return { ...result, images: persistedUrls };
+    return { ...result, images: persistedUrls, creditsUsed };
   }
 
   listProviders(): string[] {
     return this.providerFactory.listProviders();
+  }
+
+  /** What Image Studio shows: the vendors worth offering, whether each has a
+   * key configured on this server, and the credits each quality tier costs.
+   * Built from the same cost table the charge uses, so the screen can never
+   * quote a price that differs from what is taken. */
+  getOptions(): { providers: ImageProviderOption[] } {
+    const configured = (provider: string): boolean =>
+      Boolean(this.configService.get<string>(`ai.image.${provider}.apiKey`));
+    const tiers = (provider: string): ImageProviderOption['qualities'] =>
+      (['draft', 'standard', 'high'] as const)
+        .filter((id) => IMAGE_CREDIT_COST[provider]?.[id] !== undefined)
+        .map((id) => ({ id, label: QUALITY_LABELS[id], credits: imageCreditCost(provider, id) }));
+
+    return {
+      providers: [
+        {
+          id: 'openai',
+          label: 'OpenAI (gpt-image-2)',
+          note: 'Best prompt following and text in images. Exact shapes for every platform.',
+          configured: configured('openai'),
+          recommended: true,
+          qualities: tiers('openai'),
+        },
+        {
+          id: 'stability',
+          label: 'Stability AI (Stable Image)',
+          note: 'Lower cost per image. Good for backgrounds and scenes.',
+          configured: configured('stability'),
+          recommended: false,
+          qualities: tiers('stability'),
+        },
+      ],
+    };
   }
 
   /** Image providers return either a data: URI or a (sometimes short-lived)
