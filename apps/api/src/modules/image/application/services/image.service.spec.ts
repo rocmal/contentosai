@@ -18,13 +18,31 @@ const user: AuthenticatedUser = {
 
 const JPEG_DATA_URI = `data:image/jpeg;base64,${Buffer.from('fake-image-bytes').toString('base64')}`;
 
-function makeService(providerResult: unknown = { provider: 'openai', model: 'gpt-image-2', status: 'completed', images: [JPEG_DATA_URI] }) {
+function makeService(
+  providerResult: unknown = {
+    provider: 'openai',
+    model: 'gpt-image-2',
+    status: 'completed',
+    images: [JPEG_DATA_URI],
+  },
+) {
   const generateImage = jest.fn().mockResolvedValue(providerResult);
-  const credits = { reserve: jest.fn().mockResolvedValue(undefined), refund: jest.fn().mockResolvedValue(undefined) };
-  const storage = { uploadFile: jest.fn().mockResolvedValue({ key: 'k', url: 'https://cdn/x.jpg' }) };
-  const media = { findCached: jest.fn().mockResolvedValue(null), saveGenerated: jest.fn().mockResolvedValue(undefined) };
+  const credits = {
+    reserve: jest.fn().mockResolvedValue(undefined),
+    refund: jest.fn().mockResolvedValue(undefined),
+  };
+  const storage = {
+    uploadFile: jest.fn().mockResolvedValue({ key: 'k', url: 'https://cdn/x.jpg' }),
+  };
+  const media = {
+    findCached: jest.fn().mockResolvedValue(null),
+    saveGenerated: jest.fn().mockResolvedValue(undefined),
+  };
   const service = new ImageService(
-    { getProvider: () => ({ name: 'openai', generateImage }), listProviders: () => ['openai', 'stability'] } as never,
+    {
+      getProvider: () => ({ name: 'openai', generateImage }),
+      listProviders: () => ['openai', 'stability'],
+    } as never,
     storage as never,
     media as never,
     { emit: jest.fn() } as never,
@@ -61,11 +79,11 @@ describe('openAiSizeFor', () => {
 
 describe('imageCreditCost', () => {
   it('prices each vendor and tier, and falls back to the vendor standard tier', () => {
-    expect(imageCreditCost('openai', 'draft')).toBe(1);
-    expect(imageCreditCost('openai', 'standard')).toBe(8);
-    expect(imageCreditCost('openai', 'high')).toBe(30);
-    expect(imageCreditCost('stability', 'standard')).toBe(4);
-    expect(imageCreditCost('stability', 'draft')).toBe(4);
+    expect(imageCreditCost('openai', 'draft')).toBe(2);
+    expect(imageCreditCost('openai', 'standard')).toBe(13);
+    expect(imageCreditCost('openai', 'high')).toBe(50);
+    expect(imageCreditCost('stability', 'standard')).toBe(6);
+    expect(imageCreditCost('stability', 'draft')).toBe(6);
   });
 });
 
@@ -75,24 +93,35 @@ describe('ImageService.generateImage', () => {
     generateImage.mockRejectedValue(new Error('vendor down'));
 
     await expect(
-      service.generateImage({ prompt: 'a cat', provider: 'openai', quality: 'high', count: 2 }, user),
+      service.generateImage(
+        { prompt: 'a cat', provider: 'openai', quality: 'high', count: 2 },
+        user,
+      ),
     ).rejects.toThrow('vendor down');
 
-    expect(credits.reserve).toHaveBeenCalledWith(expect.objectContaining({ amount: 60 }));
-    expect(credits.refund).toHaveBeenCalledWith(expect.objectContaining({ amount: 60 }));
+    expect(credits.reserve).toHaveBeenCalledWith(expect.objectContaining({ amount: 100 }));
+    expect(credits.refund).toHaveBeenCalledWith(expect.objectContaining({ amount: 100 }));
   });
 
   it('preview mode returns inline images, stores nothing and still charges', async () => {
     const { service, credits, storage, media, generateImage } = makeService();
 
     const result = await service.generateImage(
-      { prompt: 'a cat', provider: 'openai', aspectRatio: '16:9', quality: 'standard', saveToGallery: false },
+      {
+        prompt: 'a cat',
+        provider: 'openai',
+        aspectRatio: '16:9',
+        quality: 'standard',
+        saveToGallery: false,
+      },
       user,
     );
 
-    expect(generateImage).toHaveBeenCalledWith(expect.objectContaining({ aspectRatio: '16:9', quality: 'standard' }));
-    expect(credits.reserve).toHaveBeenCalledWith(expect.objectContaining({ amount: 8 }));
-    expect(result.creditsUsed).toBe(8);
+    expect(generateImage).toHaveBeenCalledWith(
+      expect.objectContaining({ aspectRatio: '16:9', quality: 'standard' }),
+    );
+    expect(credits.reserve).toHaveBeenCalledWith(expect.objectContaining({ amount: 13 }));
+    expect(result.creditsUsed).toBe(13);
     expect(result.images[0]).toMatch(/^data:image\/jpeg;base64,/);
     expect(storage.uploadFile).not.toHaveBeenCalled();
     expect(media.saveGenerated).not.toHaveBeenCalled();
@@ -111,7 +140,11 @@ describe('ImageService.generateImage', () => {
 
   it('a cache hit costs nothing', async () => {
     const { service, credits, media, generateImage } = makeService();
-    media.findCached.mockResolvedValue({ url: 'https://cdn/cached.jpg', provider: 'openai', model: 'gpt-image-2' });
+    media.findCached.mockResolvedValue({
+      url: 'https://cdn/cached.jpg',
+      provider: 'openai',
+      model: 'gpt-image-2',
+    });
 
     const result = await service.generateImage({ prompt: 'a cat', provider: 'openai' }, user);
 
@@ -128,7 +161,7 @@ describe('ImageService.generateImage', () => {
 
     expect(openai.configured).toBe(true);
     expect(openai.recommended).toBe(true);
-    expect(openai.qualities.map((q) => q.credits)).toEqual([1, 8, 30]);
+    expect(openai.qualities.map((q) => q.credits)).toEqual([2, 13, 50]);
     expect(stability.configured).toBe(false);
     expect(stability.qualities.map((q) => q.id)).toEqual(['standard', 'high']);
   });

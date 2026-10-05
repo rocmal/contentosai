@@ -6,7 +6,10 @@ import { MediaAssetType } from '@modules/media/domain/entities/media-asset.entit
 import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
 import { CreditTransactionReason } from '@modules/credits/domain/entities/credit-transaction.entity';
-import { CREDIT_COST, creditsForDurationSeconds } from '@modules/credits/credits.constants';
+import {
+  creditsForDurationSeconds,
+  videoCreditsPer10Seconds,
+} from '@modules/credits/credits.constants';
 import { VideoProviderFactory } from '../../infrastructure/video-provider.factory';
 import { VideoGenerationResult } from '../../domain/interfaces/video-provider.interface';
 import { GenerateVideoDto } from '../dto/generate-video.dto';
@@ -38,12 +41,14 @@ export class VideoService {
    * etc.) refunds immediately; a job accepted here but that later fails
    * vendor-side keeps its charge, matching how the vendor's own compute
    * cost was already incurred once the job was accepted. */
-  async submitJob(dto: GenerateVideoDto, actor: SubmitJobActor = {}): Promise<VideoGenerationResult> {
+  async submitJob(
+    dto: GenerateVideoDto,
+    actor: SubmitJobActor = {},
+  ): Promise<VideoGenerationResult> {
     const canCharge = Boolean(actor.organizationId && actor.workspaceId);
-    const cost = creditsForDurationSeconds(
-      dto.durationSeconds ?? DEFAULT_DURATION_SECONDS,
-      10 / CREDIT_COST.VIDEO_PER_10_SECONDS,
-    );
+    const cost =
+      creditsForDurationSeconds(dto.durationSeconds ?? DEFAULT_DURATION_SECONDS, 10) *
+      videoCreditsPer10Seconds(dto.provider);
     if (canCharge) {
       await this.creditsService.reserve({
         organizationId: actor.organizationId!,
@@ -77,7 +82,13 @@ export class VideoService {
 
     this.eventEmitter.emit(
       'video.job-submitted',
-      new VideoJobSubmittedEvent(result.provider, result.jobId, actor.userId, actor.organizationId, actor.workspaceId),
+      new VideoJobSubmittedEvent(
+        result.provider,
+        result.jobId,
+        actor.userId,
+        actor.organizationId,
+        actor.workspaceId,
+      ),
     );
 
     return result;
@@ -94,7 +105,13 @@ export class VideoService {
     const provider = this.providerFactory.getProvider(providerName);
     const result = await provider.getJobStatus(jobId);
 
-    if (result.status === 'completed' && result.videoUrl && actor.userId && actor.organizationId && actor.workspaceId) {
+    if (
+      result.status === 'completed' &&
+      result.videoUrl &&
+      actor.userId &&
+      actor.organizationId &&
+      actor.workspaceId
+    ) {
       return this.persistCompletedVideo(result, {
         userId: actor.userId,
         organizationId: actor.organizationId,

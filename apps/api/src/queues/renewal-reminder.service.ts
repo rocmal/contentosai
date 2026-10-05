@@ -40,7 +40,12 @@ function planLabel(plan: string): string {
 }
 
 function formatDate(date: Date): string {
-  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata' });
+  return date.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata',
+  });
 }
 
 /** Emails the account owner before a self-serve plan lapses, and when it does. */
@@ -75,11 +80,17 @@ export class RenewalReminderService {
           subscription.plan,
         ),
       });
-      await this.subscriptionsService.markRenewalReminderSent(subscription.id, subscription.currentPeriodEnd, stage);
+      await this.subscriptionsService.markRenewalReminderSent(
+        subscription.id,
+        subscription.currentPeriodEnd,
+        stage,
+      );
       return true;
     } catch (err) {
       // Not marked as sent, so the next 6-hourly run tries again.
-      this.logger.warn(`Renewal reminder failed for subscription ${subscription.id}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Renewal reminder failed for subscription ${subscription.id}: ${(err as Error).message}`,
+      );
       return false;
     }
   }
@@ -99,7 +110,9 @@ export class RenewalReminderService {
         ),
       });
     } catch (err) {
-      this.logger.warn(`Expiry notice failed for subscription ${subscription.id}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Expiry notice failed for subscription ${subscription.id}: ${(err as Error).message}`,
+      );
     }
   }
 
@@ -111,7 +124,10 @@ export class RenewalReminderService {
 
   private body(headline: string, detail: string, plan: string): string {
     const appUrl = this.configService.get<string>('app.url') ?? '';
-    const price = isPurchasablePlan(plan) ? ` (₹${PLAN_PRICING_INR[plan].toLocaleString('en-IN')} / month)` : '';
+    // PLAN_PRICING_INR is in paise.
+    const price = isPurchasablePlan(plan)
+      ? ` (₹${(PLAN_PRICING_INR[plan] / 100).toLocaleString('en-IN')} / month)`
+      : '';
     return [
       `<p>${headline}</p>`,
       `<p>${detail}</p>`,

@@ -1,5 +1,12 @@
-import { Subscription, SubscriptionStatus } from '@modules/billing/domain/entities/subscription.entity';
-import { RenewalReminderService, reminderStageFor, shouldSendReminder } from './renewal-reminder.service';
+import {
+  Subscription,
+  SubscriptionStatus,
+} from '@modules/billing/domain/entities/subscription.entity';
+import {
+  RenewalReminderService,
+  reminderStageFor,
+  shouldSendReminder,
+} from './renewal-reminder.service';
 
 const HOUR = 60 * 60 * 1000;
 const now = new Date('2026-10-10T10:00:00Z');
@@ -43,11 +50,19 @@ describe('shouldSendReminder', () => {
 
   it('does not repeat the same reminder, but does send the later one', () => {
     const end = inHours(20);
-    const sent3 = subscription({ currentPeriodEnd: end, renewalReminderPeriodEnd: end, renewalReminderStage: 3 });
+    const sent3 = subscription({
+      currentPeriodEnd: end,
+      renewalReminderPeriodEnd: end,
+      renewalReminderStage: 3,
+    });
     expect(shouldSendReminder(sent3, 3)).toBe(false);
     expect(shouldSendReminder(sent3, 1)).toBe(true);
 
-    const sent1 = subscription({ currentPeriodEnd: end, renewalReminderPeriodEnd: end, renewalReminderStage: 1 });
+    const sent1 = subscription({
+      currentPeriodEnd: end,
+      renewalReminderPeriodEnd: end,
+      renewalReminderStage: 1,
+    });
     expect(shouldSendReminder(sent1, 1)).toBe(false);
   });
 
@@ -83,15 +98,28 @@ describe('RenewalReminderService', () => {
     await expect(service.remindIfDue(sub, now)).resolves.toBe(true);
 
     expect(mailer.send).toHaveBeenCalledWith(
-      expect.objectContaining({ to: 'owner@example.com', subject: expect.stringContaining('ends in 3 days') }),
+      expect.objectContaining({
+        to: 'owner@example.com',
+        subject: expect.stringContaining('ends in 3 days'),
+      }),
     );
-    expect(subscriptions.markRenewalReminderSent).toHaveBeenCalledWith('sub-1', sub.currentPeriodEnd, 3);
+    expect(subscriptions.markRenewalReminderSent).toHaveBeenCalledWith(
+      'sub-1',
+      sub.currentPeriodEnd,
+      3,
+    );
+    // Plan prices are stored in paise; the email must show rupees (Starter = 4,000).
+    expect(mailer.send.mock.calls[0][0].html).toContain('₹4,000');
   });
 
   it('does not email an enterprise (invoice-billed) plan or a plan that is far from ending', async () => {
     const { service, mailer } = build();
-    await expect(service.remindIfDue(subscription({ plan: 'enterprise' }), now)).resolves.toBe(false);
-    await expect(service.remindIfDue(subscription({ currentPeriodEnd: inHours(200) }), now)).resolves.toBe(false);
+    await expect(service.remindIfDue(subscription({ plan: 'enterprise' }), now)).resolves.toBe(
+      false,
+    );
+    await expect(
+      service.remindIfDue(subscription({ currentPeriodEnd: inHours(200) }), now),
+    ).resolves.toBe(false);
     expect(mailer.send).not.toHaveBeenCalled();
   });
 

@@ -1,7 +1,11 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { FallbackAIProvider } from './fallback-ai-provider';
 
-const provider = (name: string, impl: jest.Mock) => ({ name, generateText: impl, healthCheck: jest.fn() });
+const provider = (name: string, impl: jest.Mock) => ({
+  name,
+  generateText: impl,
+  healthCheck: jest.fn(),
+});
 
 describe('FallbackAIProvider', () => {
   it('uses the primary when it works', async () => {

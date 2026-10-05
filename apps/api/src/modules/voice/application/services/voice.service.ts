@@ -6,6 +6,7 @@ import { MediaAssetsService } from '@modules/media/application/services/media-as
 import { MediaAssetType } from '@modules/media/domain/entities/media-asset.entity';
 import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
+import { voiceCreditsPerMinute } from '@modules/credits/credits.constants';
 import { CreditTransactionReason } from '@modules/credits/domain/entities/credit-transaction.entity';
 import { VoiceProviderFactory } from '../../infrastructure/voice-provider.factory';
 import { VoiceGenerationResult, VoiceInfo } from '../../domain/interfaces/voice-provider.interface';
@@ -65,7 +66,7 @@ export class VoiceService {
     }
 
     const canCharge = Boolean(user.organizationId && user.workspaceId);
-    const cost = estimateVoiceCredits(dto.text);
+    const cost = estimateVoiceCredits(dto.text) * voiceCreditsPerMinute(provider.name);
     if (canCharge) {
       await this.creditsService.reserve({
         organizationId: user.organizationId!,

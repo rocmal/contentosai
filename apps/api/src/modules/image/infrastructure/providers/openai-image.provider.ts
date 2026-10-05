@@ -1,11 +1,20 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   IImageProvider,
   ImageGenerationRequest,
   ImageGenerationResult,
 } from '../../domain/interfaces/image-provider.interface';
-import { nearestStandardOpenAiSize, OPENAI_QUALITY, openAiSizeFor } from '../../domain/image-formats';
+import {
+  nearestStandardOpenAiSize,
+  OPENAI_QUALITY,
+  openAiSizeFor,
+} from '../../domain/image-formats';
 
 interface OpenAIImagesResponse {
   data: { url?: string; b64_json?: string }[];
@@ -23,6 +32,7 @@ interface OpenAIErrorBody {
 @Injectable()
 export class OpenAIImageProvider implements IImageProvider {
   readonly name = 'openai';
+  private readonly logger = new Logger(OpenAIImageProvider.name);
   private readonly fallbackModel = 'gpt-image-2';
 
   constructor(private readonly configService: ConfigService) {}
@@ -34,8 +44,12 @@ export class OpenAIImageProvider implements IImageProvider {
     }
 
     const model =
-      request.model ?? this.configService.get<string>('ai.image.openai.model') ?? this.fallbackModel;
-    const size = request.aspectRatio ? openAiSizeFor(request.aspectRatio) : (request.size ?? '1024x1024');
+      request.model ??
+      this.configService.get<string>('ai.image.openai.model') ??
+      this.fallbackModel;
+    const size = request.aspectRatio
+      ? openAiSizeFor(request.aspectRatio)
+      : (request.size ?? '1024x1024');
 
     let response = await this.post(apiKey, model, request, size);
 
@@ -45,7 +59,12 @@ export class OpenAIImageProvider implements IImageProvider {
     if (response.status === 400 && request.aspectRatio) {
       const detail = await this.errorMessage(response);
       if (/size/i.test(detail)) {
-        response = await this.post(apiKey, model, request, nearestStandardOpenAiSize(request.aspectRatio));
+        response = await this.post(
+          apiKey,
+          model,
+          request,
+          nearestStandardOpenAiSize(request.aspectRatio),
+        );
       } else {
         throw this.toException(400, detail);
       }
@@ -66,7 +85,12 @@ export class OpenAIImageProvider implements IImageProvider {
     return { provider: this.name, model, status: 'completed', images };
   }
 
-  private post(apiKey: string, model: string, request: ImageGenerationRequest, size: string): Promise<Response> {
+  private post(
+    apiKey: string,
+    model: string,
+    request: ImageGenerationRequest,
+    size: string,
+  ): Promise<Response> {
     return fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
@@ -99,6 +123,21 @@ export class OpenAIImageProvider implements IImageProvider {
         'OpenAI declined this prompt under its content policy. Rephrase it and try again - no credits were used.',
       );
     }
-    return new ServiceUnavailableException(`OpenAI image request failed (${status}): ${detail}`);
+    // The vendor's own wording (account, key, quota, billing) is for the
+    // operator, not the customer - log it here and show a plain message.
+    this.logger.error(`OpenAI image request failed (${status}): ${detail}`);
+    if (status === 401 || status === 403) {
+      return new ServiceUnavailableException(
+        'Image generation is temporarily unavailable on our side. Please try again later - no credits were used.',
+      );
+    }
+    if (status === 429) {
+      return new ServiceUnavailableException(
+        'Image generation is busy right now. Please try again in a minute - no credits were used.',
+      );
+    }
+    return new ServiceUnavailableException(
+      'The image could not be generated. Please try again - no credits were used.',
+    );
   }
 }

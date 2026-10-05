@@ -456,9 +456,9 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
                           <p className="text-[11px] text-slate-400">Generating...</p>
                         </div>
                       ) : result?.state === 'error' ? (
-                        <div className="flex items-start gap-2 p-3 text-red-300">
+                        <div className="flex items-start gap-2 p-3 text-red-300 max-w-full">
                           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                          <p className="text-[11px] leading-snug">{result.message}</p>
+                          <p className="text-[11px] leading-snug break-words min-w-0">{result.message}</p>
                         </div>
                       ) : (
                         <p className="text-[11px] text-slate-500 px-4 text-center">Not generated yet</p>

@@ -156,7 +156,7 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
       category: 'AI Models & Credits',
       question: 'How are AI Generation Credits calculated?',
       answer:
-        'Text generations consume 1-2 credits per post. Image generations consume 5 credits, audio voiceover synthesis consumes 10 credits per minute, and Veo 3.1 video clip generation consumes 25 credits.',
+        'A text generation uses 1 credit. An image uses 2 to 50 credits depending on the quality tier (shown before you generate). Voiceover uses about 7 credits per minute with Sarvam Indian-language voices. AI video and talking-avatar clips use about 180 credits per 10 seconds, and are charged when the job is submitted.',
     },
     {
       id: 'faq-5',

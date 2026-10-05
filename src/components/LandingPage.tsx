@@ -386,7 +386,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
           </div>
 
           <p className="text-center text-[12.5px] text-[#64748B] max-w-[560px] mx-auto mt-10">
-            An AI text generation costs 1 credit, an image costs 1 to 30 credits depending on the quality you pick, and a minute of AI voice costs a few credits. The exact cost is always shown before you generate.
+            An AI text generation costs 1 credit and an image costs 2 to 50 credits depending on the quality you pick (Image Studio shows the cost before you generate). A minute of AI voice costs a few credits, and AI video and talking avatars cost far more - about 180 credits per 10 seconds - so use them for your best pieces.
             {localizedRate && (
               <>
                 {' '}Prices shown in {localizedRate.currency} are an approximate conversion - you're charged in INR at checkout.

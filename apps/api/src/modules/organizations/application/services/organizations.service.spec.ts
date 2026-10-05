@@ -56,7 +56,9 @@ describe('OrganizationsService', () => {
       listByUser: jest.fn(),
     };
     usersService = { findByEmail: jest.fn() } as unknown as jest.Mocked<UsersService>;
-    subscriptionsService = { findByOrganization: jest.fn() } as unknown as jest.Mocked<SubscriptionsService>;
+    subscriptionsService = {
+      findByOrganization: jest.fn(),
+    } as unknown as jest.Mocked<SubscriptionsService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
 
     service = new OrganizationsService(

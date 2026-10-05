@@ -6,9 +6,13 @@ import { GenerateCharacterDto } from '../dto/generate-character.dto';
 import { StorageService } from '@modules/storage/application/services/storage.service';
 import { MediaAssetsService } from '@modules/media/application/services/media-assets.service';
 import { MediaAssetType } from '@modules/media/domain/entities/media-asset.entity';
-import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util';import { CreditsService } from '@modules/credits/application/services/credits.service';
+import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util';
+import { CreditsService } from '@modules/credits/application/services/credits.service';
 import { CreditTransactionReason } from '@modules/credits/domain/entities/credit-transaction.entity';
-import { creditsForDurationSeconds } from '@modules/credits/credits.constants';
+import {
+  characterCreditsPer10Seconds,
+  creditsForDurationSeconds,
+} from '@modules/credits/credits.constants';
 
 const WORDS_PER_MINUTE = 150;
 
@@ -42,9 +46,14 @@ export class CharacterService {
    * VideoService.submitJob: this is an asynchronous vendor job, and the
    * vendor's compute cost is incurred once accepted regardless of whether
    * polling later reports success. */
-  async submitJob(dto: GenerateCharacterDto, actor: SubmitJobActor = {}): Promise<CharacterGenerationResult> {
+  async submitJob(
+    dto: GenerateCharacterDto,
+    actor: SubmitJobActor = {},
+  ): Promise<CharacterGenerationResult> {
     const canCharge = Boolean(actor.organizationId && actor.workspaceId);
-    const cost = creditsForDurationSeconds(estimateScriptSeconds(dto.script), 10);
+    const cost =
+      creditsForDurationSeconds(estimateScriptSeconds(dto.script), 10) *
+      characterCreditsPer10Seconds(dto.provider);
     if (canCharge) {
       await this.creditsService.reserve({
         organizationId: actor.organizationId!,
@@ -124,7 +133,9 @@ export class CharacterService {
       }
 
       const source = result.videoUrl!;
-      const buffer = source.startsWith('http') ? await this.downloadRemoteVideo(source) : await readFile(source);
+      const buffer = source.startsWith('http')
+        ? await this.downloadRemoteVideo(source)
+        : await readFile(source);
       const stored = await this.storageService.uploadFile(
         { originalname: `character-${jobId}.mp4`, buffer, mimetype: 'video/mp4' },
         'character',

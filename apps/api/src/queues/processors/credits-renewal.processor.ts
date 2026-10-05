@@ -56,20 +56,27 @@ export class CreditsRenewalProcessor extends WorkerHost {
 
       // Plans that are about to end get a heads-up email (3 days, then 1 day before).
       for (const sub of result.items) {
-        if (sub.status === SubscriptionStatus.ACTIVE && (await this.renewalReminders.remindIfDue(sub, now))) {
+        if (
+          sub.status === SubscriptionStatus.ACTIVE &&
+          (await this.renewalReminders.remindIfDue(sub, now))
+        ) {
           reminded += 1;
         }
       }
 
       for (const subscription of due) {
         try {
-          const workspaces = await this.workspacesService.findByOrganization(subscription.organizationId);
+          const workspaces = await this.workspacesService.findByOrganization(
+            subscription.organizationId,
+          );
 
           if (isPurchasablePlan(subscription.plan)) {
             for (const workspace of workspaces) {
               await this.creditsService.expire(subscription.organizationId, workspace.id);
             }
-            await this.subscriptionsService.update(subscription.id, { status: SubscriptionStatus.PAST_DUE });
+            await this.subscriptionsService.update(subscription.id, {
+              status: SubscriptionStatus.PAST_DUE,
+            });
             await this.renewalReminders.notifyExpired(subscription);
             expired += 1;
             continue;

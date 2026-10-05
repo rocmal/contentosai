@@ -64,8 +64,14 @@ Add an image vendor if you sell Image Studio.
   to Razorpay Subscriptions / autopay before you have many customers.
 - Hindi/Punjabi/Hinglish writing goes to Sarvam and falls back to the default provider
   (Gemini) if Sarvam fails or times out; everything else uses `AI_DEFAULT_PROVIDER`.
-- Credit prices: a text generation is 1 credit; an image is 1 / 8 / 30 credits (OpenAI draft / standard / high) or 4 / 10 (Stability standard / high); voice ~1 credit per minute; video ~1 credit per 10 s (too low - see the cost document). Check
-  these against your real vendor costs before relying on the Starter/Pro prices for margin.
+- Credit prices (set for a 50% margin on the Pro plan's credit, the cheapest we sell; Starter earns more):
+  text 1 credit; image 2 / 13 / 50 (OpenAI draft / standard / high) or 6 / 15 (Stability standard / high);
+  voice 7 credits per minute with Sarvam (1 with the free Edge/Piper voices, 10 placeholder for
+  ElevenLabs/Cartesia/Azure); AI video 180 per 10 s (Veo 3.1 Fast); talking avatars 180 per 10 s
+  with HeyGen/D-ID/Synthesia (2 with self-hosted SadTalker/Wav2Lip). Only Sarvam, Veo, HeyGen and the
+  image prices are verified; the rest are conservative placeholders - confirm before selling them.
+  All rates live in `credits.constants.ts`. At these rates a Starter month (2,500 credits) is about
+  13 ten-second video clips or ~190 standard images.
 
 ## 2. Operations
 
