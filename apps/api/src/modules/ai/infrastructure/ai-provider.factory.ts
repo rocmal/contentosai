@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IAIProvider } from '../domain/interfaces/ai-provider.interface';
 import { containsIndicScript, isIndianLanguage } from '../domain/language-routing';
+import { FallbackAIProvider } from './fallback-ai-provider';
 import { OpenAIProvider } from './providers/openai.provider';
 import { GeminiProvider } from './providers/gemini.provider';
 import { ClaudeProvider } from './providers/claude.provider';
@@ -56,10 +57,14 @@ export class AIProviderFactory {
       return this.getProvider(options.provider);
     }
     const indian = isIndianLanguage(options.language) || containsIndicScript(options.text);
+    const fallback = this.getProvider();
     if (indian && this.configService.get<string>('ai.sarvam.apiKey')) {
-      return this.getProvider('sarvam');
+      const sarvam = this.getProvider('sarvam');
+      // Sarvam is the best Indian-language writer but also the slowest; if it
+      // fails, the default provider still produces something rather than an error.
+      return fallback.name === sarvam.name ? sarvam : new FallbackAIProvider(sarvam, fallback);
     }
-    return this.getProvider();
+    return fallback;
   }
 
   listProviders(): string[] {
