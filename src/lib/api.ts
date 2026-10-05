@@ -1150,6 +1150,8 @@ export interface TextGenerationResult {
 export async function generateText(input: {
   prompt: string;
   systemPrompt?: string;
+  /** e.g. 'hindi' | 'punjabi' | 'english' - Indian languages are written by Sarvam. */
+  language?: string;
 }): Promise<TextGenerationResult> {
   return apiRequest<TextGenerationResult>('/ai/generate', {
     method: 'POST',

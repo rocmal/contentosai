@@ -33,7 +33,7 @@ export class CopilotService {
 
   async reply(dto: CopilotMessageDto, user: AuthenticatedUser): Promise<{ reply: string }> {
     const profiles = user.workspaceId ? await this.brandProfilesService.findByWorkspace(user.workspaceId) : [];
-    const provider = this.providerFactory.getProvider();
+    const provider = this.providerFactory.getProviderFor({ text: dto.message });
 
     const systemPrompt = [
       'You are Lumora Co-pilot, a concise, practical assistant inside the Lumora content platform. Help the user write, edit and plan content, and explain how to use the platform. Answer briefly and plainly.',

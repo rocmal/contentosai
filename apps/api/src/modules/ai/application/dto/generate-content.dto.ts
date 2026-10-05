@@ -21,6 +21,14 @@ export class GenerateContentDto {
   provider?: (typeof AI_PROVIDER_NAMES)[number];
 
   @ApiPropertyOptional({
+    description: 'Language being written (e.g. hindi, punjabi, english); Indian languages route to Sarvam',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  language?: string;
+
+  @ApiPropertyOptional({
     description: 'Vendor-specific model id; provider default used if omitted',
   })
   @IsOptional()

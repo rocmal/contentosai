@@ -877,9 +877,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setIsGeneratingNarration(true);
     setError(null);
     try {
+      const narrationLanguageName = narrationLanguage === 'hi' ? 'hindi' : 'english';
+      const narrationLanguageNote =
+        narrationLanguage === 'hi' ? ' Write the narration in Hindi (Devanagari script).' : '';
       const result = await api.generateText(
         narrationText.trim()
           ? {
+              language: narrationLanguageName,
               prompt: narrationText.trim(),
               systemPrompt:
                 'You are a scriptwriter for short narrated slideshow videos (images/clips ' +
@@ -887,16 +891,19 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                 'natural when read aloud: fix grammar, tighten the flow, keep it engaging, ' +
                 'and preserve the core message. It must fit in under 30 seconds spoken ' +
                 '(roughly 60-75 words max). Reply with only the narration text - no ' +
-                'quotes, no preamble, no explanation.',
+                'quotes, no preamble, no explanation.' +
+                narrationLanguageNote,
             }
           : {
+              language: narrationLanguageName,
               prompt: 'Write a short narration for a slideshow video.',
               systemPrompt:
                 'You are a scriptwriter for short narrated slideshow videos (images/clips ' +
                 'shown in sequence with voiceover). Write a natural, engaging narration ' +
                 'under 30 seconds spoken (roughly 40-70 words), suitable as a generic ' +
                 'starting point the user will edit. Reply with only the narration text - ' +
-                'no quotes, no preamble, no explanation.',
+                'no quotes, no preamble, no explanation.' +
+                narrationLanguageNote,
             },
       );
       setNarrationText(result.text.trim());

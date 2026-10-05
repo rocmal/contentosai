@@ -68,7 +68,7 @@ export class ContentStudioService {
 
   async generate(dto: StudioGenerateDto, user: AuthenticatedUser): Promise<StudioGenerateResult> {
     const brand = await this.loadBrandProfile(user.workspaceId);
-    const provider = this.providerFactory.getProvider(dto.provider);
+    const provider = this.providerFactory.getProviderFor({ provider: dto.provider, language: dto.language });
 
     // Reserve before the paid call and refund if it fails, so a failed
     // generation never costs credits - same contract as image generation.

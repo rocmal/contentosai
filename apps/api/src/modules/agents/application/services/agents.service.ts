@@ -81,7 +81,11 @@ export class AgentsService {
     }
 
     const brand = await this.loadBrandProfile(user.workspaceId);
-    const provider = this.providerFactory.getProvider(dto.provider);
+    const provider = this.providerFactory.getProviderFor({
+      provider: dto.provider,
+      language: dto.language,
+      text: dto.input,
+    });
 
     // Reserve before the paid call and refund on failure, like every other generation.
     const cost = CREDIT_COST.TEXT_PER_GENERATION;

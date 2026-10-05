@@ -13,7 +13,11 @@ export class AiService {
   ) {}
 
   async generateText(dto: GenerateContentDto, userId?: string): Promise<AIGenerationResult> {
-    const provider = this.providerFactory.getProvider(dto.provider);
+    const provider = this.providerFactory.getProviderFor({
+      provider: dto.provider,
+      language: dto.language,
+      text: dto.prompt,
+    });
 
     const result = await provider.generateText({
       prompt: dto.prompt,

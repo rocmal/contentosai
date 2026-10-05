@@ -14,6 +14,7 @@ describe('AiService', () => {
     mockProvider = new MockAIProvider('openai');
     providerFactory = {
       getProvider: jest.fn().mockReturnValue(mockProvider),
+      getProviderFor: jest.fn().mockReturnValue(mockProvider),
       listProviders: jest.fn().mockReturnValue(['openai', 'gemini', 'claude', 'openrouter']),
     } as unknown as jest.Mocked<AIProviderFactory>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
@@ -26,7 +27,9 @@ describe('AiService', () => {
 
     const result = await service.generateText(dto, 'user-1');
 
-    expect(providerFactory.getProvider).toHaveBeenCalledWith('openai');
+    expect(providerFactory.getProviderFor).toHaveBeenCalledWith(
+      expect.objectContaining({ provider: 'openai', text: 'Write a tagline' }),
+    );
     expect(mockProvider.generateText).toHaveBeenCalledWith(
       expect.objectContaining({ prompt: 'Write a tagline' }),
     );

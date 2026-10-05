@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { IAIProvider } from '../domain/interfaces/ai-provider.interface';
+import { containsIndicScript, isIndianLanguage } from '../domain/language-routing';
 import { OpenAIProvider } from './providers/openai.provider';
 import { GeminiProvider } from './providers/gemini.provider';
 import { ClaudeProvider } from './providers/claude.provider';
@@ -42,6 +43,23 @@ export class AIProviderFactory {
       );
     }
     return provider;
+  }
+
+  /**
+   * Picks the engine for a piece of writing. An explicit provider always wins.
+   * Otherwise Indian-language work (by language name, or Indic script in the
+   * text) goes to Sarvam when it is configured, and everything else uses the
+   * default provider.
+   */
+  getProviderFor(options: { provider?: string; language?: string; text?: string }): IAIProvider {
+    if (options.provider) {
+      return this.getProvider(options.provider);
+    }
+    const indian = isIndianLanguage(options.language) || containsIndicScript(options.text);
+    if (indian && this.configService.get<string>('ai.sarvam.apiKey')) {
+      return this.getProvider('sarvam');
+    }
+    return this.getProvider();
   }
 
   listProviders(): string[] {

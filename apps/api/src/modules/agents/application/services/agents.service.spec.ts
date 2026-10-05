@@ -41,7 +41,10 @@ describe('AgentsService', () => {
 
     service = new AgentsService(
       runs,
-      { getProvider: jest.fn().mockReturnValue({ name: 'gemini', generateText }) } as unknown as AIProviderFactory,
+      {
+        getProvider: jest.fn().mockReturnValue({ name: 'gemini', generateText }),
+        getProviderFor: jest.fn().mockReturnValue({ name: 'gemini', generateText }),
+      } as unknown as AIProviderFactory,
       brands as unknown as BrandProfilesService,
       credits as unknown as CreditsService,
       { emit: jest.fn() } as unknown as EventEmitter2,
