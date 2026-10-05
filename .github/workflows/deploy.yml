@@ -87,6 +87,9 @@ jobs:
       DB_NAME: lumora_test
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
+      # Makes the owner-admin seeder run in CI too (it skips outside production
+      # otherwise), so a bug in it fails here instead of during the live deploy.
+      OWNER_ADMIN_EMAIL: ci-owner@example.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
