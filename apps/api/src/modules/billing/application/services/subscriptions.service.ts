@@ -72,6 +72,14 @@ export class SubscriptionsService {
     );
   }
 
+  /** Records that a renewal reminder went out, so it is not sent again for the same period. */
+  async markRenewalReminderSent(id: string, periodEnd: Date, stage: number): Promise<void> {
+    await this.subscriptionsRepository.update(id, {
+      renewalReminderPeriodEnd: periodEnd,
+      renewalReminderStage: stage,
+    });
+  }
+
   async remove(id: string, actorId?: string): Promise<void> {
     await this.findById(id);
     await this.subscriptionsRepository.delete(id, actorId);

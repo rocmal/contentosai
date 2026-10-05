@@ -7,6 +7,7 @@ import { isPurchasablePlan } from '@modules/billing/billing.constants';
 import { WorkspacesService } from '@modules/workspaces/application/services/workspaces.service';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
 import { QueueName } from '../queue-names';
+import { RenewalReminderService } from '../renewal-reminder.service';
 
 function addOneMonth(date: Date): Date {
   const next = new Date(date);
@@ -32,6 +33,7 @@ export class CreditsRenewalProcessor extends WorkerHost {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly workspacesService: WorkspacesService,
     private readonly creditsService: CreditsService,
+    private readonly renewalReminders: RenewalReminderService,
   ) {
     super();
   }
@@ -41,6 +43,7 @@ export class CreditsRenewalProcessor extends WorkerHost {
     let page = 1;
     let renewed = 0;
     let expired = 0;
+    let reminded = 0;
 
     for (;;) {
       const result = await this.subscriptionsService.findAll({ page, limit: 100 });
@@ -51,6 +54,13 @@ export class CreditsRenewalProcessor extends WorkerHost {
           sub.currentPeriodEnd.getTime() <= now.getTime(),
       );
 
+      // Plans that are about to end get a heads-up email (3 days, then 1 day before).
+      for (const sub of result.items) {
+        if (sub.status === SubscriptionStatus.ACTIVE && (await this.renewalReminders.remindIfDue(sub, now))) {
+          reminded += 1;
+        }
+      }
+
       for (const subscription of due) {
         try {
           const workspaces = await this.workspacesService.findByOrganization(subscription.organizationId);
@@ -60,6 +70,7 @@ export class CreditsRenewalProcessor extends WorkerHost {
               await this.creditsService.expire(subscription.organizationId, workspace.id);
             }
             await this.subscriptionsService.update(subscription.id, { status: SubscriptionStatus.PAST_DUE });
+            await this.renewalReminders.notifyExpired(subscription);
             expired += 1;
             continue;
           }
@@ -99,6 +110,9 @@ export class CreditsRenewalProcessor extends WorkerHost {
     }
     if (expired > 0) {
       this.logger.log(`Expired ${expired} unpaid subscription(s)`);
+    }
+    if (reminded > 0) {
+      this.logger.log(`Sent ${reminded} renewal reminder(s)`);
     }
   }
 }

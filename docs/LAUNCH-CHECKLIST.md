@@ -59,8 +59,11 @@ Add an image vendor if you sell Image Studio.
   Previously the system silently re-granted credits every month without payment; that is fixed.
 - Only monthly billing exists (the annual toggle was removed from the pricing page).
 - New signups get **150 free trial credits** (was the full 2,500). Change with `TRIAL_CREDITS`.
-- Automatic renewal reminders by email are **not built**; build them (or move to Razorpay
-  Subscriptions / autopay) before you have many customers.
+- The owner is emailed **3 days and 1 day before** a Starter/Pro plan ends, and again when it
+  lapses (checked every 6 hours; needs working SMTP). There is still no auto-renewal - move
+  to Razorpay Subscriptions / autopay before you have many customers.
+- Hindi/Punjabi/Hinglish writing goes to Sarvam and falls back to the default provider
+  (Gemini) if Sarvam fails or times out; everything else uses `AI_DEFAULT_PROVIDER`.
 - Credit prices: a text generation is 1 credit; an image is 1 / 8 / 30 credits (OpenAI draft / standard / high) or 4 / 10 (Stability standard / high); voice ~1 credit per minute; video ~1 credit per 10 s (too low - see the cost document). Check
   these against your real vendor costs before relying on the Starter/Pro prices for margin.
 

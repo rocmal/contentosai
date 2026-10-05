@@ -9,6 +9,8 @@ export interface CreateSubscriptionData {
   gatewayCustomerId?: string | null;
   gatewaySubscriptionId?: string | null;
   currentPeriodEnd?: Date | null;
+  renewalReminderPeriodEnd?: Date | null;
+  renewalReminderStage?: number;
 }
 
 export type UpdateSubscriptionData = Partial<Omit<CreateSubscriptionData, 'organizationId'>>;

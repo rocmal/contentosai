@@ -9,7 +9,10 @@ import { PublishingModule } from '@modules/publishing/publishing.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { WorkspacesModule } from '@modules/workspaces/workspaces.module';
 import { CreditsModule } from '@modules/credits/credits.module';
+import { OrganizationsModule } from '@modules/organizations/organizations.module';
+import { UsersModule } from '@modules/users/users.module';
 import { QueueName } from './queue-names';
+import { RenewalReminderService } from './renewal-reminder.service';
 import { AiProcessor } from './processors/ai.processor';
 import { VideoProcessor } from './processors/video.processor';
 import { AnalyticsProcessor } from './processors/analytics.processor';
@@ -56,8 +59,11 @@ import { VideoEventsListener } from './listeners/video-events.listener';
     BillingModule,
     WorkspacesModule,
     CreditsModule,
+    OrganizationsModule,
+    UsersModule,
   ],
   providers: [
+    RenewalReminderService,
     AiProcessor,
     VideoProcessor,
     AnalyticsProcessor,

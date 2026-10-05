@@ -31,4 +31,10 @@ export class SubscriptionModel extends BaseModel {
 
   @Column({ type: DataType.DATE, allowNull: true })
   declare currentPeriodEnd: Date | null;
+
+  @Column({ type: DataType.DATE, allowNull: true })
+  declare renewalReminderPeriodEnd: Date | null;
+
+  @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
+  declare renewalReminderStage: number;
 }

@@ -17,4 +17,8 @@ export interface Subscription extends BaseEntity {
   gatewayCustomerId: string | null;
   gatewaySubscriptionId: string | null;
   currentPeriodEnd: Date | null;
+  /** Period end the last renewal reminder was sent for (see RenewalReminderService). */
+  renewalReminderPeriodEnd: Date | null;
+  /** Days-before-expiry of the last reminder sent for that period: 3, 1, or 0 for none. */
+  renewalReminderStage: number;
 }

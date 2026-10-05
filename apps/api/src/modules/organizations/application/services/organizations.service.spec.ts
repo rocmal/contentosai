@@ -151,6 +151,8 @@ describe('OrganizationsService', () => {
         gatewayCustomerId: null,
         gatewaySubscriptionId: null,
         currentPeriodEnd: null,
+        renewalReminderPeriodEnd: null,
+        renewalReminderStage: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,

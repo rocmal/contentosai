@@ -14,17 +14,22 @@ function makeProcessor(subscriptions: unknown[]) {
     expire: jest.fn().mockResolvedValue(undefined),
     grantMonthlyRenewal: jest.fn().mockResolvedValue(undefined),
   };
+  const renewalReminders = {
+    remindIfDue: jest.fn().mockResolvedValue(false),
+    notifyExpired: jest.fn().mockResolvedValue(undefined),
+  };
   const processor = new CreditsRenewalProcessor(
     subscriptionsService as never,
     workspacesService as never,
     creditsService as never,
+    renewalReminders as never,
   );
-  return { processor, subscriptionsService, creditsService };
+  return { processor, subscriptionsService, creditsService, renewalReminders };
 }
 
 describe('CreditsRenewalProcessor', () => {
   it('lapses an unpaid self-serve plan instead of granting free credits', async () => {
-    const { processor, subscriptionsService, creditsService } = makeProcessor([
+    const { processor, subscriptionsService, creditsService, renewalReminders } = makeProcessor([
       { id: 's1', organizationId: 'org-1', plan: 'pro', status: SubscriptionStatus.ACTIVE, currentPeriodEnd: past },
     ]);
 
@@ -33,6 +38,7 @@ describe('CreditsRenewalProcessor', () => {
     expect(creditsService.expire).toHaveBeenCalledWith('org-1', 'ws-1');
     expect(creditsService.grantMonthlyRenewal).not.toHaveBeenCalled();
     expect(subscriptionsService.update).toHaveBeenCalledWith('s1', { status: SubscriptionStatus.PAST_DUE });
+    expect(renewalReminders.notifyExpired).toHaveBeenCalledWith(expect.objectContaining({ id: 's1' }));
   });
 
   it('keeps rolling invoice-billed (enterprise) plans', async () => {

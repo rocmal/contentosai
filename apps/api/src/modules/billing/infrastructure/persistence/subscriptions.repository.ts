@@ -38,6 +38,8 @@ export class SubscriptionsRepository
       gatewayCustomerId: plain.gatewayCustomerId,
       gatewaySubscriptionId: plain.gatewaySubscriptionId,
       currentPeriodEnd: plain.currentPeriodEnd,
+      renewalReminderPeriodEnd: plain.renewalReminderPeriodEnd ?? null,
+      renewalReminderStage: plain.renewalReminderStage ?? 0,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       deletedAt: plain.deletedAt,
