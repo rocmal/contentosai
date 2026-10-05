@@ -235,7 +235,7 @@ jobs:
           STABILITY_API_KEY: ${{ secrets.STABILITY_API_KEY }}
           FLUX_API_KEY: ${{ secrets.FLUX_API_KEY }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD || secrets.BREVO_SMTP }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
