@@ -107,6 +107,11 @@ fi
 echo "$IMAGE_TAG" > "$STATE_FILE"
 log "Deploy successful. Recorded $IMAGE_TAG as last known-good."
 
+# Read-only diagnostics for the mail path (SMTP login, owner user, failed email
+# jobs). Prints facts only, never secrets, and never fails the deploy.
+log "Running ops check (mail, owner user, email queue)..."
+docker compose run --rm --no-deps api node -e "$(cat scripts/ops-check.js)" || true
+
 # Dangling (untagged) layers only - never removes a tagged image, so a
 # previous release's image is still on disk and instantly available if
 # rollback.sh needs it later.
