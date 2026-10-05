@@ -11,6 +11,7 @@ import { ContentStudioService } from './application/services/content-studio.serv
 import { CopilotService } from './application/services/copilot.service';
 import { BrandExtractorService } from './application/services/brand-extractor.service';
 import { AiService } from './application/services/ai.service';
+import { TranscriptionService } from './application/services/transcription.service';
 import { AiController } from './presentation/ai.controller';
 
 @Module({
@@ -27,6 +28,7 @@ import { AiController } from './presentation/ai.controller';
     ContentStudioService,
     CopilotService,
     BrandExtractorService,
+    TranscriptionService,
   ],
   exports: [AiService, AIProviderFactory],
 })

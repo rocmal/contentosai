@@ -19,6 +19,7 @@ import {
   Users,
 } from 'lucide-react';
 import { BrandBrain, Project, ViewType, WizardState } from '../../types';
+import VoiceInputButton, { appendSpoken, spokenLanguageFor } from '../VoiceInputButton';
 import {
   ApiError,
   listProjects,
@@ -377,9 +378,17 @@ export const AIStudioView: React.FC<AIStudioViewProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
-                Additional Instructions (Optional)
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                  Additional Instructions (Optional)
+                </label>
+                <VoiceInputButton
+                  language={spokenLanguageFor(wizardState.language)}
+                  onText={(spoken) =>
+                    setWizardState((prev) => ({ ...prev, customPrompt: appendSpoken(prev.customPrompt, spoken) }))
+                  }
+                />
+              </div>
               <textarea
                 rows={3}
                 value={wizardState.customPrompt}

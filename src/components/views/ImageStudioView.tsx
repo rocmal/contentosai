@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ViewType } from '../../types';
 import * as api from '../../lib/api';
+import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import {
   distinctRatios,
   IMAGE_PLATFORM_NAMES,
@@ -233,7 +234,10 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
         <div className="space-y-4">
           <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
             <div>
-              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">What should the image show?</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-900 dark:text-white">What should the image show?</label>
+                <VoiceInputButton onText={(spoken) => setPrompt((prev) => appendSpoken(prev, spoken))} />
+              </div>
               <textarea
                 rows={4}
                 value={prompt}

@@ -1846,6 +1846,19 @@ export async function uploadToGallery(file: File): Promise<MediaAsset> {
   return apiRequest<MediaAsset>('/media/upload', { method: 'POST', body: formData });
 }
 
+export type TranscribeLanguage = 'auto' | 'hi-IN' | 'pa-IN' | 'en-IN';
+
+/** Voice typing: turns a short recording (Hindi, Punjabi, English) into prompt text. */
+export async function transcribeAudio(
+  audio: Blob,
+  language: TranscribeLanguage = 'auto',
+): Promise<{ text: string; language: string }> {
+  const formData = new FormData();
+  formData.append('file', audio, 'speech.webm');
+  formData.append('language', language);
+  return apiRequest<{ text: string; language: string }>('/ai/transcribe', { method: 'POST', body: formData });
+}
+
 // ---------------------------------------------------------------------------
 // Video templates - save a finished video for reuse, privately or with your
 // whole team/workspace.

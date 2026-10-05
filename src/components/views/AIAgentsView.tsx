@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, Bot, Check, Clock, Copy, Loader2, Play } from 'lucide-react';
 import { ViewType } from '../../types';
+import VoiceInputButton, { appendSpoken, spokenLanguageFor } from '../VoiceInputButton';
 import {
   AgentRun,
   AgentSummary,
@@ -163,6 +164,12 @@ export const AIAgentsView: React.FC<AIAgentsViewProps> = ({ onNavigate }) => {
             </button>
           </div>
 
+          <div className="flex justify-end">
+            <VoiceInputButton
+              language={spokenLanguageFor(language)}
+              onText={(spoken) => setInput((prev) => appendSpoken(prev, spoken))}
+            />
+          </div>
           <textarea
             rows={5}
             value={input}

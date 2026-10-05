@@ -1,5 +1,12 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, ParseFilePipeBuilder, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { TranscribeDto } from '../application/dto/transcribe.dto';
+import {
+  TranscriptionResult,
+  TranscriptionService,
+} from '../application/services/transcription.service';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
@@ -13,6 +20,9 @@ import { ExtractBrandDto } from '../application/dto/extract-brand.dto';
 import { StudioGenerateDto } from '../application/dto/studio-generate.dto';
 import { GenerateContentResponseDto } from '../application/dto/generate-content-response.dto';
 
+// A short dictated prompt: a minute of compressed audio is well under this.
+const MAX_RECORDING_BYTES = 5 * 1024 * 1024;
+
 @ApiTags('ai')
 @ApiBearerAuth('access-token')
 @Controller({ path: 'ai', version: '1' })
@@ -22,6 +32,7 @@ export class AiController {
     private readonly contentStudioService: ContentStudioService,
     private readonly copilotService: CopilotService,
     private readonly brandExtractorService: BrandExtractorService,
+    private readonly transcriptionService: TranscriptionService,
   ) {}
 
   @Post('generate')
@@ -45,6 +56,20 @@ export class AiController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<StudioGenerateResult> {
     return this.contentStudioService.generate(dto, user);
+  }
+
+  @Post('transcribe')
+  @RequirePermissions('ai.generate')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Turn a short voice recording (Hindi, Punjabi, English) into text for a prompt' })
+  transcribe(
+    @UploadedFile(new ParseFilePipeBuilder().addMaxSizeValidator({ maxSize: MAX_RECORDING_BYTES }).build())
+    file: Express.Multer.File,
+    @Body() dto: TranscribeDto,
+  ): Promise<TranscriptionResult> {
+    return this.transcriptionService.transcribe(file.buffer, file.mimetype, dto.language);
   }
 
   @Post('copilot')

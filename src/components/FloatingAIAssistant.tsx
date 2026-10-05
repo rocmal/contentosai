@@ -3,6 +3,7 @@ import { Bot, ChevronDown, Minimize2, Send, Sparkles, X } from 'lucide-react';
 import { ViewType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError, copilotReply } from '../lib/api';
+import VoiceInputButton, { appendSpoken } from './VoiceInputButton';
 
 interface FloatingAIAssistantProps {
   currentView: ViewType;
@@ -152,6 +153,7 @@ export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ curren
               placeholder="Ask Co-pilot anything..."
               className="flex-1 text-xs px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 outline-none border border-transparent focus:border-blue-500"
             />
+            <VoiceInputButton compact onText={(spoken) => setInput((prev) => appendSpoken(prev, spoken))} />
             <button
               type="submit"
               disabled={!input.trim() || isTyping}

@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { ViewType } from '../../types';
 import * as api from '../../lib/api';
+import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import {
   compositeScenes,
   compositeTextOntoVideo,
@@ -2132,6 +2133,12 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   placeholder="What should the narrator say across this whole video?"
                   className="w-full text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
                 />
+                <div className="flex justify-end">
+                  <VoiceInputButton
+                    language={narrationLanguage === 'hi' ? 'hi-IN' : 'en-IN'}
+                    onText={(spoken) => setNarrationText((prev) => appendSpoken(prev, spoken))}
+                  />
+                </div>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80">
                     {(Object.keys(NARRATION_LANGUAGE_LABELS) as NarrationLanguage[]).map((lang) => (
