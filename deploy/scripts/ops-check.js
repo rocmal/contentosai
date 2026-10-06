@@ -17,21 +17,42 @@ async function checkSmtp() {
   out('smtp username set', Boolean(process.env.SMTP_USERNAME));
   out('smtp password length', pass.length);
   out('smtp password has whitespace/quotes', /[\s"']/.test(pass));
+  out('mail transport', process.env.MAIL_TRANSPORT || 'smtp');
   if (!process.env.SMTP_HOST) return;
+  // Hosts that intercept SMTP usually block the standard ports but not every
+  // one, so probe the configured port plus Brevo's alternates.
+  const ports = [...new Set([Number(process.env.SMTP_PORT || 587), 2525, 465])];
+  for (const port of ports) {
+    try {
+      const transport = require('nodemailer').createTransport({
+        host: process.env.SMTP_HOST,
+        port,
+        secure: port === 465,
+        auth: process.env.SMTP_USERNAME ? { user: process.env.SMTP_USERNAME, pass } : undefined,
+        connectionTimeout: 15000,
+        greetingTimeout: 15000,
+        socketTimeout: 15000,
+      });
+      await transport.verify();
+      out(`smtp port ${port}`, 'OK - the provider accepted the connection and login');
+    } catch (err) {
+      out(`smtp port ${port}`, `FAILED ${err.code || ''} ${short(err.message, 140)}`);
+    }
+  }
+}
+
+async function checkBrevoApi() {
+  const key = process.env.BREVO_API_KEY || '';
+  out('brevo api key set', Boolean(key));
+  if (!key) return;
   try {
-    const transport = require('nodemailer').createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT || 587),
-      secure: Number(process.env.SMTP_PORT) === 465,
-      auth: process.env.SMTP_USERNAME ? { user: process.env.SMTP_USERNAME, pass } : undefined,
-      connectionTimeout: 15000,
-      greetingTimeout: 15000,
-      socketTimeout: 15000,
+    const res = await fetch('https://api.brevo.com/v3/account', {
+      headers: { 'api-key': key, Accept: 'application/json' },
+      signal: AbortSignal.timeout(15000),
     });
-    await transport.verify();
-    out('smtp login', 'OK - the provider accepted the connection and login');
+    out('brevo api', res.ok ? 'OK - the key is valid and api.brevo.com is reachable' : `FAILED status ${res.status}`);
   } catch (err) {
-    out('smtp login', `FAILED ${err.code || ''} ${short(err.message)}`);
+    out('brevo api', `FAILED ${short(err.message, 140)}`);
   }
 }
 
@@ -97,6 +118,7 @@ async function checkQueue() {
     process.exit(0);
   }, 60000);
   await checkSmtp();
+  await checkBrevoApi();
   await checkUser();
   await checkQueue();
   clearTimeout(timer);

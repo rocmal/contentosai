@@ -177,6 +177,10 @@ variables -> Actions) instead of being edited on the server. On every deploy the
 - **Secrets:** `GEMINI_API_KEY`, `SARVAM_API_KEY`, `OPENAI_API_KEY`, `STABILITY_API_KEY`,
   `FLUX_API_KEY`, `ELEVENLABS_API_KEY`, `SMTP_PASSWORD`, `GOOGLE_CLIENT_SECRET`,
   `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `SENTRY_DSN`
+- **Email over HTTPS:** GoDaddy VPS plans intercept outbound SMTP (Brevo's port 587 then fails
+  with a certificate error naming `*.secureserver.net`). Set the variable `MAIL_TRANSPORT=brevo-api`
+  and the secret `BREVO_API_KEY` (a Brevo **API** key, not the SMTP key) to send over port 443.
+  Every deploy prints an "ops check" (SMTP/API result, owner user, failed email jobs) in its log.
 - **Variables:** `AI_DEFAULT_PROVIDER`, `OPENAI_IMAGE_MODEL`, `SMTP_HOST`, `SMTP_PORT`,
   `SMTP_USERNAME`, `SMTP_FROM`, `GOOGLE_CLIENT_ID`, `RAZORPAY_KEY_ID`, `TRUST_PROXY`
 

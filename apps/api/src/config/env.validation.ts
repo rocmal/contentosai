@@ -73,7 +73,9 @@ export const envValidationSchema = Joi.object({
   KLING_API_KEY: Joi.string().allow('').default(''),
   PIKA_API_KEY: Joi.string().allow('').default(''),
   LUMA_API_KEY: Joi.string().allow('').default(''),
-  GEMINI_BASE_URL: Joi.string().allow('').default('https://generativelanguage.googleapis.com/v1beta'),
+  GEMINI_BASE_URL: Joi.string()
+    .allow('')
+    .default('https://generativelanguage.googleapis.com/v1beta'),
 
   // Image providers
   FLUX_API_KEY: Joi.string().allow('').default(''),
@@ -104,6 +106,8 @@ export const envValidationSchema = Joi.object({
   PIPER_DEFAULT_VOICE: Joi.string().allow('').default('en_US-lessac-medium'),
 
   // Email
+  MAIL_TRANSPORT: Joi.string().valid('smtp', 'brevo-api').default('smtp'),
+  BREVO_API_KEY: Joi.string().allow('').default(''),
   SMTP_HOST: Joi.string().allow('').default(''),
   SMTP_PORT: Joi.number().default(587),
   SMTP_USERNAME: Joi.string().allow('').default(''),
