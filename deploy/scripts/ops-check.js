@@ -3,8 +3,9 @@
 // prints facts only - never a secret, token or email body - so the output is
 // safe to read in the GitHub Actions log:
 //   1. SMTP settings present? does the provider accept the login?
-//   2. does the owner user exist, and with which role?
-//   3. are queued emails failing, and why?
+//   2. do the OpenAI and Gemini keys work from this server?
+//   3. does the owner user exist, and with which role?
+//   4. are queued emails failing, and why?
 const OWNER = (process.env.OWNER_ADMIN_EMAIL || 'puneetmehra24@gmail.com').toLowerCase();
 const out = (key, value) => console.log(`[ops-check] ${key}: ${value}`);
 const short = (text, n = 220) => String(text || '').replace(/\s+/g, ' ').slice(0, n);
@@ -53,6 +54,50 @@ async function checkBrevoApi() {
     out('brevo api', res.ok ? 'OK - the key is valid and api.brevo.com is reachable' : `FAILED status ${res.status}`);
   } catch (err) {
     out('brevo api', `FAILED ${short(err.message, 140)}`);
+  }
+}
+
+// Prints only status codes and error codes. A vendor's message text can echo a
+// masked key, so it is never printed.
+async function checkOpenAi() {
+  const key = process.env.OPENAI_API_KEY || '';
+  out('openai key set', Boolean(key));
+  if (!key) return;
+  out('openai key shape', `starts with sk-: ${key.startsWith('sk-')}, length ${key.length}, whitespace/quotes: ${/[\s"']/.test(key)}`);
+  const model = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
+  try {
+    const res = await fetch(`https://api.openai.com/v1/models/${model}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) {
+      out('openai api', `OK - key accepted and model ${model} is available`);
+    } else {
+      const body = await res.json().catch(() => ({}));
+      out('openai api', `FAILED status ${res.status} code=${body.error?.code || '-'} type=${body.error?.type || '-'}`);
+    }
+  } catch (err) {
+    out('openai api', `FAILED ${short(err.message, 140)}`);
+  }
+}
+
+async function checkGemini() {
+  const key = process.env.GEMINI_API_KEY || '';
+  out('gemini key set', Boolean(key));
+  if (!key) return;
+  try {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', {
+      headers: { 'x-goog-api-key': key },
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) {
+      out('gemini api', 'OK - key accepted from this server');
+    } else {
+      const body = await res.json().catch(() => ({}));
+      out('gemini api', `FAILED status ${res.status} ${body.error?.status || ''}`);
+    }
+  } catch (err) {
+    out('gemini api', `FAILED ${short(err.message, 140)}`);
   }
 }
 
@@ -119,6 +164,8 @@ async function checkQueue() {
   }, 60000);
   await checkSmtp();
   await checkBrevoApi();
+  await checkOpenAi();
+  await checkGemini();
   await checkUser();
   await checkQueue();
   clearTimeout(timer);
