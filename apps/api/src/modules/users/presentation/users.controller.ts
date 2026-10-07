@@ -47,12 +47,20 @@ export class UsersController {
   @ApiOperation({ summary: "Get the authenticated user's profile, including current tenant context" })
   async me(
     @CurrentUser() currentUser: AuthenticatedUser,
-  ): Promise<UserResponseDto & { organizationId: string | null; workspaceId: string | null }> {
+  ): Promise<
+    UserResponseDto & {
+      organizationId: string | null;
+      workspaceId: string | null;
+      permissions: string[];
+    }
+  > {
     const user = await this.usersService.findById(currentUser.id);
     return {
       ...new UserResponseDto(user),
       organizationId: currentUser.organizationId,
       workspaceId: currentUser.workspaceId,
+      // What this person may do - lets the app show or hide actions such as inviting teammates.
+      permissions: currentUser.permissions,
     };
   }
 

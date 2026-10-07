@@ -1,5 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Coins, Film, FolderOpen, Image as ImageIcon, Loader2, Mic, RefreshCw, Send, Sparkles, TrendingUp, Trophy } from 'lucide-react';
+import {
+  ArrowUpCircle,
+  Coins,
+  Film,
+  FolderOpen,
+  Image as ImageIcon,
+  Loader2,
+  Mic,
+  RefreshCw,
+  Send,
+  Sparkles,
+  TrendingUp,
+  Trophy,
+  UserPlus,
+  Users,
+} from 'lucide-react';
 import { ViewType } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -7,11 +22,15 @@ import {
   getMyCreditUsage,
   getMyCreditWallet,
   getMyGalleryPage,
+  getMySubscription,
   LibraryItem,
   listLibrary,
   listScheduledPosts,
+  listTeamMembers,
   MediaAssetType,
 } from '../../lib/api';
+import { PRICING_PLANS } from '../../lib/pricingPlans';
+import { MANAGE_MEMBERS_PERMISSION, requestInviteForm, seatsLeft } from '../../lib/teamInvite';
 import { cleanPrompt, requestReuse, STUDIO_VIEW, studioForType } from '../../lib/reuse';
 
 interface DashboardViewProps {
@@ -97,6 +116,87 @@ function timeOfDayGreeting(): string {
 }
 
 const plural = (count: number, noun: string) => `${count.toLocaleString()} ${noun}${count === 1 ? '' : 's'}`;
+
+/** Seats on the plan: how many are used, then Invite when there is room or Upgrade when there is none.
+ * Only shown to people who are allowed to add teammates. */
+const TeamCard: React.FC<{ onNavigate: (view: ViewType) => void }> = ({ onNavigate }) => {
+  const { user } = useAuth();
+  const [seats, setSeats] = useState<{ used: number; limit: number | null; planName: string } | null>(null);
+  const canManage = Boolean(user?.permissions?.includes(MANAGE_MEMBERS_PERMISSION));
+
+  useEffect(() => {
+    if (!canManage) return;
+    let cancelled = false;
+    Promise.all([listTeamMembers(), getMySubscription()])
+      .then(([members, subscription]) => {
+        if (cancelled) return;
+        // No subscription yet means the free starter allowance, which has one seat.
+        const plan = PRICING_PLANS.find((p) => p.key === (subscription?.plan ?? 'starter')) ?? PRICING_PLANS[0];
+        setSeats({ used: members.length, limit: plan.seatLimit, planName: plan.name });
+      })
+      .catch(() => !cancelled && setSeats(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [canManage]);
+
+  if (!canManage || seats === null) return null;
+
+  const left = seatsLeft(seats.limit, seats.used);
+  const full = left === 0;
+  const share = seats.limit === null ? 0 : Math.min(100, Math.round((seats.used / seats.limit) * 100));
+
+  return (
+    <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+          <Users className="w-4 h-4 text-blue-500" /> Your team
+        </h3>
+        <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">{seats.planName} plan</span>
+      </div>
+      <p className="text-xs text-slate-600 dark:text-slate-300">
+        <span className="font-extrabold text-slate-900 dark:text-white">{seats.used}</span> of{' '}
+        {seats.limit === null ? 'unlimited' : seats.limit} seat{seats.limit === 1 ? '' : 's'} used
+        {left !== null && left > 0 ? ` · ${left} left` : ''}
+      </p>
+      {seats.limit !== null && (
+        <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+          <div className={`h-full transition-all ${full ? 'bg-amber-500' : 'bg-blue-500'}`} style={{ width: `${share}%` }} />
+        </div>
+      )}
+      {full ? (
+        <>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Every seat on your plan is taken. Upgrade to add more teammates.
+          </p>
+          <button
+            type="button"
+            onClick={() => onNavigate('billing')}
+            className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition-all active:scale-[0.98]"
+          >
+            <ArrowUpCircle className="w-4 h-4" /> Upgrade for more seats
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            Add a teammate so they can create and share in the same gallery.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              requestInviteForm();
+              onNavigate('team');
+            }}
+            className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all active:scale-[0.98]"
+          >
+            <UserPlus className="w-4 h-4" /> Invite a teammate
+          </button>
+        </>
+      )}
+    </div>
+  );
+};
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   const { user } = useAuth();
@@ -347,6 +447,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           )}
         </div>
 
+        <div className="space-y-6">
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
           <h3 className="text-sm font-bold text-slate-900 dark:text-white">Where your credits went</h3>
           {usage === null ? (
@@ -377,6 +478,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 })}
             </div>
           )}
+        </div>
+        <TeamCard onNavigate={onNavigate} />
         </div>
       </div>
     </div>

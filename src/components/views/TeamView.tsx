@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Loader2, Plus, ShieldCheck, Trash2, Users, X } from 'lucide-react';
+import { AlertCircle, ArrowUpCircle, Loader2, Plus, ShieldCheck, Trash2, Users, X } from 'lucide-react';
 import { ViewType } from '../../types';
 import { PRICING_PLANS } from '../../lib/pricingPlans';
 import {
@@ -13,6 +13,7 @@ import {
   TeamMember,
 } from '../../lib/api';
 import { RolesPanel } from './team/RolesPanel';
+import { seatsLeft, takeInviteRequest } from '../../lib/teamInvite';
 
 interface TeamViewProps {
   onNavigate: (view: ViewType) => void;
@@ -25,7 +26,8 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
   const [subscription, setSubscription] = useState<Subscription | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
-  const [showAdd, setShowAdd] = useState(false);
+  // Opened from the Dashboard's "Invite a teammate": start with the form showing.
+  const [showAdd, setShowAdd] = useState(() => takeInviteRequest());
   const [newEmail, setNewEmail] = useState('');
   const [newRoleId, setNewRoleId] = useState('');
   const [adding, setAdding] = useState(false);
@@ -56,6 +58,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
   const seatLimit = plan?.seatLimit ?? 1;
   const seatsUsed = members?.length ?? 0;
   const atSeatLimit = seatLimit !== null && seatsUsed >= seatLimit;
+  const seatsRemaining = seatsLeft(seatLimit, seatsUsed);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,14 +112,24 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
                 {plan ? ` (${plan.name})` : ''}
               </span>
             )}
-            <button
-              onClick={() => setShowAdd((v) => !v)}
-              disabled={atSeatLimit}
-              title={atSeatLimit ? 'Seat limit reached for your plan' : undefined}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-sm"
-            >
-              <Plus className="w-4 h-4" /> Add Teammate
-            </button>
+            {atSeatLimit ? (
+              <button
+                onClick={() => onNavigate('billing')}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-sm"
+              >
+                <ArrowUpCircle className="w-4 h-4" /> Upgrade for more seats
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAdd((v) => !v)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-sm"
+              >
+                <Plus className="w-4 h-4" /> Invite teammate
+                {seatsRemaining !== null && (
+                  <span className="px-1.5 py-0.5 rounded-md bg-white/20 text-[10px]">{seatsRemaining} left</span>
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -173,14 +186,14 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
           className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4"
         >
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Add existing user to this workspace</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Invite a teammate</h3>
             <button type="button" onClick={() => setShowAdd(false)} className="text-slate-400 hover:text-slate-600">
               <X className="w-4 h-4" />
             </button>
           </div>
           <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            There's no pending-invite flow yet - if they haven't signed up already, ask them to create an account
-            first, then add them here by email.
+            Enter the email they signed up with. If they don't have a Lumora account yet, ask them to create one
+            first, then add them here.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3">
             <div>
@@ -215,7 +228,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
             className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center gap-2 shadow-sm disabled:opacity-50"
           >
             {adding && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            Add to workspace
+            Add to team
           </button>
         </form>
       )}

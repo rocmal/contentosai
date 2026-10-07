@@ -47,6 +47,8 @@ export interface AuthUser {
    * uploads and publishing jobs to the right organization/workspace. */
   organizationId: string | null;
   workspaceId: string | null;
+  /** What this person may do, e.g. 'organizations.manage-members'. */
+  permissions?: string[];
 }
 
 interface TokenPair {
