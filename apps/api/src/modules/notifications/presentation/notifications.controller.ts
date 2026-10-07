@@ -5,6 +5,8 @@ import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { NotificationsService } from '../application/services/notifications.service';
+import { PushService } from '../application/services/push.service';
+import { RegisterPushTokenDto } from '../application/dto/register-push-token.dto';
 import { CreateNotificationDto } from '../application/dto/create-notification.dto';
 import { UpdateNotificationDto } from '../application/dto/update-notification.dto';
 import { NotificationResponseDto } from '../application/dto/notification-response.dto';
@@ -13,7 +15,10 @@ import { NotificationResponseDto } from '../application/dto/notification-respons
 @ApiBearerAuth('access-token')
 @Controller({ path: 'notifications', version: '1' })
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly pushService: PushService,
+  ) {}
 
   @Post()
   @RequirePermissions('notifications.create')
@@ -40,6 +45,28 @@ export class NotificationsController {
       items: result.items.map((notification) => new NotificationResponseDto(notification)),
       meta: result.meta,
     };
+  }
+
+  @Post('push-tokens')
+  @RequirePermissions('notifications.read')
+  @ApiOperation({ summary: 'Register this phone to receive push notifications' })
+  async registerPushToken(
+    @Body() dto: RegisterPushTokenDto,
+    @CurrentUser('id') userId: string,
+  ): Promise<{ registered: boolean }> {
+    await this.pushService.register(userId, dto.token, dto.platform);
+    return { registered: true };
+  }
+
+  @Post('push-tokens/remove')
+  @RequirePermissions('notifications.read')
+  @ApiOperation({ summary: 'Stop push notifications to this phone (sign-out)' })
+  async removePushToken(
+    @Body() dto: RegisterPushTokenDto,
+    @CurrentUser('id') userId: string,
+  ): Promise<{ removed: boolean }> {
+    await this.pushService.unregister(userId, dto.token);
+    return { removed: true };
   }
 
   @Get(':id')

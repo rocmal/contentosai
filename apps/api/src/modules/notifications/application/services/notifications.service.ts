@@ -5,6 +5,7 @@ import {
   INotificationsRepository,
   NOTIFICATIONS_REPOSITORY,
 } from '../../domain/repositories/notification-repository.interface';
+import { PushService } from './push.service';
 import { CreateNotificationDto } from '../dto/create-notification.dto';
 import { UpdateNotificationDto } from '../dto/update-notification.dto';
 
@@ -18,10 +19,11 @@ export class NotificationsService {
   constructor(
     @Inject(NOTIFICATIONS_REPOSITORY)
     private readonly notificationsRepository: INotificationsRepository,
+    private readonly pushService: PushService,
   ) {}
 
   async create(dto: CreateNotificationDto, actorId?: string): Promise<Notification> {
-    return this.notificationsRepository.create(
+    const notification = await this.notificationsRepository.create(
       {
         userId: dto.userId,
         title: dto.title,
@@ -31,6 +33,13 @@ export class NotificationsService {
       },
       actorId,
     );
+    // Fire and forget: PushService never throws, and the in-app record is already saved.
+    void this.pushService.sendToUser(dto.userId, {
+      title: dto.title,
+      body: dto.message,
+      data: { notificationId: notification.id },
+    });
+    return notification;
   }
 
   async findAll(options?: FindAllOptions): Promise<PaginatedResult<Notification>> {

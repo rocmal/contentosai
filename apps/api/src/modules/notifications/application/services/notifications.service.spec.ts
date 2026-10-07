@@ -1,11 +1,13 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { INotificationsRepository } from '../../domain/repositories/notification-repository.interface';
 import { Notification, NotificationType } from '../../domain/entities/notification.entity';
+import { PushService } from './push.service';
 import { NotificationsService } from './notifications.service';
 
 describe('NotificationsService', () => {
   let service: NotificationsService;
   let repository: jest.Mocked<INotificationsRepository>;
+  let pushService: jest.Mocked<PushService>;
 
   const ownedNotification: Notification = {
     id: 'notif-1',
@@ -30,7 +32,8 @@ describe('NotificationsService', () => {
       listByUser: jest.fn(),
     } as unknown as jest.Mocked<INotificationsRepository>;
 
-    service = new NotificationsService(repository);
+    pushService = { sendToUser: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<PushService>;
+    service = new NotificationsService(repository, pushService);
   });
 
   describe('findOwned', () => {
