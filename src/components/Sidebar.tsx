@@ -80,6 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'video-studio', label: 'Video Studio', icon: Video },
     { id: 'image-studio', label: 'Image Studio', icon: Image },
     { id: 'voice-studio', label: 'Voice Studio', icon: Mic },
+    { id: 'media-library', label: 'Gallery', icon: FolderOpen },
   ];
 
   const managementNav: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [

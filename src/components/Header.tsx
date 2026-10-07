@@ -81,8 +81,8 @@ export const Header: React.FC<HeaderProps> = ({
       subtitle: 'Your central brand knowledge base used across all AI generations.',
     },
     'media-library': {
-      title: 'Media Library',
-      subtitle: 'Central repository for logos, images, audio, videos, and brand kits.',
+      title: 'Gallery',
+      subtitle: 'Your creations and your team - rename, download, or start again from any of them.',
     },
     automation: {
       title: 'Automation Builder',

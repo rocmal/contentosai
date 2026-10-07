@@ -32,6 +32,7 @@ export class VideoEventsListener {
       organizationId: event.organizationId,
       workspaceId: event.workspaceId,
       cacheKey: event.cacheKey,
+      prompt: event.prompt,
     };
     await this.videoQueue.add(VideoJobName.POLL, data, RETRY_OPTIONS);
   }

@@ -36,6 +36,8 @@ export interface SubmitJobActor {
   workspaceId?: string | null;
   /** Signature of the prompt that started the job (see promptCacheKey). */
   cacheKey?: string;
+  /** The prompt that started the job, saved with the clip for the creation history. */
+  prompt?: string;
 }
 
 @Injectable()
@@ -123,6 +125,7 @@ export class VideoService {
         actor.organizationId,
         actor.workspaceId,
         cacheKey,
+        dto.prompt,
       ),
     );
 
@@ -152,6 +155,7 @@ export class VideoService {
         organizationId: actor.organizationId,
         workspaceId: actor.workspaceId,
         cacheKey: actor.cacheKey,
+        prompt: actor.prompt,
       });
     }
 
@@ -172,7 +176,13 @@ export class VideoService {
    * etc.); it just won't show up in the gallery this time. */
   private async persistCompletedVideo(
     result: VideoGenerationResult,
-    actor: { userId: string; organizationId: string; workspaceId: string; cacheKey?: string },
+    actor: {
+      userId: string;
+      organizationId: string;
+      workspaceId: string;
+      cacheKey?: string;
+      prompt?: string;
+    },
   ): Promise<VideoGenerationResult> {
     const jobKeyHash = buildGenerationCacheKey(['video-job', result.provider, result.jobId]);
     // Saved under the prompt's signature when known, so asking again reuses it.
@@ -187,6 +197,10 @@ export class VideoService {
           ? await this.mediaAssetsService.findCached(actor.userId, jobKeyHash)
           : null);
       if (cached) {
+        // The browser's own poll may have saved the clip before the background worker, which knows the prompt.
+        if (!cached.prompt && actor.prompt) {
+          await this.mediaAssetsService.setPromptIfMissing(cached.id, actor.prompt);
+        }
         return { ...result, videoUrl: cached.url };
       }
 
@@ -213,7 +227,7 @@ export class VideoService {
           mimeType,
           sizeBytes: buffer.length,
           type: MediaAssetType.VIDEO,
-          prompt: null,
+          prompt: actor.prompt ?? null,
           provider: result.provider,
           model: result.model,
           cacheKeyHash,

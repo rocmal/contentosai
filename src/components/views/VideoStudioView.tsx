@@ -42,6 +42,7 @@ import { ViewType } from '../../types';
 import * as api from '../../lib/api';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '../../lib/videoPromptTemplates';
+import { takeReuse, VIDEO_STYLE_SUFFIXES } from '../../lib/reuse';
 import {
   compositeScenes,
   compositeTextOntoVideo,
@@ -83,7 +84,7 @@ const AI_STYLE_PRESETS: AiStylePreset[] = [
     icon: Film,
     aspectRatio: '16:9',
     durationSeconds: 8,
-    styleSuffix: 'cinematic style, dramatic lighting, shallow depth of field, film grain',
+    styleSuffix: VIDEO_STYLE_SUFFIXES.cinematic,
   },
   {
     id: 'social-reel',
@@ -92,7 +93,7 @@ const AI_STYLE_PRESETS: AiStylePreset[] = [
     icon: Smartphone,
     aspectRatio: '9:16',
     durationSeconds: 5,
-    styleSuffix: 'vertical format, fast-paced energetic style, vibrant colors',
+    styleSuffix: VIDEO_STYLE_SUFFIXES.socialReel,
   },
   {
     id: 'square-post',
@@ -101,7 +102,7 @@ const AI_STYLE_PRESETS: AiStylePreset[] = [
     icon: Square,
     aspectRatio: '1:1',
     durationSeconds: 5,
-    styleSuffix: 'square format, clean centered composition',
+    styleSuffix: VIDEO_STYLE_SUFFIXES.squarePost,
   },
   {
     id: 'explainer',
@@ -110,7 +111,7 @@ const AI_STYLE_PRESETS: AiStylePreset[] = [
     icon: Megaphone,
     aspectRatio: '16:9',
     durationSeconds: 6,
-    styleSuffix: 'clean corporate style, bright even lighting, minimal background',
+    styleSuffix: VIDEO_STYLE_SUFFIXES.explainer,
   },
   {
     id: 'product-ad',
@@ -119,7 +120,7 @@ const AI_STYLE_PRESETS: AiStylePreset[] = [
     icon: ShoppingBag,
     aspectRatio: '4:5',
     durationSeconds: 5,
-    styleSuffix: 'commercial product advertisement style, studio lighting',
+    styleSuffix: VIDEO_STYLE_SUFFIXES.productAd,
   },
 ];
 
@@ -314,7 +315,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // "Create from prompt" state
-  const [prompt, setPrompt] = useState('');
+  // Opened from the Gallery's "Create again": start with that prompt.
+  const [prompt, setPrompt] = useState(() => takeReuse('video')?.prompt ?? '');
   const [templateCategory, setTemplateCategory] = useState<string>(VIDEO_PROMPT_CATEGORIES[0]);
   const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);

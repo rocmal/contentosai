@@ -18,13 +18,21 @@ import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
-import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { StorageService } from '@modules/storage/application/services/storage.service';
-import { MediaAssetsService, MAX_GALLERY_MEDIA_PER_USER } from '../application/services/media-assets.service';
+import {
+  MediaAssetsService,
+  MAX_GALLERY_MEDIA_PER_USER,
+} from '../application/services/media-assets.service';
 import { MediaAssetType } from '../domain/entities/media-asset.entity';
 import { CreateMediaAssetDto } from '../application/dto/create-media-asset.dto';
 import { UpdateMediaAssetDto } from '../application/dto/update-media-asset.dto';
-import { MediaAssetResponseDto } from '../application/dto/media-asset-response.dto';
+import {
+  MediaAssetResponseDto,
+  MediaLibraryItemDto,
+} from '../application/dto/media-asset-response.dto';
+import { FindMediaLibraryQueryDto } from '../application/dto/find-media-library-query.dto';
+import { RenameMediaAssetDto } from '../application/dto/rename-media-asset.dto';
+import { UploadMediaMetaDto } from '../application/dto/upload-media-meta.dto';
 import { FindMyGalleryQueryDto } from '../application/dto/find-my-gallery-query.dto';
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
@@ -43,28 +51,43 @@ export class MediaAssetsController {
   @ApiOperation({ summary: 'Create a media asset' })
   async create(
     @Body() dto: CreateMediaAssetDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<MediaAssetResponseDto> {
-    const mediaAsset = await this.mediaAssetsService.create(dto, userId);
+    if (!user.organizationId || !user.workspaceId) {
+      throw new BadRequestException('An active organization and workspace are required');
+    }
+    // Always the caller's own workspace, whatever the request body says.
+    const mediaAsset = await this.mediaAssetsService.create(
+      { ...dto, organizationId: user.organizationId, workspaceId: user.workspaceId },
+      user.id,
+    );
     return new MediaAssetResponseDto(mediaAsset);
   }
 
   @Get()
   @RequirePermissions('media.read')
-  @ApiOperation({ summary: 'List media assets' })
-  async findAll(@Query() query: PaginationQueryDto) {
-    const result = await this.mediaAssetsService.findAll({
-      page: query.page,
-      limit: query.limit,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-    });
+  @ApiOperation({ summary: "List the workspace's media assets (team gallery)" })
+  async findAll(@CurrentUser() user: AuthenticatedUser, @Query() query: FindMediaLibraryQueryDto) {
+    const result = await this.mediaAssetsService.listLibrary(user, { ...query, scope: 'team' });
     return {
-      items: result.items.map((mediaAsset) => new MediaAssetResponseDto(mediaAsset)),
+      items: result.items.map((item) => new MediaLibraryItemDto(item)),
       meta: result.meta,
     };
   }
 
+  @Get('library')
+  @RequirePermissions('media.read')
+  @ApiOperation({
+    summary:
+      "The gallery manager: your own or the whole team's media, searchable, with who made each item",
+  })
+  async library(@CurrentUser() user: AuthenticatedUser, @Query() query: FindMediaLibraryQueryDto) {
+    const result = await this.mediaAssetsService.listLibrary(user, query);
+    return {
+      items: result.items.map((item) => new MediaLibraryItemDto(item)),
+      meta: result.meta,
+    };
+  }
   @Get('my')
   @RequirePermissions('media.read')
   @ApiOperation({ summary: "The current user's own generated/uploaded media - a reusable gallery" })
@@ -82,7 +105,9 @@ export class MediaAssetsController {
   @Get('gallery-usage')
   @RequirePermissions('media.read')
   @ApiOperation({ summary: "The current user's image/video gallery count against the shared cap" })
-  async getGalleryUsage(@CurrentUser('id') userId: string): Promise<{ count: number; max: number }> {
+  async getGalleryUsage(
+    @CurrentUser('id') userId: string,
+  ): Promise<{ count: number; max: number }> {
     const count = await this.mediaAssetsService.countGalleryMedia(userId);
     return { count, max: MAX_GALLERY_MEDIA_PER_USER };
   }
@@ -93,12 +118,17 @@ export class MediaAssetsController {
   @ApiOperation({ summary: 'Upload an image or video clip directly into the gallery' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadToGallery(
-    @UploadedFile(new ParseFilePipeBuilder().addMaxSizeValidator({ maxSize: MAX_UPLOAD_BYTES }).build())
+    @UploadedFile(
+      new ParseFilePipeBuilder().addMaxSizeValidator({ maxSize: MAX_UPLOAD_BYTES }).build(),
+    )
     file: Express.Multer.File,
     @CurrentUser() user: AuthenticatedUser,
+    @Body() meta: UploadMediaMetaDto,
   ): Promise<MediaAssetResponseDto> {
     if (!user.organizationId || !user.workspaceId) {
-      throw new BadRequestException('An active organization and workspace are required to upload to your gallery');
+      throw new BadRequestException(
+        'An active organization and workspace are required to upload to your gallery',
+      );
     }
     if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
       throw new BadRequestException('Only images and video clips can be added to the gallery');
@@ -116,9 +146,9 @@ export class MediaAssetsController {
         mimeType: file.mimetype,
         sizeBytes: file.size,
         type,
-        prompt: null,
-        provider: null,
-        model: null,
+        prompt: meta.prompt?.trim() || null,
+        provider: meta.provider ?? null,
+        model: meta.model ?? null,
         voiceId: null,
         cacheKeyHash: null,
       },
@@ -130,8 +160,11 @@ export class MediaAssetsController {
   @Get(':id')
   @RequirePermissions('media.read')
   @ApiOperation({ summary: 'Get a media asset by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<MediaAssetResponseDto> {
-    const mediaAsset = await this.mediaAssetsService.findById(id);
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MediaAssetResponseDto> {
+    const mediaAsset = await this.mediaAssetsService.findForActor(id, user);
     return new MediaAssetResponseDto(mediaAsset);
   }
 
@@ -141,9 +174,24 @@ export class MediaAssetsController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdateMediaAssetDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<MediaAssetResponseDto> {
-    const mediaAsset = await this.mediaAssetsService.update(id, dto, userId);
+    const mediaAsset = await this.mediaAssetsService.update(id, dto, user);
+    return new MediaAssetResponseDto(mediaAsset);
+  }
+
+  @Patch(':id/rename')
+  @RequirePermissions('media.update')
+  @ApiOperation({
+    summary:
+      'Rename one of your gallery items (workspace admins can rename any in their workspace)',
+  })
+  async rename(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @Body() dto: RenameMediaAssetDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<MediaAssetResponseDto> {
+    const mediaAsset = await this.mediaAssetsService.rename(id, dto.fileName, user);
     return new MediaAssetResponseDto(mediaAsset);
   }
 
@@ -152,9 +200,9 @@ export class MediaAssetsController {
   @ApiOperation({ summary: 'Delete a media asset' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.mediaAssetsService.remove(id, userId);
+    await this.mediaAssetsService.remove(id, user);
     return { deleted: true };
   }
 }

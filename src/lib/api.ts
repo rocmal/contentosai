@@ -1847,6 +1847,44 @@ export async function getMyGalleryPage(
   return apiRequest(`/media/my?${params.toString()}`);
 }
 
+/** A gallery card: the item, who made it, and whether the viewer may rename or delete it. */
+export interface LibraryItem extends MediaAsset {
+  createdBy: string | null;
+  createdByName: string | null;
+  canManage: boolean;
+}
+
+/** The gallery manager: your own items or the whole team's, searchable. generatedOnly gives the creation history. */
+export async function listLibrary(
+  input: {
+    scope?: 'mine' | 'team';
+    type?: MediaAssetType;
+    search?: string;
+    generatedOnly?: boolean;
+    page?: number;
+    limit?: number;
+  } = {},
+): Promise<{
+  items: LibraryItem[];
+  meta: { totalItems: number; itemCount: number; itemsPerPage: number; totalPages: number; currentPage: number };
+}> {
+  const params = new URLSearchParams();
+  params.set('page', String(input.page ?? 1));
+  params.set('limit', String(input.limit ?? 24));
+  params.set('scope', input.scope ?? 'mine');
+  if (input.type) params.set('type', input.type);
+  if (input.search?.trim()) params.set('search', input.search.trim());
+  if (input.generatedOnly) params.set('generatedOnly', 'true');
+  return apiRequest(`/media/library?${params.toString()}`);
+}
+
+export function renameMediaAsset(id: string, fileName: string): Promise<MediaAsset> {
+  return apiRequest(`/media/${encodeURIComponent(id)}/rename`, {
+    method: 'PATCH',
+    body: JSON.stringify({ fileName }),
+  });
+}
+
 export function deleteMediaAsset(id: string): Promise<{ deleted: boolean }> {
   return apiRequest(`/media/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
@@ -1866,9 +1904,16 @@ export function getGalleryUsage(): Promise<GalleryUsage> {
  * uploadImageFile/uploadVideoBlob above, which just stash a file in storage
  * for a third-party API to fetch - this one creates a real, reusable
  * MediaAsset and counts against the gallery cap). */
-export async function uploadToGallery(file: File): Promise<MediaAsset> {
+export async function uploadToGallery(
+  file: File,
+  /** What it was made from, so it shows up in the creation history and can be recreated. */
+  meta?: { prompt?: string; provider?: string; model?: string },
+): Promise<MediaAsset> {
   const formData = new FormData();
   formData.append('file', file, file.name);
+  if (meta?.prompt) formData.append('prompt', meta.prompt);
+  if (meta?.provider) formData.append('provider', meta.provider);
+  if (meta?.model) formData.append('model', meta.model);
   return apiRequest<MediaAsset>('/media/upload', { method: 'POST', body: formData });
 }
 

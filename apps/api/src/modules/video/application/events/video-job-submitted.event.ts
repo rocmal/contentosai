@@ -15,6 +15,8 @@ export class VideoJobSubmittedEvent extends DomainEvent {
     public readonly organizationId?: string | null,
     public readonly workspaceId?: string | null,
     public readonly cacheKey?: string,
+    /** What the clip was made from, so its gallery entry can show and reuse it. */
+    public readonly prompt?: string,
   ) {
     super();
   }

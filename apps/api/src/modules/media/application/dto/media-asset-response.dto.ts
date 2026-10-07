@@ -36,3 +36,17 @@ export class MediaAssetResponseDto {
     this.updatedAt = mediaAsset.updatedAt;
   }
 }
+
+/** A gallery card: the asset plus who made it and whether the viewer may rename or delete it. */
+export class MediaLibraryItemDto extends MediaAssetResponseDto {
+  @ApiProperty({ nullable: true }) createdBy: string | null;
+  @ApiProperty({ nullable: true }) createdByName: string | null;
+  @ApiProperty() canManage: boolean;
+
+  constructor(item: MediaAsset & { createdByName: string | null; canManage: boolean }) {
+    super(item);
+    this.createdBy = item.createdBy ?? null;
+    this.createdByName = item.createdByName;
+    this.canManage = item.canManage;
+  }
+}

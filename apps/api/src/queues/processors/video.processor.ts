@@ -17,6 +17,7 @@ export interface PollVideoJobData {
   workspaceId?: string | null;
   /** Lets the finished clip be saved under the prompt's signature for reuse. */
   cacheKey?: string;
+  prompt?: string;
 }
 
 const MAX_POLL_ATTEMPTS = 30;
@@ -49,12 +50,14 @@ export class VideoProcessor extends WorkerHost {
       organizationId,
       workspaceId,
       cacheKey,
+      prompt,
     } = job.data;
     const result = await this.videoService.getJobStatus(provider, jobId, {
       userId,
       organizationId,
       workspaceId,
       cacheKey,
+      prompt,
     });
 
     if (result.status === 'completed' || result.status === 'failed') {
@@ -67,7 +70,16 @@ export class VideoProcessor extends WorkerHost {
 
     await this.videoQueue.add(
       VideoJobName.POLL,
-      { provider, jobId, attempt: attempt + 1, userId, organizationId, workspaceId, cacheKey },
+      {
+        provider,
+        jobId,
+        attempt: attempt + 1,
+        userId,
+        organizationId,
+        workspaceId,
+        cacheKey,
+        prompt,
+      },
       { delay: POLL_DELAY_MS, ...RETRY_OPTIONS },
     );
     return result;

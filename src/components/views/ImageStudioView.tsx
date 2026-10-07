@@ -23,6 +23,7 @@ import {
   renderTargetBlob,
 } from '../../lib/imagePlatforms';
 import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
+import { IMAGE_COMPOSITION_NOTE, IMAGE_NO_TEXT_NOTE, takeReuse } from '../../lib/reuse';
 
 interface ImageStudioViewProps {
   onNavigate: (view: ViewType) => void;
@@ -35,9 +36,8 @@ type RatioResult =
 
 type SaveState = { state: 'saving' } | { state: 'saved' } | { state: 'error'; message: string };
 
-const COMPOSITION_NOTE =
-  'Keep the main subject centred with generous empty margin around it, so the picture still works when it is trimmed for different social platforms.';
-const NO_TEXT_NOTE = 'Do not include any text, letters, numbers, logos or watermarks in the image.';
+const COMPOSITION_NOTE = IMAGE_COMPOSITION_NOTE;
+const NO_TEXT_NOTE = IMAGE_NO_TEXT_NOTE;
 
 const IMPROVE_SYSTEM_PROMPT =
   'You write prompts for an AI image generator used by Indian small businesses and insurance advisors for social media. ' +
@@ -54,7 +54,8 @@ function describeError(err: unknown): string {
 }
 
 export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) => {
-  const [prompt, setPrompt] = useState('');
+  // Opened from the Gallery's "Create again": start with that prompt.
+  const [prompt, setPrompt] = useState(() => takeReuse('image')?.prompt ?? '');
   const [noText, setNoText] = useState(true);
   const [isImproving, setIsImproving] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
@@ -204,7 +205,12 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
       const file = new File([blob], `${target.id}-${target.width}x${target.height}-${Date.now()}.jpg`, {
         type: 'image/jpeg',
       });
-      await api.uploadToGallery(file);
+      const made = results[target.generateRatio];
+      await api.uploadToGallery(file, {
+        prompt: prompt.trim(),
+        provider: provider ?? undefined,
+        model: made?.state === 'done' ? made.model : undefined,
+      });
       setSaves((prev) => ({ ...prev, [target.id]: { state: 'saved' } }));
     } catch (err) {
       setSaves((prev) => ({ ...prev, [target.id]: { state: 'error', message: describeError(err) } }));

@@ -17,6 +17,7 @@ import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
 import { SarvamVoiceSelect } from '../SarvamVoiceSelect';
 import RecordVoicePanel from '../RecordVoicePanel';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
+import { takeReuse } from '../../lib/reuse';
 import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG, sarvamVoiceSampleUrl } from '../../lib/sarvamVoices';
 
 interface VoiceStudioViewProps {
@@ -66,7 +67,8 @@ const GENDER_LABELS: Record<Gender, string> = { female: 'Female', male: 'Male' }
 
 export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) => {
   const { user } = useAuth();
-  const [text, setText] = useState(
+  const [text, setText] = useState(() =>
+    takeReuse('voice')?.prompt ??
     "Welcome to Lumora — the AI Content Operating System designed for high-growth tech teams. Scale your multi-channel marketing with a unified Brand Memory."
   );
   // Sarvam is the only provider actually built for Indian accents - the

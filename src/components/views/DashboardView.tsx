@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Coins, Film, Image as ImageIcon, Loader2, Mic, Send, Sparkles, TrendingUp, Trophy } from 'lucide-react';
+import { Coins, Film, FolderOpen, Image as ImageIcon, Loader2, Mic, RefreshCw, Send, Sparkles, TrendingUp, Trophy } from 'lucide-react';
 import { ViewType } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -7,11 +7,12 @@ import {
   getMyCreditUsage,
   getMyCreditWallet,
   getMyGalleryPage,
-  listMyGallery,
+  LibraryItem,
+  listLibrary,
   listScheduledPosts,
-  MediaAsset,
   MediaAssetType,
 } from '../../lib/api';
+import { cleanPrompt, requestReuse, STUDIO_VIEW, studioForType } from '../../lib/reuse';
 
 interface DashboardViewProps {
   onNavigate: (view: ViewType) => void;
@@ -24,46 +25,54 @@ type StudioId = 'image' | 'voice' | 'video';
 const STUDIOS: {
   id: StudioId;
   label: string;
+  blurb: string;
   view: ViewType;
   reason: string;
   galleryType: MediaAssetType;
   noun: string;
   icon: React.FC<{ className?: string }>;
   tint: string;
+  button: string;
   bar: string;
 }[] = [
   {
     id: 'image',
     label: 'Image Studio',
+    blurb: 'Posts and creatives sized for every platform',
     view: 'image-studio',
     reason: 'generation.image',
     galleryType: 'image',
     noun: 'image',
     icon: ImageIcon,
     tint: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300',
+    button: 'bg-blue-600 hover:bg-blue-500',
     bar: 'bg-blue-500',
-  },
-  {
-    id: 'voice',
-    label: 'Voice Studio',
-    view: 'voice-studio',
-    reason: 'generation.voice',
-    galleryType: 'audio',
-    noun: 'voiceover',
-    icon: Mic,
-    tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300',
-    bar: 'bg-emerald-500',
   },
   {
     id: 'video',
     label: 'Video Studio',
+    blurb: 'Short videos from a prompt, with narration',
     view: 'video-studio',
     reason: 'generation.video',
     galleryType: 'video',
     noun: 'video',
     icon: Film,
     tint: 'bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-300',
+    button: 'bg-teal-600 hover:bg-teal-500',
     bar: 'bg-teal-500',
+  },
+  {
+    id: 'voice',
+    label: 'Voice Studio',
+    blurb: 'Voiceovers in Indian languages and your own voice',
+    view: 'voice-studio',
+    reason: 'generation.voice',
+    galleryType: 'audio',
+    noun: 'voiceover',
+    icon: Mic,
+    tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300',
+    button: 'bg-emerald-600 hover:bg-emerald-500',
+    bar: 'bg-emerald-500',
   },
 ];
 
@@ -96,7 +105,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   const [credits, setCredits] = useState<number | null | undefined>(undefined);
   const [counts, setCounts] = useState<Record<StudioId, number> | null>(null);
   const [publishedCount, setPublishedCount] = useState<number | null>(null);
-  const [recent, setRecent] = useState<MediaAsset[] | null>(null);
+  const [recent, setRecent] = useState<LibraryItem[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,8 +125,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     listScheduledPosts()
       .then((jobs) => !cancelled && setPublishedCount(jobs.filter((j) => j.status === 'published').length))
       .catch(() => !cancelled && setPublishedCount(0));
-    listMyGallery(undefined, 6)
-      .then((items) => !cancelled && setRecent(items))
+    listLibrary({ scope: 'mine', generatedOnly: true, limit: 8 })
+      .then((page) => !cancelled && setRecent(page.items))
       .catch(() => !cancelled && setRecent([]));
     return () => {
       cancelled = true;
@@ -136,10 +145,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   }, [days]);
 
   const spentOn = (reason: string) => usage?.byReason.find((r) => r.reason === reason);
-  const studioUsage = STUDIOS.map((s) => ({ studio: s, credits: spentOn(s.reason)?.credits ?? 0, runs: spentOn(s.reason)?.count ?? 0 }));
+  const studioUsage = STUDIOS.map((s) => ({
+    studio: s,
+    credits: spentOn(s.reason)?.credits ?? 0,
+    runs: spentOn(s.reason)?.count ?? 0,
+  }));
   const totalStudioCredits = studioUsage.reduce((sum, row) => sum + row.credits, 0);
   const mostUsed = studioUsage.filter((row) => row.credits > 0).sort((a, b) => b.credits - a.credits)[0];
   const totalCreated = counts ? counts.image + counts.voice + counts.video : null;
+
+  const createAgain = (item: LibraryItem) => {
+    const studio = studioForType(item.type);
+    if (!studio || !item.prompt) return;
+    requestReuse({ studio, prompt: cleanPrompt(studio, item.prompt) });
+    onNavigate(STUDIO_VIEW[studio]);
+  };
 
   const stats = [
     {
@@ -161,7 +181,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       value: totalCreated === null ? '...' : totalCreated.toLocaleString(),
       icon: Sparkles,
       tint: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300',
-      hint: 'Images, voiceovers and videos',
+      hint: 'Images, voiceovers and videos saved',
     },
     {
       label: 'Published',
@@ -180,7 +200,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             {timeOfDayGreeting()}
             {user?.firstName ? `, ${user.firstName}` : ''}
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">What you've made and what it cost.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Pick a studio to start, or pick up from something you made.</p>
         </div>
         <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 w-fit">
           {PERIODS.map((p) => (
@@ -198,6 +218,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Start creating: one card per studio, with what it has made and what it has cost */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {studioUsage.map(({ studio, credits: spent, runs }) => {
+          const Icon = studio.icon;
+          const isMostUsed = mostUsed?.studio.id === studio.id;
+          return (
+            <div
+              key={studio.id}
+              className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col gap-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className={`p-2.5 rounded-xl ${studio.tint}`}>
+                  <Icon className="w-5 h-5" />
+                </span>
+                {isMostUsed && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-[10px] font-bold text-amber-600 dark:text-amber-300">
+                    <Trophy className="w-3 h-3" /> Most used
+                  </span>
+                )}
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">{studio.label}</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{studio.blurb}</p>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                {counts === null ? '...' : plural(counts[studio.id], studio.noun)} saved ·{' '}
+                {usage === null ? '...' : `${spent.toLocaleString()} credits`} ({runs} run{runs === 1 ? '' : 's'}) in {days} days
+              </p>
+              <button
+                type="button"
+                onClick={() => onNavigate(studio.view)}
+                className={`mt-auto w-full py-2.5 rounded-xl text-white text-xs font-bold transition-all active:scale-[0.98] ${studio.button}`}
+              >
+                Create in {studio.label}
+              </button>
+            </div>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -222,108 +282,100 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Your studios</h3>
-            {mostUsed && (
-              <span className="flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
-                <Trophy className="w-3.5 h-3.5" /> Most used: {mostUsed.studio.label}
-              </span>
-            )}
-          </div>
-
-          {usage === null || counts === null ? (
-            <div className="flex justify-center py-8 text-slate-400">
-              <Loader2 className="w-4 h-4 animate-spin" />
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {studioUsage.map(({ studio, credits: spent, runs }) => {
-                const Icon = studio.icon;
-                const share = totalStudioCredits > 0 ? Math.round((spent / totalStudioCredits) * 100) : 0;
-                return (
-                  <div key={studio.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={`p-1.5 rounded-lg ${studio.tint}`}>
-                          <Icon className="w-3.5 h-3.5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold text-slate-900 dark:text-white">{studio.label}</p>
-                          <p className="text-[10px] text-slate-400">
-                            {plural(counts[studio.id], studio.noun)} saved · {plural(runs, 'run')} in {days} days
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white">
-                          {spent.toLocaleString()} credits
-                        </p>
-                        <p className="text-[10px] text-slate-400">{share}% of use</p>
-                      </div>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div className={`h-full ${studio.bar} transition-all`} style={{ width: `${share}%` }} />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onNavigate(studio.view)}
-                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      Open {studio.label} →
-                    </button>
-                  </div>
-                );
-              })}
-              {totalStudioCredits === 0 && (
-                <p className="text-[11px] text-slate-400">
-                  Nothing generated in the last {days} days. Open a studio to make your first piece.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Recent creations</h3>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Pick up where you left off</h3>
             <button
               type="button"
               onClick={() => onNavigate('media-library')}
-              className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
             >
-              View all →
+              <FolderOpen className="w-3 h-3" /> Open Gallery &amp; history →
             </button>
           </div>
           {recent === null ? (
-            <div className="flex justify-center py-8 text-slate-400">
+            <div className="flex justify-center py-10 text-slate-400">
               <Loader2 className="w-4 h-4 animate-spin" />
             </div>
           ) : recent.length === 0 ? (
-            <p className="text-[11px] text-slate-400 text-center py-8">Nothing yet - your creations will show up here.</p>
+            <p className="text-[11px] text-slate-400 text-center py-10">
+              Nothing yet - what you create will show up here, and you can start again from any of it.
+            </p>
           ) : (
-            <ul className="space-y-2">
-              {recent.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center gap-3 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50"
-                >
-                  {item.type === 'image' ? (
-                    <img src={item.url} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-200 dark:bg-slate-700" />
-                  ) : (
-                    <span className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-500">
-                      {item.type === 'audio' ? <Mic className="w-4 h-4" /> : <Film className="w-4 h-4" />}
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {item.prompt || item.fileName}
-                    </p>
-                    <p className="text-[10px] text-slate-400">
-                      {TYPE_LABELS[item.type] ?? item.type} · {timeAgo(item.createdAt)}
-                    </p>
-                  </div>
-                </li>
-              ))}
+            <ul className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {recent.map((item) => {
+                const studio = studioForType(item.type);
+                return (
+                  <li
+                    key={item.id}
+                    className="rounded-xl overflow-hidden border border-slate-100 dark:border-slate-700/60 bg-slate-50 dark:bg-slate-800/50 flex flex-col"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('media-library')}
+                      className="relative aspect-video bg-slate-950 flex items-center justify-center"
+                      title="Open in Gallery"
+                    >
+                      {item.type === 'image' ? (
+                        <img src={item.url} alt="" loading="lazy" className="w-full h-full object-cover" />
+                      ) : item.type === 'audio' ? (
+                        <Mic className="w-6 h-6 text-slate-500" />
+                      ) : (
+                        <video src={item.url} muted preload="metadata" className="w-full h-full object-cover" />
+                      )}
+                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-semibold">
+                        {TYPE_LABELS[item.type] ?? item.type}
+                      </span>
+                    </button>
+                    <div className="p-2 space-y-1 flex-1 flex flex-col">
+                      <p className="text-[11px] font-semibold text-slate-800 dark:text-slate-100 line-clamp-2 break-words">
+                        {item.prompt ? cleanPrompt(studio ?? 'image', item.prompt) : item.fileName}
+                      </p>
+                      <p className="text-[10px] text-slate-400">{timeAgo(item.createdAt)}</p>
+                      {studio && item.prompt && (
+                        <button
+                          type="button"
+                          onClick={() => createAgain(item)}
+                          className="mt-auto inline-flex items-center justify-center gap-1 py-1 rounded-lg text-[10px] font-bold text-blue-600 dark:text-blue-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:bg-blue-50 dark:hover:bg-slate-800"
+                        >
+                          <RefreshCw className="w-3 h-3" /> Create again
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
+          )}
+        </div>
+
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Where your credits went</h3>
+          {usage === null ? (
+            <div className="flex justify-center py-10 text-slate-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          ) : totalStudioCredits === 0 ? (
+            <p className="text-[11px] text-slate-400">Nothing generated in the last {days} days.</p>
+          ) : (
+            <div className="space-y-3.5">
+              {[...studioUsage]
+                .sort((a, b) => b.credits - a.credits)
+                .map(({ studio, credits: spent }) => {
+                  const share = Math.round((spent / totalStudioCredits) * 100);
+                  return (
+                    <div key={studio.id} className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-slate-800 dark:text-slate-100">{studio.label}</span>
+                        <span className="text-slate-500 dark:text-slate-400">
+                          {spent.toLocaleString()} credits · {share}%
+                        </span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div className={`h-full ${studio.bar} transition-all`} style={{ width: `${share}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
           )}
         </div>
       </div>

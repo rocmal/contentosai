@@ -42,12 +42,10 @@ describe('VideoService', () => {
       listProviders: jest.fn(),
     } as unknown as jest.Mocked<VideoProviderFactory>;
     storageService = {
-      uploadFile: jest
-        .fn()
-        .mockResolvedValue({
-          key: 'gallery/videos/job-1.mp4',
-          url: 'https://cdn.example.com/gallery/videos/job-1.mp4',
-        }),
+      uploadFile: jest.fn().mockResolvedValue({
+        key: 'gallery/videos/job-1.mp4',
+        url: 'https://cdn.example.com/gallery/videos/job-1.mp4',
+      }),
     } as unknown as jest.Mocked<StorageService>;
     mediaAssetsService = {
       findCached: jest.fn().mockResolvedValue(null),
@@ -252,6 +250,45 @@ describe('VideoService', () => {
           expect.objectContaining({ cacheKeyHash: 'a'.repeat(64) }),
           'user-1',
         );
+      });
+
+      it('keeps the prompt with the saved clip, and passes it to the background poller', async () => {
+        provider.submitJob.mockResolvedValue(submitted);
+        provider.getJobStatus.mockResolvedValue(completedResult);
+
+        await service.submitJob(dto, actor);
+        const [, event] = eventEmitter.emit.mock.calls[0] as [string, VideoJobSubmittedEvent];
+        expect(event.prompt).toBe('a cat');
+
+        await service.getJobStatus('runway', 'job-1', { ...actor, prompt: 'a cat' });
+        expect(mediaAssetsService.saveGenerated).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt: 'a cat' }),
+          'user-1',
+        );
+      });
+
+      it('fills in the prompt on a clip the browser saved first, without overwriting one that has it', async () => {
+        provider.getJobStatus.mockResolvedValue(completedResult);
+        const setPromptIfMissing = jest.fn().mockResolvedValue(undefined);
+        (mediaAssetsService as unknown as { setPromptIfMissing: jest.Mock }).setPromptIfMissing =
+          setPromptIfMissing;
+        mediaAssetsService.findCached.mockResolvedValue({
+          id: 'asset-9',
+          url: 'https://cdn.example.com/a.mp4',
+          prompt: null,
+        } as never);
+
+        await service.getJobStatus('runway', 'job-1', { ...actor, prompt: 'a cat' });
+        expect(setPromptIfMissing).toHaveBeenCalledWith('asset-9', 'a cat');
+
+        setPromptIfMissing.mockClear();
+        mediaAssetsService.findCached.mockResolvedValue({
+          id: 'asset-9',
+          url: 'https://cdn.example.com/a.mp4',
+          prompt: 'earlier',
+        } as never);
+        await service.getJobStatus('runway', 'job-1', { ...actor, prompt: 'a cat' });
+        expect(setPromptIfMissing).not.toHaveBeenCalled();
       });
 
       it('passes the signature to the background poller through the event', async () => {
