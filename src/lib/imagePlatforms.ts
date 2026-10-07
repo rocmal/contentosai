@@ -22,9 +22,7 @@ export const IMAGE_TARGETS: ImageTarget[] = [
   { id: 'ig-story', platform: 'Instagram', label: 'Instagram Story / Reel cover', width: 1080, height: 1920, generateRatio: '9:16' },
   { id: 'yt-thumb', platform: 'YouTube', label: 'YouTube Thumbnail', width: 1280, height: 720, generateRatio: '16:9' },
   { id: 'li-post', platform: 'LinkedIn', label: 'LinkedIn Post', width: 1200, height: 627, generateRatio: '16:9' },
-  { id: 'x-post', platform: 'X (Twitter)', label: 'X Post', width: 1600, height: 900, generateRatio: '16:9' },
   { id: 'wa-status', platform: 'WhatsApp', label: 'WhatsApp Status', width: 1080, height: 1920, generateRatio: '9:16' },
-  { id: 'pin', platform: 'Pinterest', label: 'Pinterest Pin', width: 1000, height: 1500, generateRatio: '2:3' },
 ];
 
 export const IMAGE_PLATFORM_NAMES: string[] = Array.from(new Set(IMAGE_TARGETS.map((t) => t.platform)));
