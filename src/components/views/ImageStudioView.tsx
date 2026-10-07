@@ -9,6 +9,7 @@ import {
   Loader2,
   RefreshCw,
   Sparkles,
+  Wand2,
   X,
 } from 'lucide-react';
 import { ViewType } from '../../types';
@@ -38,6 +39,16 @@ const COMPOSITION_NOTE =
   'Keep the main subject centred with generous empty margin around it, so the picture still works when it is trimmed for different social platforms.';
 const NO_TEXT_NOTE = 'Do not include any text, letters, numbers, logos or watermarks in the image.';
 
+const IMPROVE_SYSTEM_PROMPT =
+  'You write prompts for an AI image generator used by Indian small businesses and insurance advisors for social media. ' +
+  "Rewrite the user's idea as one detailed English image prompt (60-120 words): subject, setting, clothing, lighting, " +
+  'colour palette, composition and style (e.g. clean professional photo or flat illustration). Keep every name, phone ' +
+  'number and wording the user asked to appear exactly as written, inside double quotes, and say where it should sit. ' +
+  'Do not invent claims, rates or guarantees. Reply with only the prompt - no preamble, no explanation.';
+
+// Words that mean the picture itself must carry lettering (cards, posters, banners ...).
+const WANTS_TEXT = /\b(card|poster|banner|flyer|brochure|logo|text|quote|caption|headline|contact|number)\b|\d{6,}/i;
+
 function describeError(err: unknown): string {
   return err instanceof api.ApiError ? err.message : 'Could not reach the Lumora API. Is the backend running?';
 }
@@ -45,6 +56,8 @@ function describeError(err: unknown): string {
 export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) => {
   const [prompt, setPrompt] = useState('');
   const [noText, setNoText] = useState(true);
+  const [isImproving, setIsImproving] = useState(false);
+  const [improveError, setImproveError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string[]>(['ig-post', 'fb-post']);
 
   const [options, setOptions] = useState<api.ImageProviderOption[] | null>(null);
@@ -100,6 +113,24 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
 
   const toggleTarget = (id: string) =>
     setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const handleImprovePrompt = async () => {
+    setIsImproving(true);
+    setImproveError(null);
+    try {
+      const result = await api.generateText({
+        prompt: prompt.trim() || 'A professional, friendly image for a financial advisor to post on social media.',
+        systemPrompt: IMPROVE_SYSTEM_PROMPT,
+      });
+      const improved = result.text.trim();
+      setPrompt(improved);
+      if (WANTS_TEXT.test(improved)) setNoText(false);
+    } catch (err) {
+      setImproveError(describeError(err));
+    } finally {
+      setIsImproving(false);
+    }
+  };
 
   const fullPrompt = () => [prompt.trim(), COMPOSITION_NOTE, noText ? NO_TEXT_NOTE : ''].filter(Boolean).join(' ');
 
@@ -236,7 +267,19 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-slate-900 dark:text-white">What should the image show?</label>
-                <VoiceInputButton onText={(spoken) => setPrompt((prev) => appendSpoken(prev, spoken))} />
+                <div className="flex items-center gap-3">
+                  <VoiceInputButton onText={(spoken) => setPrompt((prev) => appendSpoken(prev, spoken))} />
+                  <button
+                    type="button"
+                    onClick={handleImprovePrompt}
+                    disabled={isImproving}
+                    title={prompt.trim() ? 'Rewrite this as a detailed image prompt' : 'Suggest an image prompt'}
+                    className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
+                  >
+                    {isImproving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                    <span>{prompt.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
+                  </button>
+                </div>
               </div>
               <textarea
                 rows={4}
@@ -250,6 +293,13 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
                 <input type="checkbox" checked={noText} onChange={(e) => setNoText(e.target.checked)} />
                 No text in the image (recommended - add your wording in a design tool)
               </label>
+              {improveError && <p className="mt-1 text-[11px] text-red-500">{improveError}</p>}
+              {noText && WANTS_TEXT.test(prompt) && (
+                <p className="mt-1 text-[11px] text-amber-600">
+                  Your idea mentions text (card, poster, number...). With "No text" ticked the image will have none -
+                  untick it to let the picture include your wording. Check spelling and numbers before posting.
+                </p>
+              )}
             </div>
 
             <div>
@@ -524,8 +574,7 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
 
           {readyCount > 0 && providerOption && (
             <p className="text-[10px] text-slate-400">
-              Created with {providerOption.label}
-              {firstDone ? ` (${firstDone.model})` : ''}. AI images can contain mistakes - check faces, hands and any
+              Created with {firstDone?.model ?? providerOption.label}. AI images can contain mistakes - check faces, hands and any
               text before posting.
             </p>
           )}
