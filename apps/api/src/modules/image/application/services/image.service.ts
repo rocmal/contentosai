@@ -200,14 +200,6 @@ export class ImageService {
           recommended: true,
           qualities: tiers('openai'),
         },
-        {
-          id: 'stability',
-          label: 'Stability AI (Stable Image)',
-          note: 'Lower cost per image. Good for backgrounds and scenes.',
-          configured: configured('stability'),
-          recommended: false,
-          qualities: tiers('stability'),
-        },
       ],
     };
   }

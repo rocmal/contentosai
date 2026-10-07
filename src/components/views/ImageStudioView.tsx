@@ -287,7 +287,7 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
               </div>
             </div>
 
-            <div>
+            <div className={options && options.length <= 1 && options[0]?.configured ? 'hidden' : undefined}>
               <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">AI provider</label>
               {optionsError && <p className="text-[11px] text-red-500">{optionsError}</p>}
               {options === null && !optionsError && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}

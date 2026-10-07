@@ -157,12 +157,10 @@ describe('ImageService.generateImage', () => {
     const { service } = makeService();
     const { providers } = service.getOptions();
     const openai = providers.find((p) => p.id === 'openai')!;
-    const stability = providers.find((p) => p.id === 'stability')!;
 
     expect(openai.configured).toBe(true);
     expect(openai.recommended).toBe(true);
     expect(openai.qualities.map((q) => q.credits)).toEqual([2, 13, 50]);
-    expect(stability.configured).toBe(false);
-    expect(stability.qualities.map((q) => q.id)).toEqual(['standard', 'high']);
+    expect(providers.map((p) => p.id)).toEqual(['openai']);
   });
 });
