@@ -2061,3 +2061,34 @@ export async function listVoiceTemplates(): Promise<VoiceTemplate[]> {
 export function deleteVoiceTemplate(id: string): Promise<{ deleted: boolean }> {
   return apiRequest(`/voice-templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
+
+// ---------------------------------------------------------------------------
+// Custom voices - recorded by the user in Voice Studio, then spoken with like
+// any other voice (the clone lives at the provider; `voiceId` is what
+// generateSpeech takes together with `provider`).
+// ---------------------------------------------------------------------------
+
+export interface CustomVoice {
+  id: string;
+  name: string;
+  provider: VoiceProvider;
+  voiceId: string;
+  createdAt: string;
+}
+
+export async function listCustomVoices(): Promise<CustomVoice[]> {
+  const result = await apiRequest<{ items: CustomVoice[] }>('/custom-voices');
+  return result.items;
+}
+
+export function createCustomVoice(name: string, recording: Blob, consent: boolean): Promise<CustomVoice> {
+  const formData = new FormData();
+  formData.append('file', recording, 'recording.webm');
+  formData.append('name', name);
+  formData.append('consent', String(consent));
+  return apiRequest<CustomVoice>('/custom-voices', { method: 'POST', body: formData });
+}
+
+export function deleteCustomVoice(id: string): Promise<{ deleted: boolean }> {
+  return apiRequest(`/custom-voices/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}

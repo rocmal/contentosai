@@ -15,6 +15,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import * as api from '../../lib/api';
 import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
 import { SarvamVoiceSelect } from '../SarvamVoiceSelect';
+import RecordVoicePanel from '../RecordVoicePanel';
+import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG, sarvamVoiceSampleUrl } from '../../lib/sarvamVoices';
 
 interface VoiceStudioViewProps {
@@ -90,9 +92,57 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [saveTemplateStatus, setSaveTemplateStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
+  // Voices the user recorded themselves. Picking one switches to the provider
+  // that holds the clone (they cannot be spoken by Sarvam).
+  const [customVoices, setCustomVoices] = useState<api.CustomVoice[]>([]);
+  const [selectedCustomId, setSelectedCustomId] = useState('');
+  const [showRecordPanel, setShowRecordPanel] = useState(false);
+  const [confirmDeleteCustom, setConfirmDeleteCustom] = useState(false);
+  const [customVoiceError, setCustomVoiceError] = useState<string | null>(null);
+  const selectedCustomVoice = customVoices.find((v) => v.id === selectedCustomId) ?? null;
+
   useEffect(() => {
     api.listVoiceTemplates().then(setVoiceTemplates).catch(() => undefined);
+    api.listCustomVoices().then(setCustomVoices).catch(() => undefined);
   }, []);
+
+  const pickCustomVoice = (id: string) => {
+    setConfirmDeleteCustom(false);
+    setCustomVoiceError(null);
+    const voice = customVoices.find((v) => v.id === id);
+    if (!voice) {
+      // Back to the standard voices.
+      setSelectedCustomId('');
+      setProvider('sarvam');
+      setVoiceId('');
+      return;
+    }
+    setSelectedCustomId(voice.id);
+    setProvider(voice.provider);
+    setVoiceId(voice.voiceId);
+  };
+
+  const handleCustomVoiceSaved = (voice: api.CustomVoice) => {
+    setCustomVoices((previous) => [voice, ...previous]);
+    setShowRecordPanel(false);
+    setSelectedCustomId(voice.id);
+    setProvider(voice.provider);
+    setVoiceId(voice.voiceId);
+  };
+
+  const handleDeleteCustomVoice = async () => {
+    if (!selectedCustomVoice) return;
+    setCustomVoiceError(null);
+    try {
+      await api.deleteCustomVoice(selectedCustomVoice.id);
+      setCustomVoices((previous) => previous.filter((v) => v.id !== selectedCustomVoice.id));
+      pickCustomVoice('');
+    } catch (err) {
+      setCustomVoiceError(err instanceof api.ApiError ? err.message : 'Could not delete this voice. Please try again.');
+    } finally {
+      setConfirmDeleteCustom(false);
+    }
+  };
 
   const handleSelectLanguage = (lang: Language) => {
     setLanguage(lang);
@@ -118,6 +168,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
   };
 
   const handleSelectProvider = (p: api.VoiceProvider) => {
+    setSelectedCustomId('');
     setProvider(p);
     if (p === 'piper') {
       setVoiceId(PIPER_VOICE_BY_LANGUAGE[language]);
@@ -282,10 +333,68 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                 </button>
               ))}
             </div>
-            {provider !== 'piper' && provider !== 'sarvam' && (
+            {provider !== 'piper' && provider !== 'sarvam' && !selectedCustomVoice && (
               <p className="text-[10px] text-slate-500 mt-1">
                 Only Piper/Sarvam auto-select a voice per language right now - set the Voice ID below for other providers.
               </p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">My recorded voices</label>
+            <select
+              value={selectedCustomId}
+              onChange={(e) => pickCustomVoice(e.target.value)}
+              className="w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+            >
+              <option value="">
+                {customVoices.length === 0 ? 'None yet - record one below' : 'Use a standard voice'}
+              </option>
+              {customVoices.map((voice) => (
+                <option key={voice.id} value={voice.id}>
+                  {voice.name}
+                </option>
+              ))}
+            </select>
+
+            {selectedCustomVoice && (
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <p className="text-[10px] text-emerald-600">
+                  Speaking in your voice "{selectedCustomVoice.name}" ({PROVIDER_INFO[selectedCustomVoice.provider].name}).
+                </p>
+                {confirmDeleteCustom ? (
+                  <span className="flex items-center gap-2 text-[10px] shrink-0">
+                    <button type="button" onClick={handleDeleteCustomVoice} className="font-bold text-red-600">
+                      Delete
+                    </button>
+                    <button type="button" onClick={() => setConfirmDeleteCustom(false)} className="text-slate-500">
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteCustom(true)}
+                    className="text-[10px] font-semibold text-slate-400 hover:text-red-600 shrink-0"
+                  >
+                    Delete this voice
+                  </button>
+                )}
+              </div>
+            )}
+            {customVoiceError && <p className="text-[10px] text-red-600 mt-1">{customVoiceError}</p>}
+
+            <button
+              type="button"
+              onClick={() => setShowRecordPanel((open) => !open)}
+              className="mt-2 w-full py-2 rounded-xl border border-dashed border-slate-300 dark:border-slate-600 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-blue-400 flex items-center justify-center gap-1.5"
+            >
+              <Mic className="w-3.5 h-3.5" /> {showRecordPanel ? 'Close recorder' : 'Record your own voice'}
+            </button>
+            {showRecordPanel && (
+              <div className="mt-2 p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <RecordVoicePanel onSaved={handleCustomVoiceSaved} />
+              </div>
             )}
           </div>
 
@@ -351,7 +460,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
             </>
           )}
 
-          {provider !== 'sarvam' && (
+          {provider !== 'sarvam' && !selectedCustomVoice && (
             <div>
               <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
                 Voice ID (optional)
@@ -410,9 +519,13 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
             </h3>
 
             <div>
-              <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
-                Script Content
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-bold text-slate-900 dark:text-white">Script Content</label>
+                <VoiceInputButton
+                  language={language === 'hi' ? 'hi-IN' : 'en-IN'}
+                  onText={(spoken) => setText((previous) => appendSpoken(previous, spoken))}
+                />
+              </div>
               <textarea
                 rows={5}
                 value={text}

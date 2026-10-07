@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ViewType } from '../../types';
 import * as api from '../../lib/api';
+import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { SchedulePostPanel } from '../SchedulePostPanel';
 import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
 
@@ -420,20 +421,23 @@ export const CharacterStudioView: React.FC<CharacterStudioViewProps> = ({ onNavi
               <label className="block text-xs font-bold text-slate-900 dark:text-white">
                 What should they say?
               </label>
-              <button
-                type="button"
-                onClick={handleImproveScript}
-                disabled={isImprovingScript}
-                title={script.trim() ? 'Improve this script with AI' : 'Generate a script with AI'}
-                className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
-              >
-                {isImprovingScript ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Wand2 className="w-3 h-3" />
-                )}
-                <span>{script.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <VoiceInputButton onText={(spoken) => setScript((previous) => appendSpoken(previous, spoken))} />
+                <button
+                  type="button"
+                  onClick={handleImproveScript}
+                  disabled={isImprovingScript}
+                  title={script.trim() ? 'Improve this script with AI' : 'Generate a script with AI'}
+                  className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
+                >
+                  {isImprovingScript ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-3 h-3" />
+                  )}
+                  <span>{script.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
+                </button>
+              </div>
             </div>
             <textarea
               rows={4}
@@ -564,6 +568,9 @@ export const CharacterStudioView: React.FC<CharacterStudioViewProps> = ({ onNavi
                 </div>
               </div>
 
+              <div className="flex justify-end">
+                <VoiceInputButton onText={(spoken) => setScript((previous) => appendSpoken(previous, spoken))} />
+              </div>
               <textarea
                 rows={4}
                 value={script}

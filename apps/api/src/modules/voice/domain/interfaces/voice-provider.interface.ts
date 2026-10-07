@@ -22,10 +22,20 @@ export interface VoiceInfo {
   gender?: string;
 }
 
+/** A recording to turn into a reusable voice (instant voice cloning). */
+export interface VoiceCloneRequest {
+  name: string;
+  audio: Buffer;
+  mimeType: string;
+}
+
 /** Port every text-to-speech provider adapter implements. */
 export interface IVoiceProvider {
   readonly name: string;
   generateSpeech(request: VoiceGenerationRequest): Promise<VoiceGenerationResult>;
+  /** Only providers that can clone a voice from a sample implement these two. Returns the new voice id. */
+  cloneVoice?(request: VoiceCloneRequest): Promise<string>;
+  deleteVoice?(voiceId: string): Promise<void>;
   /** Voices this provider currently has available (empty array if not configured/reachable). */
   listVoices(): Promise<VoiceInfo[]>;
   /** Cheap readiness check - true if the provider is configured and reachable. */

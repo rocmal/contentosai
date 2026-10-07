@@ -52,7 +52,12 @@ describe('VoiceService', () => {
     } as unknown as jest.Mocked<VoiceProviderFactory>;
 
     storageService = {
-      uploadFile: jest.fn().mockResolvedValue({ key: 'gallery/voice/stub.mp3', url: 'https://cdn.example.com/stub.mp3' }),
+      uploadFile: jest
+        .fn()
+        .mockResolvedValue({
+          key: 'gallery/voice/stub.mp3',
+          url: 'https://cdn.example.com/stub.mp3',
+        }),
       readFile: jest.fn(),
     } as unknown as jest.Mocked<StorageService>;
 

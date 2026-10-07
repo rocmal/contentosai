@@ -50,6 +50,7 @@ import { IntegrationsModule } from '@modules/integrations/integrations.module';
 import { VideoTemplatesModule } from '@modules/video-templates/video-templates.module';
 import { VideoProjectsModule } from '@modules/video-projects/video-projects.module';
 import { VoiceTemplatesModule } from '@modules/voice-templates/voice-templates.module';
+import { CustomVoicesModule } from '@modules/custom-voices/custom-voices.module';
 import { AuditModule } from '@modules/audit/audit.module';
 import { SettingsModule } from '@modules/settings/settings.module';
 import { HealthModule } from '@modules/health/health.module';
@@ -118,6 +119,7 @@ import { QueuesModule } from '@queues/queues.module';
     VideoTemplatesModule,
     VideoProjectsModule,
     VoiceTemplatesModule,
+    CustomVoicesModule,
     AuditModule,
     SettingsModule,
 

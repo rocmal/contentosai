@@ -50,7 +50,9 @@ export class PiperProvider implements IVoiceProvider {
 
   async generateSpeech(request: VoiceGenerationRequest): Promise<VoiceGenerationResult> {
     if (!this.binaryPath || !this.voicesDir) {
-      throw new ServiceUnavailableException('Piper is not configured (PIPER_BINARY_PATH/PIPER_VOICES_DIR)');
+      throw new ServiceUnavailableException(
+        'Piper is not configured (PIPER_BINARY_PATH/PIPER_VOICES_DIR)',
+      );
     }
     const voiceId = request.voiceId ?? this.defaultVoiceId;
     const modelPath = this.modelPathFor(voiceId);
