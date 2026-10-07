@@ -1,22 +1,15 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  BookOpen,
-  Bot,
-  Brain,
-  Check,
   ChevronDown,
   ChevronUp,
   Compass,
-  ExternalLink,
-  HelpCircle,
+  FolderOpen,
+  Image as ImageIcon,
   LifeBuoy,
-  MessageSquare,
-  Play,
-  PlayCircle,
+  Mic,
   Search,
-  Sparkles,
+  Send,
   Video,
-  Zap,
 } from 'lucide-react';
 import { ViewType } from '../../types';
 
@@ -25,178 +18,236 @@ interface HelpGuideViewProps {
   onStartTour: () => void;
 }
 
-export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
-  onNavigate,
-  onStartTour,
-}) => {
+const CATEGORIES = ['All', 'Getting started', 'Studios', 'Credits', 'Gallery & team', 'Safety & privacy'] as const;
+type Category = (typeof CATEGORIES)[number];
+
+const QUICK_GUIDES: {
+  id: string;
+  title: string;
+  desc: string;
+  icon: React.FC<{ className?: string }>;
+  color: string;
+  view: ViewType;
+}[] = [
+  {
+    id: 'g-image',
+    title: 'Image Studio',
+    desc: 'Describe a picture, tick where you will post it, and get the right size for each platform.',
+    icon: ImageIcon,
+    color: 'bg-blue-500/10 text-blue-600',
+    view: 'image-studio',
+  },
+  {
+    id: 'g-video',
+    title: 'Video Studio',
+    desc: 'Make a short video from a prompt or a ready-made template, add narration, then download or schedule it.',
+    icon: Video,
+    color: 'bg-teal-500/10 text-teal-600',
+    view: 'video-studio',
+  },
+  {
+    id: 'g-voice',
+    title: 'Voice Studio',
+    desc: 'Turn a script into a voiceover in Hindi, Punjabi or English - or record your own voice and reuse it.',
+    icon: Mic,
+    color: 'bg-emerald-500/10 text-emerald-600',
+    view: 'voice-studio',
+  },
+  {
+    id: 'g-gallery',
+    title: 'Gallery & history',
+    desc: 'Find what you and your team made, rename or download it, and start again from any past creation.',
+    icon: FolderOpen,
+    color: 'bg-amber-500/10 text-amber-600',
+    view: 'media-library',
+  },
+  {
+    id: 'g-publish',
+    title: 'Connect Instagram & Facebook',
+    desc: 'Link your accounts once, then schedule finished videos straight from Video Studio.',
+    icon: Send,
+    color: 'bg-pink-500/10 text-pink-600',
+    view: 'integrations',
+  },
+];
+
+const HOW_TO: { id: string; title: string; steps: string[]; view: ViewType; action: string }[] = [
+  {
+    id: 'h-image',
+    title: 'Make an image for several platforms',
+    steps: [
+      'Open Image Studio and describe the picture. Tap "Improve with AI" for a more detailed prompt, or "Speak" to say it aloud.',
+      'Tick every place you will post it. Each one gets its own exact size.',
+      'Choose a quality, check the credit cost, and press Generate.',
+      'Preview each result, then "Save to gallery" for the ones you want to keep.',
+    ],
+    view: 'image-studio',
+    action: 'Open Image Studio',
+  },
+  {
+    id: 'h-video',
+    title: 'Make a video from a prompt',
+    steps: [
+      'Open Video Studio. Pick a template (for example "Family protection") or write your own idea.',
+      'Edit the words to match your business, then choose a format - reel, square, widescreen or product ad.',
+      'Press Generate. It usually takes a minute or two.',
+      'Add narration or text, then download it or schedule it to your social accounts.',
+    ],
+    view: 'video-studio',
+    action: 'Open Video Studio',
+  },
+  {
+    id: 'h-voice',
+    title: 'Record your own voice',
+    steps: [
+      'Open Voice Studio and choose "Record your own voice".',
+      'Read the sample text aloud for at least 30 seconds, somewhere quiet and close to the microphone.',
+      'Play it back, give the voice a name, and confirm it is your own voice (or you have permission).',
+      'Your voice now appears under "My recorded voices" for any script.',
+    ],
+    view: 'voice-studio',
+    action: 'Open Voice Studio',
+  },
+  {
+    id: 'h-again',
+    title: 'Start again from something you made',
+    steps: [
+      'Open Gallery and choose the "Creation history" tab.',
+      'Find the item - you can search by what you asked for.',
+      'Press "Create again". The right studio opens with the same prompt filled in.',
+      'Change a word or two and generate.',
+    ],
+    view: 'media-library',
+    action: 'Open Gallery',
+  },
+];
+
+const FAQS: { id: string; category: Exclude<Category, 'All'>; question: string; answer: string }[] = [
+  {
+    id: 'faq-1',
+    category: 'Getting started',
+    question: 'What can I do in Lumora?',
+    answer:
+      'Lumora has three studios: Image Studio for pictures, Video Studio for short videos, and Voice Studio for voiceovers. Everything you save goes to your Gallery, and your Dashboard shows your credits and recent work.',
+  },
+  {
+    id: 'faq-2',
+    category: 'Getting started',
+    question: 'Can I type in Hindi or Punjabi?',
+    answer:
+      'Yes. Use the "Speak" button next to a prompt or script box and talk in Hindi, Punjabi or English - Lumora types it for you. You can also type in those languages directly. Voice Studio has Indian-language voices.',
+  },
+  {
+    id: 'faq-3',
+    category: 'Studios',
+    question: 'Why is the text in my image wrong or missing?',
+    answer:
+      'AI image tools often misspell words and numbers. "No text in the image" is ticked by default for that reason - add your name and phone number afterwards in a design tool. If you untick it so the picture includes your wording, check every letter and digit before posting.',
+  },
+  {
+    id: 'faq-4',
+    category: 'Studios',
+    question: 'How long does a video take, and how long can it be?',
+    answer:
+      'Usually a minute or two. AI clips are 4 to 8 seconds long. The format you choose (reel, square, widescreen) sets the shape. You can add narration and text in the editing step afterwards.',
+  },
+  {
+    id: 'faq-5',
+    category: 'Studios',
+    question: 'How do I record my own voice?',
+    answer:
+      'In Voice Studio choose "Record your own voice", read the sample aloud for at least 30 seconds, name it and confirm it is your own voice. It then appears in your voice list. If you see a "not set up" message, voice recording is not switched on for your account yet - contact support.',
+  },
+  {
+    id: 'faq-6',
+    category: 'Credits',
+    question: 'How are credits used?',
+    answer:
+      'Credits are taken when you generate, and the cost is shown before you press the button. An image costs 2 to 50 credits depending on quality. A voiceover costs about 7 credits per minute with Indian-language voices. An AI video costs about 180 credits for a clip of up to 10 seconds, taken when the job starts. If a request fails before it is accepted, no credits are used. The Dashboard shows what you have used by studio.',
+  },
+  {
+    id: 'faq-7',
+    category: 'Credits',
+    question: 'Do I pay again if I make the same video twice?',
+    answer:
+      'No. If you ask Video Studio for the same prompt, length and format again, you get your saved video straight away, free. Use "Make a new version" if you want a fresh one - that uses credits.',
+  },
+  {
+    id: 'faq-8',
+    category: 'Gallery & team',
+    question: 'Where do my creations go?',
+    answer:
+      'Videos and voiceovers are saved automatically. Images are kept only when you press "Save to gallery". Find everything in Gallery, under "My gallery", and see what you asked for under "Creation history".',
+  },
+  {
+    id: 'faq-9',
+    category: 'Gallery & team',
+    question: 'Can my team see what I make?',
+    answer:
+      'Yes - "Team gallery" shows everything saved in your workspace, with who made it. Only the person who made an item (or a workspace admin) can rename or delete it.',
+  },
+  {
+    id: 'faq-10',
+    category: 'Gallery & team',
+    question: 'How do I start again from something I made before?',
+    answer:
+      'Open Gallery, go to "Creation history" (or find it on your Dashboard under "Pick up where you left off") and press "Create again". The studio opens with that prompt filled in. Items saved before this feature was added do not have a saved prompt.',
+  },
+  {
+    id: 'faq-11',
+    category: 'Gallery & team',
+    question: 'How do I post to Instagram or Facebook?',
+    answer:
+      'Connect your accounts in Integrations, then use the schedule option when your video is finished in Video Studio. Scheduled posts show in Calendar.',
+  },
+  {
+    id: 'faq-12',
+    category: 'Safety & privacy',
+    question: 'Can I post AI-made content as it is, for insurance or finance?',
+    answer:
+      'Treat everything as a draft. AI can get faces, numbers and wording wrong. Before posting, check names, phone numbers and licence details, and make sure nothing promises returns or benefits you cannot stand behind. Follow your regulator\'s advertising rules (for example IRDAI for insurance).',
+  },
+  {
+    id: 'faq-13',
+    category: 'Safety & privacy',
+    question: 'Is my content private?',
+    answer:
+      'Your creations are visible only to people in your workspace. Your prompts are sent to the AI providers we use to make the result, under their API terms. We do not use your content to train our own models. Only record a voice that is yours, or that you have permission to use.',
+  },
+];
+
+export const HelpGuideView: React.FC<HelpGuideViewProps> = ({ onNavigate, onStartTour }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState<
-    'All' | 'Brand Brain' | 'AI Models & Credits' | 'Video Studio' | 'Security & Privacy'
-  >('All');
+  const [activeCategory, setActiveCategory] = useState<Category>('All');
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>('faq-1');
+  const [expandedHowTo, setExpandedHowTo] = useState<string | null>('h-image');
 
-  // Video Tutorial Player State
-  const [selectedChapter, setSelectedChapter] = useState(0);
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const videoChapters = [
-    {
-      time: '00:00',
-      seconds: 0,
-      title: 'Platform Overview & Dashboard',
-      description: 'Introduction to Lumora Content OS and navigation layout.',
-      targetView: 'dashboard' as ViewType,
-    },
-    {
-      time: '00:12',
-      seconds: 12.5,
-      title: 'Configuring Brand Brain',
-      description: 'Setting mission, swatches, voice tone, and auto-extractor.',
-      targetView: 'brand-brain' as ViewType,
-    },
-    {
-      time: '00:22',
-      seconds: 21.7,
-      title: 'AI Studio 6-Step Content Wizard',
-      description: 'Generating posts, blogs, and scripts with zero prompt engineering.',
-      targetView: 'ai-studio' as ViewType,
-    },
-    {
-      time: '00:33',
-      seconds: 32.5,
-      title: 'Video Studio & Veo 3.1 AI B-Roll',
-      description: 'Timeline editing, vocal synthesis, and scene composition.',
-      targetView: 'video-studio' as ViewType,
-    },
-    {
-      time: '00:43',
-      seconds: 42.9,
-      title: 'Autonomous AI Agents & Workflows',
-      description: 'Automating SEO, competitor tracking, and social publishing.',
-      targetView: 'ai-agents' as ViewType,
-    },
-  ];
-
-  const seekToChapter = (idx: number) => {
-    setSelectedChapter(idx);
-    const video = videoRef.current;
-    if (video) {
-      video.currentTime = videoChapters[idx].seconds;
-      void video.play();
-    }
-  };
-
-  const quickGuides = [
-    {
-      id: 'g1',
-      title: 'Getting Started with Brand Brain',
-      desc: 'Learn how persistent memory ensures every AI generation matches your voice.',
-      icon: Brain,
-      color: 'bg-blue-500/10 text-blue-600',
-      view: 'brand-brain' as ViewType,
-    },
-    {
-      id: 'g2',
-      title: '6-Step AI Wizard Mastery',
-      desc: 'Create high-converting copy for LinkedIn, X, and Instagram in under 30 seconds.',
-      icon: Sparkles,
-      color: 'bg-amber-500/10 text-amber-600',
-      view: 'ai-studio' as ViewType,
-    },
-    {
-      id: 'g3',
-      title: 'Veo 3.1 Video Studio Guide',
-      desc: 'Build short-form video reels with AI B-roll clips and ElevenLabs voiceovers.',
-      icon: Video,
-      color: 'bg-indigo-500/10 text-indigo-600',
-      view: 'video-studio' as ViewType,
-    },
-    {
-      id: 'g4',
-      title: 'Deploying Autonomous Agents',
-      desc: 'Automate content research, SEO keyword mapping, and distribution pipelines.',
-      icon: Bot,
-      color: 'bg-purple-500/10 text-purple-600',
-      view: 'ai-agents' as ViewType,
-    },
-    {
-      id: 'g5',
-      title: 'Connect Instagram & Facebook Publishing',
-      desc: 'Step-by-step Meta Developer App setup so Video Studio can auto-post to your accounts.',
-      icon: Zap,
-      color: 'bg-pink-500/10 text-pink-600',
-      view: 'integrations' as ViewType,
-    },
-  ];
-
-  const faqs = [
-    {
-      id: 'faq-1',
-      category: 'Brand Brain',
-      question: 'What is Brand Brain and how does it affect AI generations?',
-      answer:
-        'Brand Brain acts as Lumora’s central persistent memory base. Every time you generate content in the AI Studio, Video Studio, or Voice Studio, Lumora automatically injects your business mission, primary tone, target audience interests, and competitor rules into the Gemini 3.6 prompt layer.',
-    },
-    {
-      id: 'faq-2',
-      category: 'Brand Brain',
-      question: 'Can I auto-extract brand guidelines from my website URL?',
-      answer:
-        'Yes! In the Brand Brain view, paste your website URL into the AI Website Extractor and click "Auto-Extract". Our research agent scrapes your landing page to extract logos, primary swatches, value propositions, and writing style automatically.',
-    },
-    {
-      id: 'faq-3',
-      category: 'AI Models & Credits',
-      question: 'Which AI models power Lumora Content OS?',
-      answer:
-        'Lumora leverages Google Gemini 3.6 Flash for rapid multi-turn text generation, Veo 3.1 for cinematic AI video B-roll clips, Imagen 3 for 4K visual assets, and ElevenLabs for natural vocal cloning and audio synthesis.',
-    },
-    {
-      id: 'faq-4',
-      category: 'AI Models & Credits',
-      question: 'How are AI Generation Credits calculated?',
-      answer:
-        'A text generation uses 1 credit. An image uses 2 to 50 credits depending on the quality tier (shown before you generate). Voiceover uses about 7 credits per minute with Sarvam Indian-language voices. AI video and talking-avatar clips use about 180 credits per 10 seconds, and are charged when the job is submitted.',
-    },
-    {
-      id: 'faq-5',
-      category: 'Video Studio',
-      question: 'How do I add voiceovers and AI B-roll to my videos?',
-      answer:
-        'Open Video Studio, select a scene in the Interactive Scene Timeline, and click "Generate AI B-Roll Clip" or "Synthesize Voiceover". You can select from 8 pre-cloned voice styles or clone your own voice in Voice Studio.',
-    },
-    {
-      id: 'faq-6',
-      category: 'Security & Privacy',
-      question: 'Is my brand data kept confidential and secure?',
-      answer:
-        'Absolutely. Your Brand Brain memory and generated content are stored in enterprise-grade isolated containers and are never used to train public foundational AI models.',
-    },
-  ];
-
-  const filteredFaqs = faqs.filter((faq) => {
-    const matchesCategory =
-      activeCategory === 'All' || faq.category === activeCategory;
+  const query = searchQuery.trim().toLowerCase();
+  const filteredFaqs = FAQS.filter((faq) => {
+    const matchesCategory = activeCategory === 'All' || faq.category === activeCategory;
     const matchesSearch =
-      faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
+      !query || faq.question.toLowerCase().includes(query) || faq.answer.toLowerCase().includes(query);
     return matchesCategory && matchesSearch;
   });
+  const filteredHowTo = HOW_TO.filter(
+    (guide) =>
+      !query ||
+      guide.title.toLowerCase().includes(query) ||
+      guide.steps.some((step) => step.toLowerCase().includes(query)),
+  );
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16 animate-in fade-in duration-200">
-      {/* Top Banner & Search */}
+      {/* Top banner & search */}
       <div className="p-6 md:p-8 rounded-3xl bg-slate-900 text-white border border-slate-800 shadow-xl space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1 max-w-xl">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold">
-              <LifeBuoy className="w-3.5 h-3.5 text-blue-400" /> Platform Knowledge & Video Tutorial
+              <LifeBuoy className="w-3.5 h-3.5 text-blue-400" /> Help Center
             </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Help Center & Learning Hub
-            </h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">How can we help?</h1>
             <p className="text-xs text-slate-300">
-              Master Lumora Content OS with interactive video walkthroughs, step-by-step documentation, and FAQs.
+              Short guides for each studio, and answers to the questions people ask most.
             </p>
           </div>
 
@@ -204,182 +255,110 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
             onClick={onStartTour}
             className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-blue-500/25 transition-all self-start md:self-auto active:scale-95"
           >
-            <Compass className="w-4 h-4" /> Take Guided Product Tour
+            <Compass className="w-4 h-4" /> Take the quick tour
           </button>
         </div>
 
-        {/* FAQ Search Input */}
         <div className="relative max-w-2xl">
           <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search help topics, tutorials, or FAQs (e.g. Brand Brain, Veo B-Roll, Credits)..."
+            placeholder="Search help (for example credits, voice, Instagram, gallery)..."
             className="w-full text-xs pl-11 pr-4 py-3 rounded-2xl bg-slate-800/90 border border-slate-700 text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       </div>
 
-      {/* YOUTUBE PLATFORM VIDEO TUTORIAL PLAYER SECTION */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400">
-              <PlayCircle className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-                Official Platform Video Walkthrough
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Narrated video tour of the dashboard, Brand Brain, AI Studio, Video Studio, and AI Agents.
-              </p>
-            </div>
-          </div>
-
-          <span className="text-[11px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg self-start sm:self-auto">
-            720p HD • 1m 11s
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Video Canvas / Player */}
-          <div className="lg:col-span-2 relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 aspect-video group">
-            <video
-              ref={videoRef}
-              src="/videos/lumora-tutorial.mp4"
-              controls
-              preload="metadata"
-              className="absolute inset-0 w-full h-full object-cover"
-              onTimeUpdate={(e) => {
-                const t = e.currentTarget.currentTime;
-                let idx = 0;
-                videoChapters.forEach((ch, i) => {
-                  if (t >= ch.seconds) idx = i;
-                });
-                setSelectedChapter(idx);
-              }}
-            />
-
-            {/* Top Controls Overlay */}
-            <div className="absolute top-3 left-3 right-3 z-10 flex justify-between items-center text-white pointer-events-none">
-              <span className="text-xs font-bold bg-red-600 px-2.5 py-0.5 rounded-full shadow-xs flex items-center gap-1">
-                <Play className="w-3 h-3 fill-current" /> PLATFORM WALKTHROUGH
-              </span>
-              <span className="text-xs font-mono bg-black/60 backdrop-blur-md px-2 py-0.5 rounded">
-                Chapter {selectedChapter + 1}: {videoChapters[selectedChapter].time}
-              </span>
-            </div>
-          </div>
-
-          {/* Interactive Video Chapters List */}
-          <div className="space-y-3 flex flex-col justify-between">
-            <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-              Video Chapters
-            </h3>
-
-            <div className="space-y-2 flex-1 overflow-y-auto max-h-72 pr-1 custom-scroll">
-              {videoChapters.map((ch, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => seekToChapter(idx)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                    selectedChapter === idx
-                      ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-900/60 shadow-xs'
-                      : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono font-bold text-red-600 dark:text-red-400">
-                      {ch.time}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onNavigate(ch.targetView);
-                      }}
-                      className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-                    >
-                      Try View <ExternalLink className="w-2.5 h-2.5" />
-                    </button>
-                  </div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white mt-0.5">
-                    {ch.title}
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                    {ch.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <a
-              href="/videos/lumora-tutorial.mp4"
-              target="_blank"
-              rel="noreferrer"
-              className="w-full py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <span>Open in New Tab</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* QUICK START GUIDES GRID */}
+      {/* Quick start */}
       <div className="space-y-4">
-        <h2 className="text-base font-extrabold text-slate-900 dark:text-white">
-          Quick Start Modules
-        </h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickGuides.map((guide) => {
+        <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Start here</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {QUICK_GUIDES.map((guide) => {
             const Icon = guide.icon;
             return (
-              <div
+              <button
                 key={guide.id}
+                type="button"
                 onClick={() => onNavigate(guide.view)}
-                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/50 shadow-xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-3 group"
+                className="text-left p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500/50 shadow-xs hover:shadow-md transition-all flex flex-col gap-3 group"
               >
-                <div className="space-y-3">
-                  <div className={`p-3 rounded-xl w-fit ${guide.color}`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {guide.title}
-                  </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {guide.desc}
-                  </p>
+                <div className={`p-3 rounded-xl w-fit ${guide.color}`}>
+                  <Icon className="w-5 h-5" />
                 </div>
-
-                <div className="pt-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                  <span>Open Module</span> →
-                </div>
-              </div>
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  {guide.title}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{guide.desc}</p>
+                <span className="mt-auto text-[11px] font-bold text-blue-600 dark:text-blue-400">Open →</span>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* FREQUENTLY ASKED QUESTIONS (FAQ) */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">
-              Frequently Asked Questions
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Clear answers to common platform, AI model, and usage questions.
-            </p>
+      {/* Step-by-step guides */}
+      {filteredHowTo.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-base font-extrabold text-slate-900 dark:text-white">Step by step</h2>
+          <div className="space-y-3">
+            {filteredHowTo.map((guide) => {
+              const isOpen = expandedHowTo === guide.id;
+              return (
+                <div
+                  key={guide.id}
+                  className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setExpandedHowTo(isOpen ? null : guide.id)}
+                    className="w-full p-4 text-left flex items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
+                  >
+                    <span className="text-xs font-bold text-slate-900 dark:text-white">{guide.title}</span>
+                    {isOpen ? (
+                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                    )}
+                  </button>
+                  {isOpen && (
+                    <div className="px-4 pb-4 pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+                      <ol className="space-y-2">
+                        {guide.steps.map((step, index) => (
+                          <li key={step} className="flex gap-3 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                            <span className="shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold flex items-center justify-center">
+                              {index + 1}
+                            </span>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                      <button
+                        type="button"
+                        onClick={() => onNavigate(guide.view)}
+                        className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {guide.action} →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </div>
+      )}
 
-          {/* Category Tabs */}
+      {/* FAQ */}
+      <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-900 dark:text-white">Frequently asked questions</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Quick answers about the studios, credits and your Gallery.</p>
+          </div>
           <div className="flex flex-wrap gap-1.5">
-            {(
-              ['All', 'Brand Brain', 'AI Models & Credits', 'Video Studio', 'Security & Privacy'] as const
-            ).map((cat) => (
+            {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
@@ -395,11 +374,10 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
           </div>
         </div>
 
-        {/* FAQ Accordion List */}
         <div className="space-y-3">
           {filteredFaqs.length === 0 ? (
             <div className="p-8 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
-              No FAQs matched your search query. Try another keyword or take the guided tour!
+              Nothing matched that search. Try another word, or take the quick tour.
             </div>
           ) : (
             filteredFaqs.map((faq) => {
@@ -413,19 +391,16 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
                     onClick={() => setExpandedFaqId(isExpanded ? null : faq.id)}
                     className="w-full p-4 text-left flex items-center justify-between gap-3 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-colors"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold">
+                    <div className="flex flex-wrap items-center gap-3 min-w-0">
+                      <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold shrink-0">
                         {faq.category}
                       </span>
-                      <span className="text-xs font-bold text-slate-900 dark:text-white">
-                        {faq.question}
-                      </span>
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">{faq.question}</span>
                     </div>
-
                     {isExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-slate-400" />
+                      <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />
                     ) : (
-                      <ChevronDown className="w-4 h-4 text-slate-400" />
+                      <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
                     )}
                   </button>
 
@@ -438,25 +413,6 @@ export const HelpGuideView: React.FC<HelpGuideViewProps> = ({
               );
             })
           )}
-        </div>
-      </div>
-
-      {/* COMMUNITY SUPPORT & CONTACT FOOTER */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <h3 className="text-base font-bold">Need personalized assistance?</h3>
-          <p className="text-xs text-blue-100">
-            Join our 24/7 Creator Community on Discord or submit a direct ticket to our AI engineers.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => alert('Support Ticket Dialog Opened!')}
-            className="px-4 py-2.5 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-bold text-xs flex items-center gap-2 shadow-md transition-all active:scale-95"
-          >
-            <MessageSquare className="w-4 h-4" /> Live Support Ticket
-          </button>
         </div>
       </div>
     </div>

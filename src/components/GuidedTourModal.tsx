@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import {
   ArrowRight,
-  Bot,
-  Brain,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  FolderOpen,
+  Image as ImageIcon,
+  Mic,
   PlayCircle,
   Sparkles,
   Video,
   X,
-  Zap,
 } from 'lucide-react';
 import { ViewType } from '../types';
 
@@ -34,17 +34,17 @@ export const GuidedTourModal: React.FC<GuidedTourModalProps> = ({
   const steps = [
     {
       id: 'step-1',
-      title: 'Welcome to Lumora Content OS',
-      badge: 'Step 1 of 5 • Introduction',
+      title: 'Welcome to Lumora',
+      badge: 'Step 1 of 5 • Your dashboard',
       icon: Sparkles,
       iconBg: 'bg-blue-500/10 text-blue-500',
       description:
-        'Lumora is your all-in-one AI Content Operating System. Powered by Gemini 3.6 Flash and specialized AI engines, it transforms strategy into multi-channel campaigns with persistent brand memory.',
-      highlightTitle: 'Core Value Proposition',
+        'Lumora helps you create images, videos and voiceovers for your business, in English, Hindi and Punjabi. Your dashboard shows your credits, what you have made, and a Create button for each studio.',
+      highlightTitle: 'On your dashboard',
       highlights: [
-        'Persistent Brand Brain context across all generations',
-        'Zero-prompt 6-step AI Studio Content Wizard',
-        'Veo 3.1 AI B-Roll & ElevenLabs Voice Studio',
+        'Credits remaining and credits used, for the last 7, 30 or 90 days',
+        'Which studio you use most',
+        'Your recent creations, each with a "Create again" button',
       ],
       targetView: 'dashboard' as ViewType,
       image:
@@ -52,78 +52,77 @@ export const GuidedTourModal: React.FC<GuidedTourModalProps> = ({
     },
     {
       id: 'step-2',
-      title: 'Brand Brain Memory Base',
-      badge: 'Step 2 of 5 • Brand Knowledge',
-      icon: Brain,
-      iconBg: 'bg-teal-500/10 text-teal-500',
+      title: 'Image Studio',
+      badge: 'Step 2 of 5 • Pictures for every platform',
+      icon: ImageIcon,
+      iconBg: 'bg-blue-500/10 text-blue-500',
       description:
-        'Set up your Brand Brain once. It stores your company mission, voice tone, color swatches, logo assets, and target audience personas to keep all generated content 100% on-brand.',
-      highlightTitle: 'Key Features in Brand Brain',
+        'Describe the picture you want, tick where you will post it, and get the right size for each place. Preview the result, then save the ones you like to your gallery.',
+      highlightTitle: 'Good to know',
       highlights: [
-        'AI Website Extractor to auto-import guidelines',
-        'Custom tone presets (Professional, Witty, Authoritative)',
-        'Audience interest tagging & key competitor tracking',
+        'Pick several platforms at once: Facebook, Instagram, YouTube, LinkedIn, WhatsApp',
+        'Use "Improve with AI" to turn a short idea into a detailed prompt',
+        'Type by voice with the Speak button - Hindi and Punjabi work too',
       ],
-      targetView: 'brand-brain' as ViewType,
-      image:
-        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
-    },
-    {
-      id: 'step-3',
-      title: 'Multi-Model AI Content Wizard',
-      badge: 'Step 3 of 5 • Copy & Media Studio',
-      icon: Zap,
-      iconBg: 'bg-amber-500/10 text-amber-500',
-      description:
-        'Generate blogs, social posts, newsletters, and ad scripts with zero prompt engineering required. Select your goal, audience, and platform format.',
-      highlightTitle: 'AI Studio Capabilities',
-      highlights: [
-        '6-step guided wizard for structured outputs',
-        'Model selector (Gemini 3.6, Claude 3.5, GPT-4o)',
-        '1-Click schedule to Content Calendar',
-      ],
-      targetView: 'ai-studio' as ViewType,
+      targetView: 'image-studio' as ViewType,
       image:
         'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80',
     },
     {
-      id: 'step-4',
-      title: 'Video Studio & Veo 3.1 AI B-Roll',
-      badge: 'Step 4 of 5 • Video Production',
+      id: 'step-3',
+      title: 'Video Studio',
+      badge: 'Step 3 of 5 • Short videos from a prompt',
       icon: Video,
       iconBg: 'bg-indigo-500/10 text-indigo-500',
       description:
-        'Build cinematic product teasers and reels with interactive scene timelines, voiceover synthesis, AI-generated B-roll clips, and captions.',
-      highlightTitle: 'Video Studio Features',
+        'Write what you want to see, or start from a ready-made template, and Lumora makes a short video. Add narration and text, then download it or schedule it to your social accounts.',
+      highlightTitle: 'Good to know',
       highlights: [
-        'Veo 3.1 cinematic B-roll clip generator',
-        'ElevenLabs vocal cloning & music library',
-        'Multi-track timeline editor (Video, Audio, Captions)',
+        'Templates for insurance, festivals, local business, education, health and real estate',
+        'Asking for the same video again reuses your saved one - free',
+        'Choose a format: reel, square post, widescreen or product ad',
       ],
       targetView: 'video-studio' as ViewType,
       image:
         'https://images.unsplash.com/photo-1578632767115-351597cf2477?w=800&auto=format&fit=crop&q=80',
     },
     {
-      id: 'step-5',
-      title: 'AI Agents Fleet & Video Tutorial',
-      badge: 'Step 5 of 5 • Autopilot & Help',
-      icon: Bot,
-      iconBg: 'bg-purple-500/10 text-purple-500',
+      id: 'step-4',
+      title: 'Voice Studio',
+      badge: 'Step 4 of 5 • Voiceovers',
+      icon: Mic,
+      iconBg: 'bg-emerald-500/10 text-emerald-500',
       description:
-        'Deploy 10 autonomous agents for SEO research, competitor tracking, and auto-publishing. Need extra help? Watch our full platform YouTube video tutorial anytime!',
-      highlightTitle: 'Next Steps',
+        'Turn a script into a voiceover. Pick Indian-language voices, preview them for free, or record your own voice once and use it again and again.',
+      highlightTitle: 'Good to know',
       highlights: [
-        'Explore 10 pre-built autonomous agents',
-        'Watch the YouTube platform video walkthrough',
-        'Browse our interactive FAQ & help center',
+        'Hindi, Punjabi and English voices',
+        'Record your own voice and give it a name - it appears in your voice list',
+        'Say your script into the mic instead of typing it',
       ],
-      targetView: 'help' as ViewType,
+      targetView: 'voice-studio' as ViewType,
       image:
         'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
     },
+    {
+      id: 'step-5',
+      title: 'Gallery & history',
+      badge: 'Step 5 of 5 • Everything you have made',
+      icon: FolderOpen,
+      iconBg: 'bg-teal-500/10 text-teal-500',
+      description:
+        'The Gallery keeps what you and your team have saved. Rename things, download them, and start again from any past creation.',
+      highlightTitle: 'Three tabs',
+      highlights: [
+        'My gallery - your own items',
+        'Team gallery - everything saved in your workspace',
+        'Creation history - what you asked for, with "Create again"',
+      ],
+      targetView: 'media-library' as ViewType,
+      image:
+        'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&auto=format&fit=crop&q=80',
+    },
   ];
-
   const current = steps[currentStep];
   const StepIcon = current.icon;
 
@@ -231,9 +230,9 @@ export const GuidedTourModal: React.FC<GuidedTourModalProps> = ({
                   onClose();
                   onOpenVideoTutorial();
                 }}
-                className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all"
               >
-                <PlayCircle className="w-4 h-4" /> Watch Video Tutorial
+                <PlayCircle className="w-4 h-4" /> Open Help Center
               </button>
             )}
 
