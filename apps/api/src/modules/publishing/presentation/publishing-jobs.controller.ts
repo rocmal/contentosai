@@ -1,8 +1,19 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { PublishingJobsService } from '../application/services/publishing-jobs.service';
 import { CreatePublishingJobDto } from '../application/dto/create-publishing-job.dto';
@@ -20,17 +31,24 @@ export class PublishingJobsController {
   @ApiOperation({ summary: 'Create a publishing job' })
   async create(
     @Body() dto: CreatePublishingJobDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PublishingJobResponseDto> {
-    const publishingJob = await this.publishingJobsService.create(dto, userId);
+    if (!user.organizationId || !user.workspaceId) {
+      throw new BadRequestException('An active organization and workspace are required');
+    }
+    // Always the caller's own workspace, whatever the request body says.
+    const publishingJob = await this.publishingJobsService.create(
+      { ...dto, organizationId: user.organizationId, workspaceId: user.workspaceId },
+      user.id,
+    );
     return new PublishingJobResponseDto(publishingJob);
   }
 
   @Get()
   @RequirePermissions('publishing.read')
-  @ApiOperation({ summary: 'List publishing jobs' })
-  async findAll(@Query() query: PaginationQueryDto) {
-    const result = await this.publishingJobsService.findAll({
+  @ApiOperation({ summary: "List your workspace's publishing jobs" })
+  async findAll(@CurrentUser() user: AuthenticatedUser, @Query() query: PaginationQueryDto) {
+    const result = await this.publishingJobsService.listForWorkspace(user, {
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
@@ -42,11 +60,23 @@ export class PublishingJobsController {
     };
   }
 
+  @Get('summary')
+  @RequirePermissions('publishing.read')
+  @ApiOperation({
+    summary: 'Exact counts of scheduled, published and failed posts in your workspace',
+  })
+  summary(@CurrentUser() user: AuthenticatedUser) {
+    return this.publishingJobsService.summarize(user);
+  }
+
   @Get(':id')
   @RequirePermissions('publishing.read')
   @ApiOperation({ summary: 'Get a publishing job by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<PublishingJobResponseDto> {
-    const publishingJob = await this.publishingJobsService.findById(id);
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PublishingJobResponseDto> {
+    const publishingJob = await this.publishingJobsService.findForActor(id, user);
     return new PublishingJobResponseDto(publishingJob);
   }
 
@@ -56,9 +86,9 @@ export class PublishingJobsController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdatePublishingJobDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<PublishingJobResponseDto> {
-    const publishingJob = await this.publishingJobsService.update(id, dto, userId);
+    const publishingJob = await this.publishingJobsService.update(id, dto, user);
     return new PublishingJobResponseDto(publishingJob);
   }
 
@@ -67,9 +97,9 @@ export class PublishingJobsController {
   @ApiOperation({ summary: 'Delete a publishing job' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.publishingJobsService.remove(id, userId);
+    await this.publishingJobsService.remove(id, user);
     return { deleted: true };
   }
 }

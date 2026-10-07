@@ -6,7 +6,7 @@ import { MediaAssetsService } from '@modules/media/application/services/media-as
 import { MediaAssetType } from '@modules/media/domain/entities/media-asset.entity';
 import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
-import { voiceCreditsPerMinute } from '@modules/credits/credits.constants';
+import { estimateVoiceMinutes, voiceCreditsPerMinute } from '@modules/credits/credits.constants';
 import { CreditTransactionReason } from '@modules/credits/domain/entities/credit-transaction.entity';
 import { VoiceProviderFactory } from '../../infrastructure/voice-provider.factory';
 import { VoiceGenerationResult, VoiceInfo } from '../../domain/interfaces/voice-provider.interface';
@@ -15,18 +15,6 @@ import { GenerateSpeechDto } from '../dto/generate-speech.dto';
 export interface VoiceProviderStatus {
   name: string;
   available: boolean;
-}
-
-const WORDS_PER_MINUTE = 150;
-
-/** VoiceGenerationResult carries no duration - the provider only returns
- * audio bytes, and parsing exact duration back out of arbitrary MP3/WAV
- * bytes isn't worth the complexity here. Estimate from input text length at
- * a typical speaking pace instead; "~1 minute" is already the precision the
- * landing page promises. */
-function estimateVoiceCredits(text: string): number {
-  const words = text.trim().split(/\s+/).filter(Boolean).length;
-  return Math.max(1, Math.ceil(words / WORDS_PER_MINUTE));
 }
 
 @Injectable()
@@ -66,7 +54,7 @@ export class VoiceService {
     }
 
     const canCharge = Boolean(user.organizationId && user.workspaceId);
-    const cost = estimateVoiceCredits(dto.text) * voiceCreditsPerMinute(provider.name);
+    const cost = estimateVoiceMinutes(dto.text) * voiceCreditsPerMinute(provider.name);
     if (canCharge) {
       await this.creditsService.reserve({
         organizationId: user.organizationId!,

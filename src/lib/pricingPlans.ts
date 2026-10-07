@@ -45,9 +45,9 @@ export const PRICING_PLANS: PricingPlan[] = [
     seatLimit: 1,
     popular: false,
     features: [
-      'Image, Voice, Video & Character Studio',
-      'AI Studio, AI Agents & Co-pilot',
-      'Brand Brain with content rules',
+      'Image, Video & Voice Studio',
+      'Gallery with search and "Create again"',
+      'Hindi, Punjabi & English voice and typing',
       'Schedule to Facebook, Instagram, LinkedIn & YouTube',
       'Community support',
     ],

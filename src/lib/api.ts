@@ -1051,6 +1051,16 @@ export interface CreditUsageSummary {
   byReason: { reason: string; credits: number; count: number }[];
 }
 
+/** What voice and video cost, from the same tables the server charges with. */
+export interface CreditRates {
+  voice: { perMinute: Record<string, number>; wordsPerMinute: number };
+  video: { per10Seconds: Record<string, number> };
+}
+
+export function getCreditRates(): Promise<CreditRates> {
+  return apiRequest<CreditRates>('/credits/rates');
+}
+
 export function getMyCreditUsage(days = 30): Promise<CreditUsageSummary> {
   return apiRequest<CreditUsageSummary>(`/credits/usage?days=${days}`);
 }
@@ -1694,6 +1704,11 @@ export async function schedulePost(input: {
 export async function listScheduledPosts(): Promise<PublishingJob[]> {
   const result = await apiRequest<{ items: PublishingJob[] }>('/publishing/jobs?limit=50');
   return result.items;
+}
+
+/** Exact counts of the workspace's posts, unlike listScheduledPosts which only returns the newest 50. */
+export function getPublishingSummary(): Promise<{ scheduled: number; published: number; failed: number }> {
+  return apiRequest('/publishing/jobs/summary');
 }
 
 export function cancelScheduledPost(id: string): Promise<{ deleted: boolean }> {

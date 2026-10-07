@@ -58,7 +58,8 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 - **Hidden on purpose, code and routes kept** (still reachable by typing the hash, e.g. `#ai-studio`): AI Studio, Brand Brain,
   Projects, Campaigns, Character Studio (also removed from the mobile Studio chip row and Profile menu). To bring one back, add
   its one-line entry to `mainNav` / `creationNav` in Sidebar.tsx.
-- Landing page, pricing plans and footer still advertise Character Studio, Brand Brain and AI Agents. Not yet reworded.
+- Landing page, pricing plans, footer and FAQ were reworded to the real product (Image, Video, Voice, Gallery, Team, Calendar,
+  Dashboard). Keep them in step with this list when navigation changes.
 
 ### Dashboard (src/components/views/DashboardView.tsx)
 
@@ -68,7 +69,9 @@ published); "Pick up where you left off" (last 8 generated items with Create aga
 **Your team** seats card shown only to people with `organizations.manage-members` - Invite a teammate when seats are left
 (opens the Team invite form via `src/lib/teamInvite.ts`), Upgrade for more seats when none are.
 - Data: `GET /credits/usage?days=` (spend per generation type, net of refunds), `/media/library`, `/media/my` counts,
-  publishing jobs (published count only sees the newest 50 jobs).
+  `GET /publishing/jobs/summary` (exact scheduled/published/failed counts for the workspace).
+- Publishing jobs were not workspace-scoped either (list/get/update/delete) - fixed 2026-10-07 the same way as media; the
+  background worker uses `updateAsSystem`.
 - `/users/me` now returns `permissions` so the UI can hide actions.
 
 ### Gallery (src/components/views/MediaLibraryView.tsx)
@@ -92,6 +95,8 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   the saved clip free (`cacheKey`, `fresh` forces a new one); result and edit previews no longer loop.
 - **Voice Studio:** Sarvam for Indian languages; record-your-own-voice (custom voices, ElevenLabs instant clone, needs
   ELEVENLABS_API_KEY); mic dictation on script boxes.
+- Voice and video buttons show the credit cost before generating (`GET /credits/rates`, `src/lib/creditCost.ts`); the server charges
+  from the same tables. Voice is charged per whole minute (150 words each), video per 10 seconds.
 - Credit prices target 50% margin: see `apps/api/src/modules/credits/credits.constants.ts` (image 2/13/50, voice 7 per minute with
   Sarvam, video 180 per 10 s).
 
@@ -123,10 +128,7 @@ Needs the owner:
 - Lawyer review of the landing page "Who owns the content" answer.
 
 Code still to do:
-- Reword landing page, pricing plan list and footer that still sell Character Studio, Brand Brain and AI Agents.
 - Real invite-by-email (pending invitations). Today the Team page can only add someone who already has an account.
-- Show the credit cost before voice, video and avatar generation.
-- Count endpoint for published posts (dashboard figure caps at 50).
+- Show the credit cost on the Video Studio narration step (it reserves voice credits) and on avatars when Character Studio returns.
 - Record unsaved Image Studio generations so history is complete.
-- About 16 video files and 5 credits/media files in the working copy carry formatting-only changes from a prettier run; they are
-  uncommitted noise and can be restored with `git checkout -- <paths>`.
+- Other modules that take ids without checking workspace ownership have not been audited (only media and publishing were fixed).

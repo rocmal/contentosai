@@ -25,7 +25,7 @@ import {
   getMySubscription,
   LibraryItem,
   listLibrary,
-  listScheduledPosts,
+  getPublishingSummary,
   listTeamMembers,
   MediaAssetType,
 } from '../../lib/api';
@@ -222,8 +222,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         setCounts(next);
       })
       .catch(() => !cancelled && setCounts({ image: 0, voice: 0, video: 0 }));
-    listScheduledPosts()
-      .then((jobs) => !cancelled && setPublishedCount(jobs.filter((j) => j.status === 'published').length))
+    getPublishingSummary()
+      .then((summary) => !cancelled && setPublishedCount(summary.published))
       .catch(() => !cancelled && setPublishedCount(0));
     listLibrary({ scope: 'mine', generatedOnly: true, limit: 8 })
       .then((page) => !cancelled && setRecent(page.items))

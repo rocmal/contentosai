@@ -14,7 +14,13 @@ import {
   CreditUsageByReason,
   ICreditTransactionsRepository,
 } from '../../domain/repositories/credit-transaction-repository.interface';
-import { DEFAULT_PLAN, PLAN_CREDIT_ALLOTMENTS } from '../../credits.constants';
+import {
+  DEFAULT_PLAN,
+  PLAN_CREDIT_ALLOTMENTS,
+  VIDEO_CREDITS_PER_10_SECONDS,
+  VOICE_CREDITS_PER_MINUTE,
+  VOICE_WORDS_PER_MINUTE,
+} from '../../credits.constants';
 
 /** 402 Payment Required - the workspace's credit balance can't cover this
  * generation. Thrown before any paid provider is called, never after. */
@@ -53,6 +59,17 @@ export class CreditsService {
       throw new NotFoundException(`No credit wallet exists for workspace "${workspaceId}" yet`);
     }
     return wallet;
+  }
+
+  /** What things cost, so the app can show a price before the button is pressed. Same tables the charge uses. */
+  getRates(): {
+    voice: { perMinute: Record<string, number>; wordsPerMinute: number };
+    video: { per10Seconds: Record<string, number> };
+  } {
+    return {
+      voice: { perMinute: { ...VOICE_CREDITS_PER_MINUTE }, wordsPerMinute: VOICE_WORDS_PER_MINUTE },
+      video: { per10Seconds: { ...VIDEO_CREDITS_PER_10_SECONDS } },
+    };
   }
 
   /** What the workspace spent over the last days days, per kind of generation. */

@@ -76,7 +76,7 @@ export class SocialPublishProcessor extends WorkerHost {
         credentials,
       });
 
-      await this.publishingJobsService.update(publishingJobId, {
+      await this.publishingJobsService.updateAsSystem(publishingJobId, {
         status: PublishingJobStatus.PUBLISHED,
         publishedAt: new Date().toISOString(),
         externalPostId: result.externalPostId,
@@ -85,7 +85,7 @@ export class SocialPublishProcessor extends WorkerHost {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown publishing error';
       this.logger.error(`Publishing job ${publishingJobId} failed: ${message}`);
-      await this.publishingJobsService.update(publishingJobId, {
+      await this.publishingJobsService.updateAsSystem(publishingJobId, {
         status: PublishingJobStatus.FAILED,
       });
       throw error;

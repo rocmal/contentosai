@@ -77,6 +77,15 @@ function rateFor(table: Record<string, number>, provider?: string): number {
   return (provider && table[provider]) || table.default;
 }
 
+/** Typical speaking pace, used to estimate a clip's length from its text. */
+export const VOICE_WORDS_PER_MINUTE = 150;
+
+/** Whole minutes of speech a script will take (at least 1) - voice is charged per minute. */
+export function estimateVoiceMinutes(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.ceil(words / VOICE_WORDS_PER_MINUTE));
+}
+
 export const voiceCreditsPerMinute = (provider?: string) =>
   rateFor(VOICE_CREDITS_PER_MINUTE, provider);
 export const videoCreditsPer10Seconds = (provider?: string) =>

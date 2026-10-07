@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   BarChart3,
-  Bot,
-  Brain,
   Calendar,
   Check,
+  FolderOpen,
   Image,
   Mic,
-  UserRound,
+  Users,
   Video,
   X,
   type LucideIcon,
@@ -34,14 +33,13 @@ const NAV_LINKS = [
 ];
 
 const FEATURES: { icon: LucideIcon; tint: 'blue' | 'indigo' | 'teal'; title: string; desc: string }[] = [
-  { icon: Image, tint: 'blue', title: 'Image Studio', desc: 'Generate on-brand product shots, ad creatives, and social graphics in seconds, then upscale, remove backgrounds, or magic-resize for any platform.' },
-  { icon: Mic, tint: 'indigo', title: 'Voice Studio', desc: 'Clone a voice once and generate narration in dozens of languages and tones, or pick from a library of studio-grade voices.' },
-  { icon: UserRound, tint: 'teal', title: 'Character Studio', desc: 'Turn a single photo and a script into a talking avatar with accurate lip-sync. No camera, actor, or studio required.' },
-  { icon: Video, tint: 'blue', title: 'Video Studio', desc: 'Script, storyboard, and edit video end-to-end with AI B-roll, auto captions, and voiceover in one timeline.' },
-  { icon: Brain, tint: 'indigo', title: 'Brand Brain', desc: 'Teach the platform your brand once: voice, colors, tone, positioning. Every generation stays on-brand automatically.' },
-  { icon: Bot, tint: 'teal', title: 'AI Agents & Automation', desc: 'Specialised agents research topics, plan campaigns, draft copy, repurpose one piece of content into many platform-ready versions, and review drafts against your brand rules.' },
-  { icon: Calendar, tint: 'blue', title: 'Calendar & Publishing', desc: 'Plan your content and schedule it to Facebook, Instagram, LinkedIn and YouTube from one calendar.' },
-  { icon: BarChart3, tint: 'blue', title: 'Analytics', desc: 'See what you have created, scheduled and published, and how many credits you are using, in one dashboard.' },
+  { icon: Image, tint: 'blue', title: 'Image Studio', desc: 'Describe a picture and get it in the exact size for Facebook, Instagram, YouTube, LinkedIn and WhatsApp. Preview the results and save the ones you like. Type your idea or just say it, in English, Hindi or Punjabi.' },
+  { icon: Video, tint: 'teal', title: 'Video Studio', desc: 'Make a short video from a prompt or a ready-made template, add narration and text, then download it or schedule it. Ask for the same video again and your saved one comes back free.' },
+  { icon: Mic, tint: 'indigo', title: 'Voice Studio', desc: 'Turn a script into a voiceover in Hindi, Punjabi or English, or record your own voice once and reuse it for every script.' },
+  { icon: FolderOpen, tint: 'blue', title: 'Gallery & history', desc: 'Everything you and your team make in one place. Search it, rename it, download it, and start again from any past creation in one click.' },
+  { icon: Users, tint: 'indigo', title: 'Team', desc: 'Invite teammates to your workspace so they can create and share in the same gallery. Seats depend on your plan.' },
+  { icon: Calendar, tint: 'teal', title: 'Calendar & Publishing', desc: 'Plan your content and schedule it to Facebook, Instagram, LinkedIn and YouTube from one calendar.' },
+  { icon: BarChart3, tint: 'blue', title: 'Dashboard', desc: 'See what you have created and published, which studio you use most, and where your credits go, at a glance.' },
 ];
 
 const TINT_CLASSES: Record<'blue' | 'indigo' | 'teal', { bg: string; border: string; stroke: string }> = {
@@ -51,27 +49,27 @@ const TINT_CLASSES: Record<'blue' | 'indigo' | 'teal', { bg: string; border: str
 };
 
 const STEPS = [
-  { n: '01', title: 'Set up Brand Brain', desc: 'Add your brand voice, colors, and audience once.' },
-  { n: '02', title: 'Generate', desc: 'Create images, voice, video, or talking avatars from a prompt or script.' },
-  { n: '03', title: 'Review & refine', desc: 'Edit drafts and run them through the Compliance Reviewer before anything goes out.' },
+  { n: '01', title: 'Pick a studio', desc: 'Choose Image, Video or Voice Studio and describe what you want, or start from a template.' },
+  { n: '02', title: 'Generate', desc: 'Create an image, a short video or a voiceover from your prompt or script.' },
+  { n: '03', title: 'Review & refine', desc: 'Check the result and fix the wording. AI can make mistakes, so check names, numbers and claims before anything goes out.' },
   { n: '04', title: 'Schedule & publish', desc: 'Schedule to your connected Facebook, Instagram, LinkedIn and YouTube accounts.' },
 ];
 
-const AI_MODELS = ['Gemini', 'GPT-4o', 'Claude', 'Flux / Stable Diffusion', 'ElevenLabs'];
+const AI_MODELS = ['Google Veo', 'Google Gemini', 'OpenAI', 'Sarvam AI'];
 const PUBLISH_CHANNELS = ['Facebook', 'Instagram', 'LinkedIn', 'YouTube'];
 
 const COMPARISON_ROWS = [
   { bad: '5+ separate subscriptions to manage', good: 'One platform, one bill' },
-  { bad: 'Brand guidelines re-explained in every tool', good: 'Brand Brain applies it automatically' },
+  { bad: 'Hunting for the file you made last month', good: 'One Gallery you can search and reuse' },
   { bad: 'Separate editors for image, voice & video', good: 'One unified studio' },
   { bad: 'Manual scheduling across every channel', good: 'Schedule to your connected channels from one calendar' },
-  { bad: 'Generic, off-brand AI output', good: 'Generation guided by your brand rules' },
+  { bad: 'Starting every video from a blank page', good: 'Ready-made templates and Improve with AI' },
 ];
 
 const ABOUT_PILLARS = [
   { border: 'border-[#2563EB]', title: 'Speed', desc: 'Minutes from brief to a full set of ready-to-publish assets.' },
-  { border: 'border-[#6366F1]', title: 'Brand consistency', desc: 'Every generation is guided by the same saved brand memory and content rules.' },
-  { border: 'border-[#14B8A6]', title: 'Scale', desc: 'One campaign becomes ten assets across every channel you publish to.' },
+  { border: 'border-[#6366F1]', title: 'Reuse', desc: 'Start again from anything you made, with the same prompt, in one click. Repeat a video and it is free.' },
+  { border: 'border-[#14B8A6]', title: 'Scale', desc: 'One idea becomes an image, a video and a voiceover for every channel you publish to.' },
 ];
 
 const FAQ_ITEMS = [
@@ -154,7 +152,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
             One platform for every piece of content your brand needs.
           </h1>
           <p className="text-[clamp(16px,1.6vw,19px)] leading-relaxed text-[#94A3B8] max-w-[640px] mx-auto mb-9">
-            Generate on-brand images, clone voices, sync lifelike talking avatars, and produce full videos, then plan and publish everywhere. All from one brand-aware platform.
+            Create images, short videos and voiceovers for your business, in English, Hindi and Punjabi, then schedule and publish them. All from one simple platform.
           </p>
           <div className="flex justify-center gap-3.5 flex-wrap mb-4">
             <button
@@ -204,7 +202,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
             <h2 className="text-[clamp(28px,3.4vw,40px)] font-extrabold tracking-[-0.01em] mb-3.5 text-[#F8FAFC]">
               Everything your content team needs, in one place.
             </h2>
-            <p className="text-base text-[#94A3B8]">Seven AI studios, one shared brand memory.</p>
+            <p className="text-base text-[#94A3B8]">Three creation studios, one gallery for your whole team.</p>
           </div>
 
           <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))' }}>
@@ -327,7 +325,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
             <h2 className="text-[clamp(28px,3.4vw,40px)] font-extrabold tracking-[-0.01em] mb-3.5 text-[#F8FAFC]">
               Simple plans that scale with your content output.
             </h2>
-            <p className="text-base text-[#94A3B8]">Every plan includes Brand Brain, so generations always stay on-brand.</p>
+            <p className="text-base text-[#94A3B8]">Every plan includes Image, Video and Voice Studio, the Gallery, and scheduling.</p>
           </div>
 
           <div className="grid gap-6 items-start" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(280px,1fr))' }}>
@@ -386,7 +384,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
           </div>
 
           <p className="text-center text-[12.5px] text-[#64748B] max-w-[560px] mx-auto mt-10">
-            An AI text generation costs 1 credit and an image costs 2 to 50 credits depending on the quality you pick (Image Studio shows the cost before you generate). A minute of AI voice costs a few credits, and AI video and talking avatars cost far more - about 180 credits per 10 seconds - so use them for your best pieces.
+            An AI text generation costs 1 credit and an image costs 2 to 50 credits depending on the quality you pick (Image Studio shows the cost before you generate). A minute of AI voice costs a few credits, and an AI video costs far more - about 180 credits for a clip of up to 10 seconds - so use it for your best pieces. Ask for the same video again and your saved one comes back free.
             {localizedRate && (
               <>
                 {' '}Prices shown in {localizedRate.currency} are an approximate conversion - you're charged in INR at checkout.
@@ -405,7 +403,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
               Built for teams that publish content every day.
             </h2>
             <p className="text-base leading-relaxed text-[#94A3B8]">
-              LumoraOS started as an answer to a simple problem: content teams were stitching together a dozen point tools to write, design, voice, and ship a single campaign. We built one platform that remembers your brand and produces every format from it.
+              LumoraOS started as an answer to a simple problem: content teams were stitching together a dozen point tools to write, design, voice, and ship a single campaign. We built one platform that produces every format and keeps everything you make in one place.
             </p>
           </div>
           <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))' }}>
@@ -510,9 +508,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
               <h4 className="text-xs font-bold tracking-[0.05em] text-[#64748B] mb-3.5">PRODUCT</h4>
               <div className="flex flex-col gap-2.5">
                 <a href="#features" className="text-[13px] text-[#94A3B8] hover:text-white">Image Studio</a>
-                <a href="#features" className="text-[13px] text-[#94A3B8] hover:text-white">Voice Studio</a>
-                <a href="#features" className="text-[13px] text-[#94A3B8] hover:text-white">Character Studio</a>
                 <a href="#features" className="text-[13px] text-[#94A3B8] hover:text-white">Video Studio</a>
+                <a href="#features" className="text-[13px] text-[#94A3B8] hover:text-white">Voice Studio</a>
+                <a href="#features" className="text-[13px] text-[#94A3B8] hover:text-white">Gallery</a>
                 <a href="#pricing" className="text-[13px] text-[#94A3B8] hover:text-white">Pricing</a>
               </div>
             </div>

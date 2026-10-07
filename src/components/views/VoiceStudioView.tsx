@@ -18,6 +18,7 @@ import { SarvamVoiceSelect } from '../SarvamVoiceSelect';
 import RecordVoicePanel from '../RecordVoicePanel';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { takeReuse } from '../../lib/reuse';
+import { useCreditRates, voiceCreditCost } from '../../lib/creditCost';
 import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG, sarvamVoiceSampleUrl } from '../../lib/sarvamVoices';
 
 interface VoiceStudioViewProps {
@@ -84,6 +85,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outOfCredits, setOutOfCredits] = useState(false);
+  const creditRates = useCreditRates();
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -560,7 +562,13 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                 className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-95 transition-all disabled:opacity-50"
               >
                 <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
-                <span>{isGenerating ? 'Synthesizing Audio...' : 'Generate Speech'}</span>
+                <span>
+                  {isGenerating
+                    ? 'Synthesizing Audio...'
+                    : creditRates && text.trim()
+                      ? `Generate Speech · ${voiceCreditCost(creditRates, provider, text)} credits`
+                      : 'Generate Speech'}
+                </span>
               </button>
               <button
                 onClick={() => setShowSaveTemplatePanel(true)}

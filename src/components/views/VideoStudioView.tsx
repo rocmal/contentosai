@@ -43,6 +43,7 @@ import * as api from '../../lib/api';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '../../lib/videoPromptTemplates';
 import { takeReuse, VIDEO_STYLE_SUFFIXES } from '../../lib/reuse';
+import { useCreditRates, videoCreditCost } from '../../lib/creditCost';
 import {
   compositeScenes,
   compositeTextOntoVideo,
@@ -329,6 +330,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
   const [error, setError] = useState<string | null>(null);
   const [outOfCredits, setOutOfCredits] = useState(false);
+  const creditRates = useCreditRates();
 
   // The base clip - from generation, upload, or a stock template - before any
   // text overlay is burned into it.
@@ -1649,8 +1651,18 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-[0.99] transition-all disabled:opacity-50"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Generate Video</span>
+                <span>
+                  {creditRates
+                    ? `Generate Video · ${videoCreditCost(creditRates, provider, stylePreset.durationSeconds)} credits`
+                    : 'Generate Video'}
+                </span>
               </button>
+              {creditRates && (
+                <p className="text-[10px] text-slate-400 text-center -mt-3">
+                  A {stylePreset.durationSeconds}-second clip, charged when it starts. Asking for the same video again
+                  is free.
+                </p>
+              )}
             </div>
           )}
 

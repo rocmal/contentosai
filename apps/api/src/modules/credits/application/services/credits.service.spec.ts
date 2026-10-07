@@ -1,4 +1,5 @@
 import { CreditsService } from './credits.service';
+import { estimateVoiceMinutes, videoCreditsPer10Seconds, voiceCreditsPerMinute } from '../../credits.constants';
 import { CreditTransactionReason } from '../../domain/entities/credit-transaction.entity';
 import { ICreditTransactionsRepository } from '../../domain/repositories/credit-transaction-repository.interface';
 import { ICreditWalletsRepository } from '../../domain/repositories/credit-wallet-repository.interface';
@@ -47,5 +48,26 @@ describe('CreditsService.getUsageSummary', () => {
     const since = transactions.summarizeUsage.mock.calls[0][1].getTime();
     expect(before - since).toBeGreaterThanOrEqual(7 * 24 * 60 * 60 * 1000 - 5);
     expect(before - since).toBeLessThan(7 * 24 * 60 * 60 * 1000 + 60_000);
+  });
+});
+
+describe('credit prices shown before generating', () => {
+  const service = new CreditsService({} as ICreditWalletsRepository, {} as ICreditTransactionsRepository);
+
+  it('publishes the same voice and video rates the charge uses', () => {
+    const rates = service.getRates();
+
+    expect(rates.voice.perMinute.sarvam).toBe(voiceCreditsPerMinute('sarvam'));
+    expect(rates.voice.wordsPerMinute).toBe(150);
+    expect(rates.video.per10Seconds.default).toBe(videoCreditsPer10Seconds('veo'));
+  });
+
+  it('works out voice minutes from the script, charging at least one minute', () => {
+    const words = (count: number) => Array.from({ length: count }, () => 'word').join(' ');
+
+    expect(estimateVoiceMinutes('')).toBe(1);
+    expect(estimateVoiceMinutes(words(150))).toBe(1);
+    expect(estimateVoiceMinutes(words(151))).toBe(2);
+    expect(estimateVoiceMinutes(words(450))).toBe(3);
   });
 });

@@ -26,6 +26,13 @@ export class CreditsController {
     return new CreditWalletResponseDto(wallet);
   }
 
+  @Get('rates')
+  @RequirePermissions('credits.read')
+  @ApiOperation({ summary: 'Credit prices for voice and video, so a cost can be shown before generating' })
+  getRates() {
+    return this.creditsService.getRates();
+  }
+
   @Get('usage')
   @RequirePermissions('credits.read')
   @ApiOperation({
