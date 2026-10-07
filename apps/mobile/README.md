@@ -2,17 +2,29 @@
 
 Expo (React Native, TypeScript, expo-router). Talks to the same NestJS API as the web app (`/api/v1`).
 
-## Scope (v1)
+## What is in it
 
-Sign in, then the three creation studios plus Gallery:
+- **Sign up / sign in**
+- **Create:** Image, Video and Voiceover studios (credit cost shown before you spend)
+- **Calendar:** upcoming, published and failed posts; cancel an upcoming one; open the live post
+- **Gallery:** your images, videos and voiceovers; save to photos, share, and schedule a video to a connected social account
+- **Team:** list members; add by email and remove (only for people with `organizations.manage-members`)
+- **Notifications:** in-app list plus push notifications
+- **Plan and credits:** read-only. Buying happens on the website (no purchase buttons in the app, which keeps clear of App Store in-app-purchase rules)
 
-- **Image**: prompt, shape, model, quality (credit cost shown), save to photos / share
-- **Video**: prompt, 9:16 or 16:9, 5 or 10 sec, model; polls the job, plays inline, save / share
-- **Voiceover**: script, voice type, Indian-language picker (Sarvam), voice; plays and shares the MP3
-- **Gallery**: your images, videos and voiceovers, filter, open, save, share
-- **Profile**: credits balance, sign out
+Publishing posts video only, so only videos can be scheduled. Connecting Facebook, Instagram, LinkedIn or YouTube is done on the website (Integrations).
 
-Not in v1: sign-up, Calendar/publishing, Team, Billing (send people to the website), push notifications.
+## Push notifications
+
+The phone registers an Expo push token with `POST /notifications/push-tokens`; the API sends through Expo when a notification is created
+(`NotificationsService.create`). Needs:
+
+1. Migration `20261008000001-create-push-tokens.js` run on the API database (`npm run db:migrate` from `apps/api`).
+2. An EAS project id: run `eas init` once in this folder; it writes `extra.eas.projectId` into `app.json`. Without it the app skips push quietly.
+3. A real build or dev build. Push does not work in the iOS simulator, and Expo Go on Android no longer supports it.
+4. iOS: an Apple Developer account (EAS sets up the push key). Android: an FCM credential (`eas credentials`).
+
+Nothing in the API creates notifications on its own yet (they are only created through `POST /notifications`), so no push will arrive until something calls it, for example the publishing worker when a post goes live or fails.
 
 ## Run it
 
@@ -31,7 +43,7 @@ the app guesses the Expo dev-server host on port 3000.
 
 ```bash
 npm i -g eas-cli && eas login
-eas build:configure
+eas init                          # once: creates the EAS project id
 eas build --platform android      # .aab for Play Console
 eas build --platform ios          # needs an Apple Developer account
 ```

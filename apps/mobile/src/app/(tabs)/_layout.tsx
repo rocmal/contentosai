@@ -17,6 +17,10 @@ export default function TabsLayout() {
         options={{ title: 'Create', tabBarIcon: ({ color, size }) => <Ionicons name="sparkles" color={color} size={size} /> }}
       />
       <Tabs.Screen
+        name="calendar"
+        options={{ title: 'Calendar', tabBarIcon: ({ color, size }) => <Ionicons name="calendar" color={color} size={size} /> }}
+      />
+      <Tabs.Screen
         name="gallery"
         options={{ title: 'Gallery', tabBarIcon: ({ color, size }) => <Ionicons name="images" color={color} size={size} /> }}
       />

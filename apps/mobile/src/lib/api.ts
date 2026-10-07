@@ -144,6 +144,23 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return getCurrentUser();
 }
 
+/** Creates the account and signs in straight away (the server issues tokens on register). */
+export async function register(input: {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+}): Promise<AuthUser> {
+  const res = await fetch(`${API_BASE_URL}${API_PREFIX}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  const data = await parse<TokenPair>(res);
+  await saveTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken });
+  return getCurrentUser();
+}
+
 export async function logout(): Promise<void> {
   const refreshToken = tokens?.refreshToken;
   try {

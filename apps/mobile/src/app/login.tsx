@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +8,7 @@ import { colors, space } from '@/ui/theme';
 
 export default function Login() {
   const { signIn } = useAuth();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,6 +63,7 @@ export default function Login() {
         />
         <ErrorText message={error} />
         <Button title="Sign in" onPress={submit} loading={busy} disabled={!email.trim() || !password} />
+        <Button title="Create an account" variant="secondary" onPress={() => router.replace('/signup')} />
       </View>
     </KeyboardAvoidingView>
   );

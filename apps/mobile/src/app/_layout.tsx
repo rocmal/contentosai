@@ -10,7 +10,7 @@ function Gate() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const onLogin = segments[0] === 'login';
+  const onLogin = segments[0] === 'login' || segments[0] === 'signup';
 
   useEffect(() => {
     if (loading) return;
@@ -30,6 +30,10 @@ function Gate() {
     <Stack screenOptions={{ headerTintColor: colors.primary, headerTitleStyle: { color: colors.text }, headerShadowVisible: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+      <Stack.Screen name="signup" options={{ headerShown: false }} />
+      <Stack.Screen name="team" options={{ title: 'Team' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+      <Stack.Screen name="billing" options={{ title: 'Plan and credits' }} />
       <Stack.Screen name="create/image" options={{ title: 'Image' }} />
       <Stack.Screen name="create/video" options={{ title: 'Video' }} />
       <Stack.Screen name="create/voice" options={{ title: 'Voiceover' }} />
