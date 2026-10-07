@@ -18,7 +18,6 @@ import {
   Sparkles,
   Store,
   Users,
-  UserRound,
   Video,
   Zap,
 } from 'lucide-react';
@@ -88,7 +87,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'video-studio', label: 'Video Studio', icon: Video },
     { id: 'image-studio', label: 'Image Studio', icon: Image },
     { id: 'voice-studio', label: 'Voice Studio', icon: Mic },
-    { id: 'character-studio', label: 'Character Studio', icon: UserRound },
   ];
 
   const managementNav: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [

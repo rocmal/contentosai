@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image as ImageIcon, Loader2, Mic, UserRound, Video } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Mic, Video } from 'lucide-react';
 import * as api from '../lib/api';
 import { StudioTab as StudioTabKey } from './types';
 
@@ -13,7 +13,6 @@ const SUB_TABS: { key: StudioTabKey; label: string; icon: React.FC<{ className?:
   { key: 'video', label: 'Video', icon: Video },
   { key: 'image', label: 'Image', icon: ImageIcon },
   { key: 'voice', label: 'Voice', icon: Mic },
-  { key: 'character', label: 'Character', icon: UserRound },
 ];
 
 function galleryTitles(items: api.MediaAsset[]): string {
