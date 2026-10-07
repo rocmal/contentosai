@@ -1400,7 +1400,18 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   };
 
   const handleSaveTemplate = async () => {
-    if (!finalVideoUrl || !templateTitle.trim() || !user?.organizationId || !user?.workspaceId) return;
+    if (!finalVideoUrl || !templateTitle.trim() || !user?.organizationId || !user?.workspaceId) {
+      // Say why instead of doing nothing, so a save that never starts is not mistaken for one that worked.
+      setSaveTemplateError(
+        !templateTitle.trim()
+          ? 'Give the template a name first.'
+          : !user?.organizationId || !user?.workspaceId
+            ? 'Your account has no active workspace yet. Please sign out and in again.'
+            : 'There is no finished video to save yet.',
+      );
+      setSaveTemplateStatus('error');
+      return;
+    }
 
     setIsSavingTemplate(true);
     setSaveTemplateStatus('idle');
