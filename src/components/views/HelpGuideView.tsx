@@ -149,7 +149,7 @@ const FAQS: { id: string; category: Exclude<Category, 'All'>; question: string; 
     category: 'Studios',
     question: 'How long does a video take, and how long can it be?',
     answer:
-      'Usually a minute or two. AI clips are 4 to 8 seconds long. The format you choose (reel, square, widescreen) sets the shape. You can add narration and text in the editing step afterwards.',
+      'Usually a minute or two, sometimes longer when the AI service is busy. AI clips are 4 to 8 seconds long. The format you choose (reel, square, widescreen) sets the shape. You can add narration and text in the editing step afterwards.',
   },
   {
     id: 'faq-5',
@@ -163,7 +163,14 @@ const FAQS: { id: string; category: Exclude<Category, 'All'>; question: string; 
     category: 'Credits',
     question: 'How are credits used?',
     answer:
-      'Credits are taken when you generate, and the cost is shown before you press the button. An image costs 2 to 50 credits depending on quality. A voiceover costs about 7 credits per minute with Indian-language voices. An AI video costs about 180 credits for a clip of up to 10 seconds, taken when the job starts. If a request fails before it is accepted, no credits are used. The Dashboard shows what you have used by studio.',
+      'Credits are taken when you generate, and the cost is shown before you press the button. An image costs 2 to 50 credits depending on quality. A voiceover costs about 7 credits per minute with Indian-language voices. An AI video costs about 180 credits for a clip of up to 10 seconds, taken when the job starts. If a request is turned down before it starts, no credits are used. The credits in your plan are topped up each month, and unused credits do not carry over. New workspaces get a small one-time free allowance. The Dashboard shows what you have used by studio.',
+  },
+  {
+    id: 'faq-6b',
+    category: 'Credits',
+    question: 'What if a generation fails or the result is not what I wanted?',
+    answer:
+      'If an image or video request is turned down before it starts, nothing is charged and you will see a message saying so. A video that is accepted but fails later still uses its credits, so please contact support and we will look into it. A result that simply is not what you hoped for counts as a normal generation - try "Improve with AI" on the prompt, or start again from the Gallery with small changes.',
   },
   {
     id: 'faq-7',
@@ -196,9 +203,9 @@ const FAQS: { id: string; category: Exclude<Category, 'All'>; question: string; 
   {
     id: 'faq-11',
     category: 'Gallery & team',
-    question: 'How do I post to Instagram or Facebook?',
+    question: 'Which social accounts can I post to?',
     answer:
-      'Connect your accounts in Integrations, then use the schedule option when your video is finished in Video Studio. Scheduled posts show in Calendar.',
+      'Connect your accounts in Integrations - Facebook, Instagram, LinkedIn and YouTube are supported. Then use the schedule option when your video is finished in Video Studio. Scheduled posts show in Calendar.',
   },
   {
     id: 'faq-12',

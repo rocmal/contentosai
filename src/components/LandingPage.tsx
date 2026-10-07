@@ -75,12 +75,12 @@ const ABOUT_PILLARS = [
 ];
 
 const FAQ_ITEMS = [
-  { q: 'What are AI credits and how do they work?', a: 'Credits are the platform’s single unit of usage across every studio. Generating an image, a minute of voice, or a video clip each consumes a different number of credits depending on the model and resolution. Unused credits do not roll over.' },
-  { q: 'Can I clone my own voice or use my own likeness for talking avatars?', a: 'Yes. Voice cloning and Character Studio avatars are built from media you upload, and you must have the right to use that voice or likeness. We require consent confirmation before any clone or avatar is generated.' },
+  { q: 'What are AI credits and how do they work?', a: 'Credits are the platform’s single unit of usage across every studio. An image, a minute of voice, or a video clip each uses a different number of credits, and the cost is shown before you generate. Your plan’s credits are topped up each month; unused credits do not carry over.' },
+  { q: 'Can I use my own voice?', a: 'Yes. In Voice Studio you record a short sample of your voice, give it a name, and it appears in your voice list for any script. You must confirm the voice is your own, or that you have the speaker’s permission, before it is created.' },
   { q: 'Which platforms can I publish to directly?', a: 'LumoraOS can schedule and publish to Facebook, Instagram, LinkedIn and YouTube once you connect your accounts. More channels are added over time.' },
-  { q: 'Can I switch or cancel my plan anytime?', a: 'Yes. You can upgrade, downgrade, or cancel from Billing at any time. Changes apply at the start of your next billing cycle.' },
+  { q: 'Can I change or stop my plan?', a: 'Plans are paid month by month and do not renew automatically, so there is nothing to cancel - you simply renew when you want another month, and we email you a reminder before your plan ends. You can upgrade from Billing at any time and the new plan starts straight away.' },
   { q: 'Who owns the content I generate?', a: 'You own the rights to content generated from your account, subject to the usage terms of the underlying AI providers for any third-party training data restrictions.' },
-  { q: 'Do you offer a free trial?', a: 'Yes. Every new workspace starts with a small allowance of free trial credits so you can try the studios and AI Studio before paying. Paid plans are billed month by month and do not renew automatically.' },
+  { q: 'Do you offer a free trial?', a: 'Yes. Every new workspace starts with a small one-time allowance of free credits so you can try Image, Video and Voice Studio before paying. Paid plans are billed month by month and do not renew automatically.' },
 ];
 
 const SALES_EMAIL = 'mailto:sales@lumoraos.in';
