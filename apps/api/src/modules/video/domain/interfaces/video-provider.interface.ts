@@ -23,4 +23,6 @@ export interface IVideoProvider {
   readonly name: string;
   submitJob(request: VideoGenerationRequest): Promise<VideoGenerationResult>;
   getJobStatus(jobId: string): Promise<VideoGenerationResult>;
+  /** Providers whose finished-video link needs credentials download it themselves. */
+  fetchVideo?(url: string): Promise<Response>;
 }

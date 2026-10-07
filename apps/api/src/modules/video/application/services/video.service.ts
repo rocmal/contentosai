@@ -146,7 +146,8 @@ export class VideoService {
         return { ...result, videoUrl: cached.url };
       }
 
-      const response = await fetch(result.videoUrl!);
+      const provider = this.providerFactory.getProvider(result.provider);
+      const response = await (provider.fetchVideo?.(result.videoUrl!) ?? fetch(result.videoUrl!));
       if (!response.ok) {
         throw new Error(`Fetching provider video failed (${response.status})`);
       }

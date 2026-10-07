@@ -151,9 +151,7 @@ const STOCK_TEMPLATES: StockTemplate[] = [
 
 /** The no-cost "mock" provider is refused by the production backend, so it is
  * only offered (and used as the default) in local development builds. */
-const SELECTABLE_VIDEO_PROVIDERS: api.VideoProvider[] = import.meta.env.PROD
-  ? api.VIDEO_PROVIDERS.filter((p) => p !== 'mock')
-  : [...api.VIDEO_PROVIDERS];
+const SELECTABLE_VIDEO_PROVIDERS: api.VideoProvider[] = import.meta.env.PROD ? ['veo'] : ['veo', 'mock'];
 
 const PROVIDER_LABELS: Record<api.VideoProvider, string> = {
   mock: 'Mock (local, no cost)',
@@ -1474,7 +1472,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                 </div>
               </div>
 
-              <div>
+              <div className={SELECTABLE_VIDEO_PROVIDERS.length > 1 ? undefined : 'hidden'}>
                 <button
                   type="button"
                   onClick={() => setShowAdvanced((v) => !v)}
@@ -1482,7 +1480,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                 >
                   {showAdvanced ? 'Hide' : 'Show'} advanced options
                 </button>
-                {showAdvanced && (
+                {showAdvanced && SELECTABLE_VIDEO_PROVIDERS.length > 1 && (
                   <div className="mt-2 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
                     <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
                       Generation engine
@@ -1500,8 +1498,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                     </select>
                     <p className="text-[10px] text-slate-400 mt-1.5">
                       {import.meta.env.PROD
-                        ? 'Each provider needs its own API key configured on the server, and AI video uses more credits than images or voice.'
-                        : 'Veo/Runway/Kling/Pika need a paid API key configured on the backend; Mock always works and is meant for trying the flow out.'}
+                        ? 'AI video uses more credits than images or voice.'
+                        : 'Veo needs a paid Google key configured on the backend; Mock always works and is meant for trying the flow out.'}
                     </p>
                   </div>
                 )}
