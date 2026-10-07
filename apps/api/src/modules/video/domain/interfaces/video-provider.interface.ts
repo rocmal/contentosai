@@ -3,6 +3,8 @@ export interface VideoGenerationRequest {
   durationSeconds?: number;
   model?: string;
   imageUrl?: string;
+  /** Veo renders 16:9 or 9:16; other shapes are cropped on screen. */
+  aspectRatio?: '16:9' | '9:16';
 }
 
 export type VideoJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
@@ -13,6 +15,10 @@ export interface VideoGenerationResult {
   jobId: string;
   status: VideoJobStatus;
   videoUrl?: string;
+  /** Signature of the request, so the same prompt by the same user can reuse this clip. */
+  cacheKey?: string;
+  /** True when an earlier clip was reused - nothing was charged. */
+  cached?: boolean;
 }
 
 /**

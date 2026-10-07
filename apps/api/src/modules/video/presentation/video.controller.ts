@@ -34,7 +34,12 @@ export class VideoController {
     @CurrentUser('organizationId') organizationId: string | null,
     @CurrentUser('workspaceId') workspaceId: string | null,
   ) {
-    return this.videoService.getJobStatus(query.provider, jobId, { userId, organizationId, workspaceId });
+    return this.videoService.getJobStatus(query.provider, jobId, {
+      userId,
+      organizationId,
+      workspaceId,
+      cacheKey: query.cacheKey,
+    });
   }
 
   @Get('providers')

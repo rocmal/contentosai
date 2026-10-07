@@ -14,6 +14,7 @@ export class VideoJobSubmittedEvent extends DomainEvent {
     public readonly userId?: string,
     public readonly organizationId?: string | null,
     public readonly workspaceId?: string | null,
+    public readonly cacheKey?: string,
   ) {
     super();
   }

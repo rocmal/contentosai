@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsIn, IsInt, IsOptional, IsString, IsUrl, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUrl,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 // "mock" is only actually usable outside production (see VideoProviderFactory);
 // it's listed here so local dev requests validate without a real vendor key.
@@ -31,4 +41,16 @@ export class GenerateVideoDto {
   @Min(1)
   @Max(60)
   durationSeconds?: number;
+
+  @ApiPropertyOptional({ enum: ['16:9', '9:16'], default: '16:9' })
+  @IsOptional()
+  @IsIn(['16:9', '9:16'])
+  aspectRatio?: '16:9' | '9:16';
+
+  @ApiPropertyOptional({
+    description: 'Skip the saved-clip cache and render a new version (charged as usual)',
+  })
+  @IsOptional()
+  @IsBoolean()
+  fresh?: boolean;
 }

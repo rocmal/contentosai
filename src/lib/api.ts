@@ -1278,6 +1278,10 @@ export interface VideoGenerationResult {
   jobId: string;
   status: VideoJobStatus;
   videoUrl?: string;
+  /** Signature of the request - hand it back when polling so the clip is saved for reuse. */
+  cacheKey?: string;
+  /** True when an earlier clip for the same prompt was reused (nothing charged). */
+  cached?: boolean;
 }
 
 export async function generateVideo(input: {
@@ -1286,6 +1290,9 @@ export async function generateVideo(input: {
   model?: string;
   imageUrl?: string;
   durationSeconds?: number;
+  aspectRatio?: '16:9' | '9:16';
+  /** Render a new version instead of reusing the saved clip. */
+  fresh?: boolean;
 }): Promise<VideoGenerationResult> {
   return apiRequest<VideoGenerationResult>('/video/generate', {
     method: 'POST',
@@ -1296,9 +1303,11 @@ export async function generateVideo(input: {
 export async function getVideoJobStatus(
   provider: string,
   jobId: string,
+  cacheKey?: string,
 ): Promise<VideoGenerationResult> {
+  const keyParam = cacheKey ? `&cacheKey=${encodeURIComponent(cacheKey)}` : '';
   return apiRequest<VideoGenerationResult>(
-    `/video/jobs/${encodeURIComponent(jobId)}?provider=${encodeURIComponent(provider)}`,
+    `/video/jobs/${encodeURIComponent(jobId)}?provider=${encodeURIComponent(provider)}${keyParam}`,
     { method: 'GET' },
   );
 }
@@ -1307,14 +1316,19 @@ export async function getVideoJobStatus(
 export async function pollVideoJob(
   provider: string,
   jobId: string,
-  options?: { intervalMs?: number; timeoutMs?: number; onUpdate?: (result: VideoGenerationResult) => void },
+  options?: {
+    intervalMs?: number;
+    timeoutMs?: number;
+    cacheKey?: string;
+    onUpdate?: (result: VideoGenerationResult) => void;
+  },
 ): Promise<VideoGenerationResult> {
   const intervalMs = options?.intervalMs ?? 3000;
   const timeoutMs = options?.timeoutMs ?? 180_000;
   const startedAt = Date.now();
 
   for (;;) {
-    const status = await getVideoJobStatus(provider, jobId);
+    const status = await getVideoJobStatus(provider, jobId, options?.cacheKey);
     options?.onUpdate?.(status);
     if (status.status === 'completed' || status.status === 'failed') {
       return status;

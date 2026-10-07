@@ -63,7 +63,10 @@ export class VeoProvider implements IVideoProvider {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
       body: JSON.stringify({
         instances: [{ prompt: request.prompt }],
-        parameters: { durationSeconds: veoDurationSeconds(request.durationSeconds) },
+        parameters: {
+          durationSeconds: veoDurationSeconds(request.durationSeconds),
+          aspectRatio: request.aspectRatio ?? '16:9',
+        },
       }),
     });
 

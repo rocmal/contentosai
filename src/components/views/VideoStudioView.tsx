@@ -41,6 +41,7 @@ import {
 import { ViewType } from '../../types';
 import * as api from '../../lib/api';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
+import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '../../lib/videoPromptTemplates';
 import {
   compositeScenes,
   compositeTextOntoVideo,
@@ -314,6 +315,11 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
   // "Create from prompt" state
   const [prompt, setPrompt] = useState('');
+  const [templateCategory, setTemplateCategory] = useState<string>(VIDEO_PROMPT_CATEGORIES[0]);
+  const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
+  const [improveError, setImproveError] = useState<string | null>(null);
+  /** The clip came from this user's earlier identical prompt - nothing was charged. */
+  const [reusedClip, setReusedClip] = useState(false);
   const [stylePresetId, setStylePresetId] = useState(AI_STYLE_PRESETS[0].id);
   const [provider, setProvider] = useState<api.VideoProvider>(SELECTABLE_VIDEO_PROVIDERS[0]);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -1038,10 +1044,32 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // Step 1: acquiring a base video (prompt / upload / stock template)
   // ---------------------------------------------------------------------
 
-  const handleGenerateFromPrompt = async () => {
+  const handleImprovePrompt = async () => {
+    setIsImprovingPrompt(true);
+    setImproveError(null);
+    try {
+      const result = await api.generateText({
+        prompt: prompt.trim() || 'A short, friendly promotional video for a small Indian business.',
+        systemPrompt:
+          'You write prompts for an AI video generator (Google Veo). Rewrite the idea as ONE English prompt of 50-90 words: ' +
+          'the subject and action, the setting, the camera move (e.g. slow push-in, tracking shot), the lighting, the mood, ' +
+          'and the natural sounds you would hear. Describe a single continuous shot of 4-8 seconds. Do not ask for any ' +
+          'on-screen text, logos or captions. Do not invent claims, rates, returns or guarantees. ' +
+          'Reply with only the prompt - no preamble, no explanation.',
+      });
+      setPrompt(result.text.trim());
+    } catch (err) {
+      setImproveError(err instanceof api.ApiError ? err.message : 'Could not reach the Lumora API. Please try again.');
+    } finally {
+      setIsImprovingPrompt(false);
+    }
+  };
+
+  const handleGenerateFromPrompt = async (fresh = false) => {
     if (!prompt.trim()) return;
     setError(null);
     setOutOfCredits(false);
+    setReusedClip(false);
     setStep('generating');
     setProgressLabel('Submitting your prompt...');
 
@@ -1050,14 +1078,22 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         prompt: `${prompt.trim()}, ${stylePreset.styleSuffix}`,
         provider,
         durationSeconds: stylePreset.durationSeconds,
+        aspectRatio: stylePreset.aspectRatio === '9:16' ? '9:16' : '16:9',
+        fresh,
       });
 
       setProgressLabel('Rendering your video...');
-      const final = await api.pollVideoJob(provider, job.jobId, {
-        onUpdate: () => setProgressLabel('Rendering your video...'),
-      });
+      // A repeat of an earlier prompt comes back already finished - nothing to wait for.
+      const final =
+        job.status === 'completed' && job.videoUrl
+          ? job
+          : await api.pollVideoJob(provider, job.jobId, {
+              cacheKey: job.cacheKey,
+              onUpdate: () => setProgressLabel('Rendering your video...'),
+            });
 
       if (final.status === 'completed' && final.videoUrl) {
+        setReusedClip(Boolean(job.cached));
         setAspectRatio(stylePreset.aspectRatio);
         setSourceVideoNaturalAspect(null);
         setSourceVideoUrl(final.videoUrl);
@@ -1430,9 +1466,24 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
           {source === 'prompt' && (
             <div className="space-y-6">
               <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-                <label className="block text-xs font-bold text-slate-900 dark:text-white">
-                  What's the video about?
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-900 dark:text-white">
+                    What's the video about?
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <VoiceInputButton onText={(spoken) => setPrompt((prev) => appendSpoken(prev, spoken))} />
+                    <button
+                      type="button"
+                      onClick={handleImprovePrompt}
+                      disabled={isImprovingPrompt}
+                      title={prompt.trim() ? 'Rewrite this as a detailed video prompt' : 'Suggest a video prompt'}
+                      className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
+                    >
+                      {isImprovingPrompt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                      <span>{prompt.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
+                    </button>
+                  </div>
+                </div>
                 <textarea
                   rows={4}
                   value={prompt}
@@ -1440,6 +1491,52 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   placeholder="e.g. A drone shot flying over a futuristic city at sunset, glowing blue skyscrapers"
                   className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
                 />
+                {improveError && <p className="text-[11px] text-red-500">{improveError}</p>}
+                <p className="text-[10px] text-slate-400">
+                  Repeating the same prompt, length and format reuses your saved clip for free.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Start from a template</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {VIDEO_PROMPT_CATEGORIES.map((category) => (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setTemplateCategory(category)}
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                        templateCategory === category
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {VIDEO_PROMPT_TEMPLATES.filter((t) => t.category === templateCategory).map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setPrompt(t.prompt);
+                        setStylePresetId(t.presetId);
+                        setImproveError(null);
+                      }}
+                      className="text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-all"
+                    >
+                      <p className="text-xs font-bold text-slate-900 dark:text-white">{t.title}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug line-clamp-3">
+                        {t.prompt}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Pick one, then edit the words to match your own business before generating.
+                </p>
               </div>
 
               <div className="space-y-2.5">
@@ -1506,7 +1603,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
               </div>
 
               <button
-                onClick={handleGenerateFromPrompt}
+                onClick={() => handleGenerateFromPrompt()}
                 disabled={!prompt.trim()}
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-[0.99] transition-all disabled:opacity-50"
               >
@@ -2475,6 +2572,20 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
       {step === 'edit' && sourceVideoUrl && (
         <div className="max-w-2xl mx-auto space-y-5">
+          {reusedClip && source === 'prompt' && (
+            <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800">
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                We reused the clip you made earlier for this prompt - no credits were used.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleGenerateFromPrompt(true)}
+                className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Make a new version (uses credits)
+              </button>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             {source === 'scenes' ? (
               <button
@@ -2518,7 +2629,6 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
               <video
                 src={sourceVideoUrl}
                 controls
-                loop
                 onLoadedMetadata={(e) => {
                   const el = e.currentTarget;
                   if (el.videoWidth && el.videoHeight) {
@@ -2764,7 +2874,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
             className="mx-auto w-full max-w-2xl max-h-[70vh] rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950"
             style={{ aspectRatio: displayAspectRatio }}
           >
-            <video src={finalVideoUrl} controls autoPlay loop className="w-full h-full object-cover" />
+            <video src={finalVideoUrl} controls autoPlay className="w-full h-full object-cover" />
           </div>
 
           {hasOverlay && (

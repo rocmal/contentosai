@@ -17,10 +17,25 @@ import { VideoJobSubmittedEvent } from '../events/video-job-submitted.event';
 
 const DEFAULT_DURATION_SECONDS = 5;
 
+/** Same words, case and spacing differences ignored, plus the same shape of clip -> same clip. */
+function promptCacheKey(dto: GenerateVideoDto): string {
+  return buildGenerationCacheKey([
+    'video-prompt',
+    dto.provider,
+    dto.model,
+    dto.prompt.replace(/\s+/g, ' '),
+    dto.durationSeconds ?? DEFAULT_DURATION_SECONDS,
+    dto.aspectRatio ?? '16:9',
+    dto.imageUrl,
+  ]);
+}
+
 export interface SubmitJobActor {
   userId?: string;
   organizationId?: string | null;
   workspaceId?: string | null;
+  /** Signature of the prompt that started the job (see promptCacheKey). */
+  cacheKey?: string;
 }
 
 @Injectable()
@@ -46,6 +61,24 @@ export class VideoService {
     actor: SubmitJobActor = {},
   ): Promise<VideoGenerationResult> {
     const canCharge = Boolean(actor.organizationId && actor.workspaceId);
+    const cacheKey = promptCacheKey(dto);
+
+    // The same user asking for the same clip again gets the saved one - free and instant.
+    if (actor.userId && !dto.fresh) {
+      const cached = await this.mediaAssetsService.findCached(actor.userId, cacheKey);
+      if (cached) {
+        return {
+          provider: dto.provider,
+          model: dto.model ?? cached.model ?? '',
+          jobId: `cached-${cacheKey.slice(0, 16)}`,
+          status: 'completed',
+          videoUrl: cached.url,
+          cacheKey,
+          cached: true,
+        };
+      }
+    }
+
     const cost =
       creditsForDurationSeconds(dto.durationSeconds ?? DEFAULT_DURATION_SECONDS, 10) *
       videoCreditsPer10Seconds(dto.provider);
@@ -67,6 +100,7 @@ export class VideoService {
         model: dto.model,
         imageUrl: dto.imageUrl,
         durationSeconds: dto.durationSeconds,
+        aspectRatio: dto.aspectRatio,
       });
     } catch (err) {
       if (canCharge) {
@@ -88,10 +122,11 @@ export class VideoService {
         actor.userId,
         actor.organizationId,
         actor.workspaceId,
+        cacheKey,
       ),
     );
 
-    return result;
+    return { ...result, cacheKey };
   }
 
   /** `actor` is optional (and getJobStatus is called by anyone polling a
@@ -116,6 +151,7 @@ export class VideoService {
         userId: actor.userId,
         organizationId: actor.organizationId,
         workspaceId: actor.workspaceId,
+        cacheKey: actor.cacheKey,
       });
     }
 
@@ -136,12 +172,20 @@ export class VideoService {
    * etc.); it just won't show up in the gallery this time. */
   private async persistCompletedVideo(
     result: VideoGenerationResult,
-    actor: { userId: string; organizationId: string; workspaceId: string },
+    actor: { userId: string; organizationId: string; workspaceId: string; cacheKey?: string },
   ): Promise<VideoGenerationResult> {
-    const cacheKeyHash = buildGenerationCacheKey(['video-job', result.provider, result.jobId]);
+    const jobKeyHash = buildGenerationCacheKey(['video-job', result.provider, result.jobId]);
+    // Saved under the prompt's signature when known, so asking again reuses it.
+    const cacheKeyHash = actor.cacheKey ?? jobKeyHash;
 
     try {
-      const cached = await this.mediaAssetsService.findCached(actor.userId, cacheKeyHash);
+      // Look under both signatures: whichever poller saved it first (the browser or the
+      // background worker) may not have known the prompt's signature.
+      const cached =
+        (await this.mediaAssetsService.findCached(actor.userId, cacheKeyHash)) ??
+        (cacheKeyHash !== jobKeyHash
+          ? await this.mediaAssetsService.findCached(actor.userId, jobKeyHash)
+          : null);
       if (cached) {
         return { ...result, videoUrl: cached.url };
       }
