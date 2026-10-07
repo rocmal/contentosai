@@ -2,10 +2,8 @@ import React, { useEffect, useState } from 'react';
 import {
   BarChart3,
   Bot,
-  Brain,
   Calendar,
   CreditCard,
-  FolderKanban,
   FolderOpen,
   HelpCircle,
   Image,
@@ -13,7 +11,6 @@ import {
   LayoutDashboard,
   LogOut,
   Mic,
-  Megaphone,
   Settings,
   Sparkles,
   Store,
@@ -76,10 +73,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const mainNav: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'ai-studio', label: 'AI Studio', icon: Sparkles },
-    { id: 'brand-brain', label: 'Brand Brain', icon: Brain },
-    { id: 'projects', label: 'Projects', icon: FolderKanban },
-    { id: 'campaigns', label: 'Campaigns', icon: Megaphone },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
   ];
 

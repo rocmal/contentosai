@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Bookmark,
   Bot,
   BarChart3,
   CreditCard,
@@ -45,7 +44,6 @@ const GROUPS: MenuGroup[] = [
     items: [
       { label: 'Image Studio', href: '/#image-studio', icon: ImageIcon, bg: 'bg-blue-50', color: 'text-blue-700' },
       { label: 'Voice Studio', href: '/#voice-studio', icon: Mic, bg: 'bg-emerald-50', color: 'text-emerald-600' },
-      { label: 'Brand Brain', href: '/#brand-brain', icon: Bookmark, bg: 'bg-slate-50', color: 'text-slate-600' },
     ],
   },
   {

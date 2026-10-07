@@ -1,66 +1,83 @@
 import React, { useEffect, useState } from 'react';
-import {
-  BarChart2,
-  Bot,
-  Brain,
-  Calendar,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  FolderKanban,
-  Loader2,
-  Megaphone,
-  Plus,
-  Share2,
-  Sparkles,
-  Users,
-  Video,
-  Zap,
-} from 'lucide-react';
-import {
-  BrandBrain,
-  Campaign,
-  Project,
-  ViewType,
-} from '../../types';
-import { PROJECT_STATUS_LABELS, PROJECT_STATUS_STYLES } from '../../lib/projectDisplay';
+import { Coins, Film, Image as ImageIcon, Loader2, Mic, Send, Sparkles, TrendingUp, Trophy } from 'lucide-react';
+import { ViewType } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import {
+  CreditUsageSummary,
+  getMyCreditUsage,
   getMyCreditWallet,
-  getSocialConnectionStatus,
-  listCampaigns,
-  listContent,
+  getMyGalleryPage,
   listMyGallery,
-  listProjects,
   listScheduledPosts,
-  listTeamMembers,
   MediaAsset,
-  PublishingJob,
+  MediaAssetType,
 } from '../../lib/api';
 
 interface DashboardViewProps {
   onNavigate: (view: ViewType) => void;
-  brandBrain: BrandBrain;
+  /** Kept so existing callers still compile; the studio dashboard doesn't use it. */
+  brandBrain?: unknown;
 }
 
-interface QueueItem {
-  job: PublishingJob;
-  title: string;
-}
+type StudioId = 'image' | 'voice' | 'video';
+
+const STUDIOS: {
+  id: StudioId;
+  label: string;
+  view: ViewType;
+  reason: string;
+  galleryType: MediaAssetType;
+  noun: string;
+  icon: React.FC<{ className?: string }>;
+  tint: string;
+  bar: string;
+}[] = [
+  {
+    id: 'image',
+    label: 'Image Studio',
+    view: 'image-studio',
+    reason: 'generation.image',
+    galleryType: 'image',
+    noun: 'image',
+    icon: ImageIcon,
+    tint: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300',
+    bar: 'bg-blue-500',
+  },
+  {
+    id: 'voice',
+    label: 'Voice Studio',
+    view: 'voice-studio',
+    reason: 'generation.voice',
+    galleryType: 'audio',
+    noun: 'voiceover',
+    icon: Mic,
+    tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300',
+    bar: 'bg-emerald-500',
+  },
+  {
+    id: 'video',
+    label: 'Video Studio',
+    view: 'video-studio',
+    reason: 'generation.video',
+    galleryType: 'video',
+    noun: 'video',
+    icon: Film,
+    tint: 'bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-300',
+    bar: 'bg-teal-500',
+  },
+];
+
+const PERIODS = [7, 30, 90] as const;
+
+const TYPE_LABELS: Record<string, string> = { image: 'Image', video: 'Video', audio: 'Voice', character: 'Avatar' };
 
 function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diffMs / 60000);
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
-}
-
-function formatScheduledTime(iso: string | null): string {
-  if (!iso) return 'Not yet scheduled';
-  return new Date(iso).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function timeOfDayGreeting(): string {
@@ -70,500 +87,244 @@ function timeOfDayGreeting(): string {
   return 'Good evening';
 }
 
-export const DashboardView: React.FC<DashboardViewProps> = ({
-  onNavigate,
-  brandBrain,
-}) => {
+const plural = (count: number, noun: string) => `${count.toLocaleString()} ${noun}${count === 1 ? '' : 's'}`;
+
+export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
   const { user } = useAuth();
-  const [generations, setGenerations] = useState<MediaAsset[] | null>(null);
-  const [jobs, setJobs] = useState<PublishingJob[] | null>(null);
-  const [queue, setQueue] = useState<QueueItem[] | null>(null);
-  const [projects, setProjects] = useState<Project[] | null>(null);
-  const [campaignNames, setCampaignNames] = useState<Map<string, string>>(new Map());
-  const [campaignCount, setCampaignCount] = useState<number | null>(null);
-  const [contentCount, setContentCount] = useState<number | null>(null);
-  const [socialConnected, setSocialConnected] = useState<boolean | null>(null);
-  const [onboardingDismissed, setOnboardingDismissed] = useState<boolean>(() => {
-    try {
-      return window.localStorage.getItem('lumora.onboarding.dismissed') === '1';
-    } catch {
-      return false;
-    }
-  });
-  const [teamSize, setTeamSize] = useState<number | null>(null);
-  const [creditsRemaining, setCreditsRemaining] = useState<number | null | undefined>(undefined);
+  const [days, setDays] = useState<(typeof PERIODS)[number]>(30);
+  const [usage, setUsage] = useState<CreditUsageSummary | null>(null);
+  const [credits, setCredits] = useState<number | null | undefined>(undefined);
+  const [counts, setCounts] = useState<Record<StudioId, number> | null>(null);
+  const [publishedCount, setPublishedCount] = useState<number | null>(null);
+  const [recent, setRecent] = useState<MediaAsset[] | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    // Fetched once at a higher limit and reused for both the "recent"
-    // feed (first 5) and the real generation-count stat below, instead of
-    // two separate calls for overlapping data.
-    listMyGallery(undefined, 100)
-      .then((items) => {
-        if (!cancelled) setGenerations(items);
-      })
-      .catch(() => {
-        if (!cancelled) setGenerations([]);
-      });
-    Promise.all([listScheduledPosts(), listContent()])
-      .then(([allJobs, content]) => {
+    getMyCreditWallet()
+      .then((w) => !cancelled && setCredits(w.balance))
+      .catch(() => !cancelled && setCredits(null));
+    Promise.all(STUDIOS.map((s) => getMyGalleryPage({ type: s.galleryType, limit: 1 })))
+      .then((pages) => {
         if (cancelled) return;
-        setJobs(allJobs);
-        setContentCount(content.length);
-        const contentById = new Map(content.map((c) => [c.id, c]));
-        const items = allJobs
-          .filter((job) => job.status === 'scheduled')
-          .slice(0, 3)
-          .map((job) => ({ job, title: (job.contentId && contentById.get(job.contentId)?.title) || 'Untitled' }));
-        setQueue(items);
+        const next = {} as Record<StudioId, number>;
+        STUDIOS.forEach((s, i) => {
+          next[s.id] = pages[i].meta.totalItems;
+        });
+        setCounts(next);
       })
-      .catch(() => {
-        if (!cancelled) {
-          setJobs([]);
-          setQueue([]);
-        }
-      });
-    Promise.all([listProjects({ limit: 6 }), listCampaigns()])
-      .then(([p, c]) => {
-        if (cancelled) return;
-        setProjects(p.items.filter((proj) => proj.status !== 'archived'));
-        setCampaignNames(new Map(c.items.map((camp: Campaign) => [camp.id, camp.name])));
-        setCampaignCount(c.items.length);
-      })
-      .catch(() => {
-        if (!cancelled) setProjects([]);
-      });
-    getSocialConnectionStatus()
-      .then((s) => {
-        if (!cancelled) setSocialConnected(Object.values(s).some((p) => p.connected));
-      })
-      .catch(() => {
-        if (!cancelled) setSocialConnected(false);
-      });
-    listTeamMembers().then((m) => {
-      if (!cancelled) setTeamSize(m.length);
-    }).catch(() => {
-      if (!cancelled) setTeamSize(null);
-    });
-    getMyCreditWallet().then((w) => {
-      if (!cancelled) setCreditsRemaining(w.balance);
-    }).catch(() => {
-      if (!cancelled) setCreditsRemaining(null);
-    });
+      .catch(() => !cancelled && setCounts({ image: 0, voice: 0, video: 0 }));
+    listScheduledPosts()
+      .then((jobs) => !cancelled && setPublishedCount(jobs.filter((j) => j.status === 'published').length))
+      .catch(() => !cancelled && setPublishedCount(0));
+    listMyGallery(undefined, 6)
+      .then((items) => !cancelled && setRecent(items))
+      .catch(() => !cancelled && setRecent([]));
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const onboardingSteps: { label: string; hint: string; done: boolean | null; view: ViewType; action: string }[] = [
-    { label: 'Set up your Brand Brain', hint: 'Teach Lumora your voice, audience and content rules.', done: Boolean(brandBrain.id), view: 'brand-brain', action: 'Open Brand Brain' },
-    { label: 'Create your first campaign', hint: 'A campaign groups the goal behind your content.', done: campaignCount === null ? null : campaignCount > 0, view: 'campaigns', action: 'New campaign' },
-    { label: 'Create a project', hint: 'Projects keep each launch or initiative organised.', done: projects === null ? null : projects.length > 0, view: 'projects', action: 'New project' },
-    { label: 'Generate your first content', hint: 'Use AI Studio to draft a post, reel script or WhatsApp message.', done: contentCount === null ? null : contentCount > 0, view: 'ai-studio', action: 'Open AI Studio' },
-    { label: 'Connect a social account', hint: 'Needed to schedule and publish from Lumora.', done: socialConnected, view: 'integrations', action: 'Connect' },
+  useEffect(() => {
+    let cancelled = false;
+    setUsage(null);
+    getMyCreditUsage(days)
+      .then((u) => !cancelled && setUsage(u))
+      .catch(() => !cancelled && setUsage({ days, creditsUsed: 0, byReason: [] }));
+    return () => {
+      cancelled = true;
+    };
+  }, [days]);
+
+  const spentOn = (reason: string) => usage?.byReason.find((r) => r.reason === reason);
+  const studioUsage = STUDIOS.map((s) => ({ studio: s, credits: spentOn(s.reason)?.credits ?? 0, runs: spentOn(s.reason)?.count ?? 0 }));
+  const totalStudioCredits = studioUsage.reduce((sum, row) => sum + row.credits, 0);
+  const mostUsed = studioUsage.filter((row) => row.credits > 0).sort((a, b) => b.credits - a.credits)[0];
+  const totalCreated = counts ? counts.image + counts.voice + counts.video : null;
+
+  const stats = [
+    {
+      label: 'Credits remaining',
+      value: credits === undefined ? '...' : credits === null ? 'Unlimited' : credits.toLocaleString(),
+      icon: Coins,
+      tint: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300',
+      hint: 'Left in this plan cycle',
+    },
+    {
+      label: `Credits used (${days} days)`,
+      value: usage === null ? '...' : usage.creditsUsed.toLocaleString(),
+      icon: TrendingUp,
+      tint: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300',
+      hint: 'After refunds for failed runs',
+    },
+    {
+      label: 'Content created',
+      value: totalCreated === null ? '...' : totalCreated.toLocaleString(),
+      icon: Sparkles,
+      tint: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300',
+      hint: 'Images, voiceovers and videos',
+    },
+    {
+      label: 'Published',
+      value: publishedCount === null ? '...' : publishedCount.toLocaleString(),
+      icon: Send,
+      tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300',
+      hint: 'Posts sent to your social accounts',
+    },
   ];
-  const onboardingLoaded = onboardingSteps.every((s) => s.done !== null);
-  const onboardingDoneCount = onboardingSteps.filter((s) => s.done).length;
-  const showOnboarding = onboardingLoaded && !onboardingDismissed && onboardingDoneCount < onboardingSteps.length;
-
-  const dismissOnboarding = () => {
-    setOnboardingDismissed(true);
-    try {
-      window.localStorage.setItem('lumora.onboarding.dismissed', '1');
-    } catch {
-      // Dismissal just won't persist across reloads.
-    }
-  };
-
-  const publishedCount = (jobs ?? []).filter((j) => j.status === 'published').length;
-  const scheduledCount = (jobs ?? []).filter((j) => j.status === 'scheduled').length;
-  const recentGenerations = (generations ?? []).slice(0, 5);
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-200">
-      {/* Hero Greeting Section */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-blue-950 p-6 md:p-8 text-white border border-slate-800 shadow-xl">
-        <div className="absolute top-0 right-0 -mt-12 -mr-12 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/20 text-blue-300 text-xs font-semibold backdrop-blur-xs">
-              <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Your content workspace
-            </div>
-            <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              {timeOfDayGreeting()}{user?.firstName ? `, ${user.firstName}` : ''} 👋
-            </h2>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              {generations === null || jobs === null ? (
-                'Loading your workspace activity...'
-              ) : (
-                <>
-                  You've created <span className="text-blue-400 font-semibold">{generations.length} piece{generations.length === 1 ? '' : 's'}</span> of content, with{' '}
-                  <span className="text-blue-400 font-semibold">{scheduledCount} scheduled</span> to publish.
-                </>
-              )}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            {timeOfDayGreeting()}
+            {user?.firstName ? `, ${user.firstName}` : ''}
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">What you've made and what it cost.</p>
+        </div>
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800 w-fit">
+          {PERIODS.map((p) => (
             <button
-              onClick={() => onNavigate('ai-studio')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-lg shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-95"
+              key={p}
+              type="button"
+              onClick={() => setDays(p)}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                days === p
+                  ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Launch 6-Step AI Wizard</span>
+              {p} days
             </button>
-            <button
-              onClick={() => onNavigate('automation')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-all"
-            >
-              <Zap className="w-4 h-4 text-amber-400" />
-              <span>Automation Builder</span>
-            </button>
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* Getting started checklist - driven by what the workspace actually has */}
-      {showOnboarding && (
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-900/50 space-y-3 shadow-xs">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Get started</h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                {onboardingDoneCount} of {onboardingSteps.length} done
-              </p>
-            </div>
-            <button onClick={dismissOnboarding} className="text-[11px] text-slate-400 hover:text-slate-600">
-              Dismiss
-            </button>
-          </div>
-          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
             <div
-              className="h-full bg-blue-600 transition-all"
-              style={{ width: `${(onboardingDoneCount / onboardingSteps.length) * 100}%` }}
-            />
-          </div>
-          <ul className="space-y-2">
-            {onboardingSteps.map((step) => (
-              <li key={step.label} className="flex items-center justify-between gap-3">
-                <div className="flex items-start gap-2 min-w-0">
-                  <CheckCircle2
-                    className={`w-4 h-4 mt-0.5 shrink-0 ${step.done ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600'}`}
-                  />
-                  <div className="min-w-0">
-                    <p className={`text-xs font-semibold ${step.done ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
-                      {step.label}
-                    </p>
-                    {!step.done && <p className="text-[11px] text-slate-500 dark:text-slate-400">{step.hint}</p>}
-                  </div>
-                </div>
-                {!step.done && (
-                  <button
-                    onClick={() => onNavigate(step.view)}
-                    className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold"
-                  >
-                    {step.action}
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Quick Actions Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
-        <button
-          onClick={() => onNavigate('ai-studio')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 hover:shadow-md transition-all text-left group"
-        >
-          <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <h3 className="text-xs font-bold text-slate-900 dark:text-white">AI Content Wizard</h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Zero-prompt generator</p>
-        </button>
-
-        <button
-          onClick={() => onNavigate('video-studio')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 hover:shadow-md transition-all text-left group"
-        >
-          <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-            <Video className="w-5 h-5" />
-          </div>
-          <h3 className="text-xs font-bold text-slate-900 dark:text-white">Video Studio</h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Scripts, AI Shots & B-roll</p>
-        </button>
-
-        <button
-          onClick={() => onNavigate('brand-brain')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 hover:shadow-md transition-all text-left group"
-        >
-          <div className="w-9 h-9 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-            <Brain className="w-5 h-5" />
-          </div>
-          <h3 className="text-xs font-bold text-slate-900 dark:text-white">Brand Brain</h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Central brand memory</p>
-        </button>
-
-        <button
-          onClick={() => onNavigate('analytics')}
-          className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 hover:shadow-md transition-all text-left group"
-        >
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
-            <BarChart2 className="w-5 h-5" />
-          </div>
-          <h3 className="text-xs font-bold text-slate-900 dark:text-white">Analytics</h3>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Insights & Growth Trends</p>
-        </button>
-      </div>
-
-      {/* Highlights Banner - same real metrics AnalyticsView computes
-          (generation/publishing/credits/team), not audience-analytics
-          numbers this app has no data source for. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Generations</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{generations === null ? '—' : generations.length}</p>
-            <p className="text-[11px] text-slate-400 mt-1">across all Studios</p>
-          </div>
-          <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
-            <Sparkles className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Published</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{jobs === null ? '—' : publishedCount}</p>
-            <p className="text-[11px] text-slate-400 mt-1">{scheduledCount} scheduled</p>
-          </div>
-          <div className="p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
-            <Share2 className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Credits Remaining</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
-              {creditsRemaining === undefined ? '—' : creditsRemaining === null ? 'Unlimited' : creditsRemaining.toLocaleString()}
-            </p>
-            <p className="text-[11px] text-slate-400 mt-1">this billing cycle</p>
-          </div>
-          <div className="p-2.5 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400">
-            <Zap className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Team Size</p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{teamSize ?? '—'}</p>
-            <p className="text-[11px] text-slate-400 mt-1">workspace members</p>
-          </div>
-          <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-            <Users className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Grid: Projects & Today's Schedule */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Active Projects */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Active Projects</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Manage multi-channel content initiatives</p>
-            </div>
-            <button
-              onClick={() => onNavigate('projects')}
-              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              key={stat.label}
+              className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs"
             >
-              View All <ExternalLink className="w-3 h-3" />
-            </button>
+              <span className={`inline-flex p-2 rounded-xl ${stat.tint}`}>
+                <Icon className="w-4 h-4" />
+              </span>
+              <p className="mt-3 text-2xl font-extrabold text-slate-900 dark:text-white">{stat.value}</p>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{stat.label}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">{stat.hint}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Your studios</h3>
+            {mostUsed && (
+              <span className="flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-300">
+                <Trophy className="w-3.5 h-3.5" /> Most used: {mostUsed.studio.label}
+              </span>
+            )}
           </div>
 
-          {projects === null ? (
-            <div className="flex items-center justify-center py-10 text-slate-400">
-              <Loader2 className="w-5 h-5 animate-spin" />
-            </div>
-          ) : projects.length === 0 ? (
-            <div className="p-8 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
-              <FolderKanban className="w-6 h-6 mx-auto text-slate-400 mb-2" />
-              <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No projects yet</p>
-              <p className="text-[11px] text-slate-500 mt-1">Create a project to group the content for a launch or initiative.</p>
-              <button
-                onClick={() => onNavigate('projects')}
-                className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold"
-              >
-                <Plus className="w-3.5 h-3.5" /> New Project
-              </button>
+          {usage === null || counts === null ? (
+            <div className="flex justify-center py-8 text-slate-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {projects.map((proj) => (
-                <div
-                  key={proj.id}
-                  onClick={() => onNavigate('projects')}
-                  className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500/50 transition-all cursor-pointer group flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-                        {proj.category}
-                      </span>
-                      <span className="text-[10px] text-slate-400">{timeAgo(proj.updatedAt)}</span>
+            <div className="space-y-4">
+              {studioUsage.map(({ studio, credits: spent, runs }) => {
+                const Icon = studio.icon;
+                const share = totalStudioCredits > 0 ? Math.round((spent / totalStudioCredits) * 100) : 0;
+                return (
+                  <div key={studio.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={`p-1.5 rounded-lg ${studio.tint}`}>
+                          <Icon className="w-3.5 h-3.5" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white">{studio.label}</p>
+                          <p className="text-[10px] text-slate-400">
+                            {plural(counts[studio.id], studio.noun)} saved · {plural(runs, 'run')} in {days} days
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white">
+                          {spent.toLocaleString()} credits
+                        </p>
+                        <p className="text-[10px] text-slate-400">{share}% of use</p>
+                      </div>
                     </div>
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
-                      {proj.title}
-                    </h4>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                      Campaign:{' '}
-                      <span className="text-slate-700 dark:text-slate-300 font-medium">
-                        {(proj.campaignId && campaignNames.get(proj.campaignId)) || 'None'}
-                      </span>
-                    </p>
+                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                      <div className={`h-full ${studio.bar} transition-all`} style={{ width: `${share}%` }} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => onNavigate(studio.view)}
+                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      Open {studio.label} →
+                    </button>
                   </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
-                    <span>{proj.contentCount} content item{proj.contentCount === 1 ? '' : 's'}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${PROJECT_STATUS_STYLES[proj.status]}`}>
-                      {PROJECT_STATUS_LABELS[proj.status]}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
+              {totalStudioCredits === 0 && (
+                <p className="text-[11px] text-slate-400">
+                  Nothing generated in the last {days} days. Open a studio to make your first piece.
+                </p>
+              )}
             </div>
           )}
         </div>
 
-        {/* Scheduled Content & Today's Tasks */}
-        <div className="space-y-4">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Today's Content Queue</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Auto-publishing schedule</p>
-            </div>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">Recent creations</h3>
             <button
-              onClick={() => onNavigate('calendar')}
-              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              type="button"
+              onClick={() => onNavigate('media-library')}
+              className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
             >
-              Calendar <Calendar className="w-3 h-3" />
+              View all →
             </button>
           </div>
-
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 space-y-3">
-            {queue === null ? (
-              <div className="flex items-center justify-center py-6 text-slate-400">
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </div>
-            ) : queue.length === 0 ? (
-              <p className="text-[11px] text-slate-400 text-center py-6">
-                Nothing queued. Generate content in AI Studio and schedule it to see it here.
-              </p>
-            ) : (
-              queue.map(({ job, title }) => (
-                <div
-                  key={job.id}
-                  className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50 space-y-1.5"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      {job.platform}
-                    </span>
-                    <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> {formatScheduledTime(job.scheduledAt)}
-                    </span>
-                  </div>
-                  <p className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
-                    {title}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* AI Agents & Recent Generations Stream */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent AI Generations Feed */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Recent AI Generations</h3>
+          {recent === null ? (
+            <div className="flex justify-center py-8 text-slate-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
             </div>
-            <button
-              onClick={() => onNavigate('ai-studio')}
-              className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-            >
-              Generate New
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {generations === null ? (
-              <div className="flex items-center justify-center py-8 text-slate-400">
-                <Loader2 className="w-4 h-4 animate-spin" />
-              </div>
-            ) : recentGenerations.length === 0 ? (
-              <p className="text-[11px] text-slate-400 text-center py-8">
-                No generations yet. Run the AI Studio wizard or a Studio to create your first asset.
-              </p>
-            ) : (
-              recentGenerations.map((gen) => (
-                <div
-                  key={gen.id}
-                  className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 space-y-1.5"
+          ) : recent.length === 0 ? (
+            <p className="text-[11px] text-slate-400 text-center py-8">Nothing yet - your creations will show up here.</p>
+          ) : (
+            <ul className="space-y-2">
+              {recent.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-center gap-3 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded uppercase">
-                      {gen.type}
+                  {item.type === 'image' ? (
+                    <img src={item.url} alt="" className="w-10 h-10 rounded-lg object-cover bg-slate-200 dark:bg-slate-700" />
+                  ) : (
+                    <span className="w-10 h-10 rounded-lg flex items-center justify-center bg-slate-200 dark:bg-slate-700 text-slate-500">
+                      {item.type === 'audio' ? <Mic className="w-4 h-4" /> : <Film className="w-4 h-4" />}
                     </span>
-                    <span className="text-[10px] text-slate-400">{timeAgo(gen.createdAt)}</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white line-clamp-1">
-                    {gen.fileName}
-                  </h4>
-                  {gen.prompt && (
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
-                      {gen.prompt}
-                    </p>
                   )}
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* AI Agent Fleet - execution isn't connected to anything real yet
-            (see AIAgentsView), so this is an honest preview link rather
-            than fabricated "Active" agent status, matching the disclosure
-            pattern already used on the Automation Builder page. */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">AI Agents Fleet</h3>
-            </div>
-            <button
-              onClick={() => onNavigate('ai-agents')}
-              className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline"
-            >
-              Preview Fleet →
-            </button>
-          </div>
-
-          <div className="flex flex-col items-center gap-2 py-8 text-center">
-            <Bot className="w-6 h-6 text-slate-300 dark:text-slate-600" />
-            <p className="text-[11px] text-slate-400 max-w-[220px]">
-              Agent execution isn't connected yet - the Fleet page is a preview of what's coming.
-            </p>
-          </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {item.prompt || item.fileName}
+                    </p>
+                    <p className="text-[10px] text-slate-400">
+                      {TYPE_LABELS[item.type] ?? item.type} · {timeAgo(item.createdAt)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

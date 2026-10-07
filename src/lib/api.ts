@@ -1041,6 +1041,18 @@ export function getMyCreditWallet(): Promise<CreditWallet> {
   return apiRequest<CreditWallet>('/credits/wallet');
 }
 
+export interface CreditUsageSummary {
+  days: number;
+  /** Credits spent in the period, after refunds for failed runs. */
+  creditsUsed: number;
+  /** Spend per kind of generation, e.g. reason 'generation.image'. */
+  byReason: { reason: string; credits: number; count: number }[];
+}
+
+export function getMyCreditUsage(days = 30): Promise<CreditUsageSummary> {
+  return apiRequest<CreditUsageSummary>(`/credits/usage?days=${days}`);
+}
+
 export async function listMyCreditTransactions(input: { page?: number; limit?: number } = {}): Promise<{
   items: CreditTransaction[];
   meta: { totalItems: number; itemCount: number; itemsPerPage: number; totalPages: number; currentPage: number };

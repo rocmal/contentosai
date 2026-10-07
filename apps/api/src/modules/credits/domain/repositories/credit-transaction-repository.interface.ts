@@ -14,7 +14,26 @@ export interface CreateCreditTransactionData {
 
 export const CREDIT_TRANSACTIONS_REPOSITORY = Symbol('CREDIT_TRANSACTIONS_REPOSITORY');
 
-export interface ICreditTransactionsRepository
-  extends IBaseRepository<CreditTransaction, CreateCreditTransactionData, never> {
-  listByWorkspace(workspaceId: string, options?: FindAllOptions): Promise<PaginatedResult<CreditTransaction>>;
+export interface ICreditTransactionsRepository extends IBaseRepository<
+  CreditTransaction,
+  CreateCreditTransactionData,
+  never
+> {
+  listByWorkspace(
+    workspaceId: string,
+    options?: FindAllOptions,
+  ): Promise<PaginatedResult<CreditTransaction>>;
+  /** Credits consumed per generation type since since, plus the credits handed back as refunds. */
+  summarizeUsage(workspaceId: string, since: Date): Promise<CreditUsageSummary>;
+}
+
+export interface CreditUsageByReason {
+  reason: CreditTransactionReason;
+  credits: number;
+  count: number;
+}
+
+export interface CreditUsageSummary {
+  byReason: CreditUsageByReason[];
+  refunded: number;
 }

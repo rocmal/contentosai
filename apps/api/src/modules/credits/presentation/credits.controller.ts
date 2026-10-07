@@ -8,6 +8,7 @@ import { CreditsService } from '../application/services/credits.service';
 import { CreditWalletResponseDto } from '../application/dto/credit-wallet-response.dto';
 import { CreditTransactionResponseDto } from '../application/dto/credit-transaction-response.dto';
 import { AdjustCreditsDto } from '../application/dto/adjust-credits.dto';
+import { CreditUsageQueryDto } from '../application/dto/credit-usage-query.dto';
 
 @ApiTags('credits')
 @ApiBearerAuth('access-token')
@@ -18,9 +19,20 @@ export class CreditsController {
   @Get('wallet')
   @RequirePermissions('credits.read')
   @ApiOperation({ summary: "Get the caller's workspace credit balance" })
-  async getMyWallet(@CurrentUser('workspaceId') workspaceId: string): Promise<CreditWalletResponseDto> {
+  async getMyWallet(
+    @CurrentUser('workspaceId') workspaceId: string,
+  ): Promise<CreditWalletResponseDto> {
     const wallet = await this.creditsService.getWallet(workspaceId);
     return new CreditWalletResponseDto(wallet);
+  }
+
+  @Get('usage')
+  @RequirePermissions('credits.read')
+  @ApiOperation({
+    summary: 'Credits spent by the workspace over a recent period, per kind of generation',
+  })
+  getMyUsage(@CurrentUser('workspaceId') workspaceId: string, @Query() query: CreditUsageQueryDto) {
+    return this.creditsService.getUsageSummary(workspaceId, query.days);
   }
 
   @Get('transactions')
@@ -42,7 +54,9 @@ export class CreditsController {
 
   @Post('workspaces/:workspaceId/adjust')
   @RequirePermissions('credits.manage')
-  @ApiOperation({ summary: "Manually adjust a workspace's credit balance (support/admin correction)" })
+  @ApiOperation({
+    summary: "Manually adjust a workspace's credit balance (support/admin correction)",
+  })
   async adjust(
     @Param('workspaceId', ParseUuidParamPipe) workspaceId: string,
     @Body() dto: AdjustCreditsDto,

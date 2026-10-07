@@ -1,13 +1,17 @@
 import { HttpException, HttpStatus, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { FindAllOptions, PaginatedResult } from '@shared/interfaces/base-repository.interface';
 import { CreditWallet } from '../../domain/entities/credit-wallet.entity';
-import { CreditTransaction, CreditTransactionReason } from '../../domain/entities/credit-transaction.entity';
+import {
+  CreditTransaction,
+  CreditTransactionReason,
+} from '../../domain/entities/credit-transaction.entity';
 import {
   CREDIT_WALLETS_REPOSITORY,
   ICreditWalletsRepository,
 } from '../../domain/repositories/credit-wallet-repository.interface';
 import {
   CREDIT_TRANSACTIONS_REPOSITORY,
+  CreditUsageByReason,
   ICreditTransactionsRepository,
 } from '../../domain/repositories/credit-transaction-repository.interface';
 import { DEFAULT_PLAN, PLAN_CREDIT_ALLOTMENTS } from '../../credits.constants';
@@ -16,7 +20,10 @@ import { DEFAULT_PLAN, PLAN_CREDIT_ALLOTMENTS } from '../../credits.constants';
  * generation. Thrown before any paid provider is called, never after. */
 export class InsufficientCreditsException extends HttpException {
   constructor(message = 'Not enough credits remaining this billing cycle.') {
-    super({ statusCode: HttpStatus.PAYMENT_REQUIRED, message, error: 'Insufficient Credits' }, HttpStatus.PAYMENT_REQUIRED);
+    super(
+      { statusCode: HttpStatus.PAYMENT_REQUIRED, message, error: 'Insufficient Credits' },
+      HttpStatus.PAYMENT_REQUIRED,
+    );
   }
 }
 
@@ -27,7 +34,9 @@ function addOneMonth(date: Date): Date {
 }
 
 function planAllotment(plan: string): number | null {
-  return plan in PLAN_CREDIT_ALLOTMENTS ? PLAN_CREDIT_ALLOTMENTS[plan] : PLAN_CREDIT_ALLOTMENTS[DEFAULT_PLAN];
+  return plan in PLAN_CREDIT_ALLOTMENTS
+    ? PLAN_CREDIT_ALLOTMENTS[plan]
+    : PLAN_CREDIT_ALLOTMENTS[DEFAULT_PLAN];
 }
 
 @Injectable()
@@ -44,6 +53,21 @@ export class CreditsService {
       throw new NotFoundException(`No credit wallet exists for workspace "${workspaceId}" yet`);
     }
     return wallet;
+  }
+
+  /** What the workspace spent over the last days days, per kind of generation. */
+  async getUsageSummary(
+    workspaceId: string,
+    days = 30,
+  ): Promise<{ days: number; creditsUsed: number; byReason: CreditUsageByReason[] }> {
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const { byReason, refunded } = await this.transactionsRepository.summarizeUsage(
+      workspaceId,
+      since,
+    );
+    const gross = byReason.reduce((sum, row) => sum + row.credits, 0);
+    // Refunds hand back credits for failed runs, so they don't count as spent.
+    return { days, creditsUsed: Math.max(0, gross - refunded), byReason };
   }
 
   async listTransactions(
@@ -99,7 +123,12 @@ export class CreditsService {
     if (!wallet || wallet.balance === null || wallet.balance <= 0) return;
 
     const removed = wallet.balance;
-    await this.walletsRepository.setBalance(workspaceId, 0, wallet.cycleStartAt ?? new Date(), wallet.cycleEndAt);
+    await this.walletsRepository.setBalance(
+      workspaceId,
+      0,
+      wallet.cycleStartAt ?? new Date(),
+      wallet.cycleEndAt,
+    );
     await this.transactionsRepository.create({
       organizationId,
       workspaceId,
@@ -124,9 +153,13 @@ export class CreditsService {
     const existing = await this.walletsRepository.findByWorkspace(workspaceId);
     const wallet = existing
       ? await this.walletsRepository.setBalance(workspaceId, allotment, cycleStartAt, cycleEndAt)
-      : await this.walletsRepository.create(
-          { organizationId, workspaceId, balance: allotment, cycleStartAt, cycleEndAt },
-        );
+      : await this.walletsRepository.create({
+          organizationId,
+          workspaceId,
+          balance: allotment,
+          cycleStartAt,
+          cycleEndAt,
+        });
 
     await this.transactionsRepository.create({
       organizationId,
