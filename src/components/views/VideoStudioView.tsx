@@ -413,6 +413,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
   // Save-as-template (from the result screen)
   const [showSaveTemplatePanel, setShowSaveTemplatePanel] = useState(false);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const [saveTemplateError, setSaveTemplateError] = useState<string | null>(null);
   const [templateTitle, setTemplateTitle] = useState('');
   const [templateVisibility, setTemplateVisibility] = useState<api.VideoTemplateVisibility>('private');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
@@ -496,8 +498,26 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
    * tail scenes outright. */
   const getScaledSceneDurations = (): number[] => scenes.map((s) => s.durationSeconds * sceneDurationScale);
 
+  const loadVideoTemplates = () => {
+    api
+      .listVideoTemplates()
+      .then((items) => {
+        setVideoTemplates(items);
+        setTemplatesError(null);
+      })
+      .catch((err) =>
+        setTemplatesError(err instanceof api.ApiError ? err.message : 'Could not load your saved templates.'),
+      );
+  };
+
+  // Reload whenever the Templates tab is opened, so a template saved a moment ago shows up.
   useEffect(() => {
-    api.listVideoTemplates().then(setVideoTemplates).catch(() => undefined);
+    if (source === 'templates') loadVideoTemplates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source]);
+
+  useEffect(() => {
+    loadVideoTemplates();
     api.getGalleryUsage().then(setGalleryUsage).catch(() => undefined);
     api.listMyVideoProjects(10).then(setPastProjects).catch(() => undefined);
   }, []);
@@ -1396,7 +1416,15 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
       });
       setVideoTemplates((prev) => [saved, ...prev]);
       setSaveTemplateStatus('saved');
-    } catch {
+      setSaveTemplateError(null);
+    } catch (err) {
+      setSaveTemplateError(
+        err instanceof api.ApiError && err.status === 413
+          ? 'This video is too large to save as a template (the limit is 25 MB). Try a shorter video.'
+          : err instanceof api.ApiError
+            ? err.message
+            : 'Could not reach the Lumora API.',
+      );
       setSaveTemplateStatus('error');
     } finally {
       setIsSavingTemplate(false);
@@ -1642,11 +1670,18 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
           {source === 'templates' && (
             <div className="space-y-5">
-              {(videoTemplates?.length ?? 0) > 0 && (
+              {(
                 <div className="space-y-2.5">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                     Your saved templates
                   </h3>
+                  {templatesError && <p className="text-[11px] text-red-500 break-words">{templatesError}</p>}
+                  {videoTemplates.length === 0 && !templatesError && (
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Nothing saved yet. Finish a video in Scene Builder and tick "Also save as a template", or use
+                      "Save as template" on the finished video, and it will appear here.
+                    </p>
+                  )}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {videoTemplates.map((t) => (
                       <button
@@ -3022,7 +3057,9 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   {saveTemplateStatus === 'error' && (
                     <div className="flex items-start gap-2 p-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400">
                       <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                      <p className="text-[11px] leading-snug">Could not save this template. Please try again.</p>
+                      <p className="text-[11px] leading-snug break-words">
+                        Could not save this template. {saveTemplateError ?? 'Please try again.'}
+                      </p>
                     </div>
                   )}
 

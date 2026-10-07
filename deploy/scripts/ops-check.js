@@ -158,6 +158,31 @@ async function checkAvatars() {
   }
 }
 
+// Video Studio saved templates: do any exist, and who can see them?
+async function checkTemplates() {
+  let conn;
+  try {
+    conn = await require('mysql2/promise').createConnection({
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+    });
+    const [rows] = await conn.execute(
+      'SELECT title, visibility, createdBy IS NOT NULL AS hasCreator, createdAt, deletedAt FROM video_templates ORDER BY createdAt DESC LIMIT 15',
+    );
+    out('video templates', `${rows.length} rows (newest 15)`);
+    for (const row of rows) {
+      out('video template', `${short(row.title, 40)} visibility=${row.visibility} creator=${Boolean(row.hasCreator)} deleted=${Boolean(row.deletedAt)} at=${new Date(row.createdAt).toISOString()}`);
+    }
+  } catch (err) {
+    out('video templates', `check failed: ${short(err.message)}`);
+  } finally {
+    if (conn) await conn.end().catch(() => {});
+  }
+}
+
 async function checkQueue() {
   let queue;
   try {
@@ -193,6 +218,7 @@ async function checkQueue() {
   await checkGemini();
   await checkUser();
   await checkAvatars();
+  await checkTemplates();
   await checkQueue();
   clearTimeout(timer);
   process.exit(0);
