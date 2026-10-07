@@ -84,3 +84,33 @@ export function takeReuse(studio: ReuseStudio): ReuseRequest | null {
     return null;
   }
 }
+
+const GALLERY_SEARCH_KEY = 'lumora.gallerySearch';
+
+/** Ask the Gallery to open with this search already typed in (used by the global search). */
+export function requestGallerySearch(query: string): void {
+  try {
+    window.sessionStorage.setItem(GALLERY_SEARCH_KEY, query);
+  } catch {
+    // Storage blocked: the Gallery just opens unfiltered.
+  }
+}
+
+/** The search left for the Gallery, if any. Cleared a moment later because React may run an initializer twice in development. */
+export function takeGallerySearch(): string {
+  try {
+    const query = window.sessionStorage.getItem(GALLERY_SEARCH_KEY) ?? '';
+    if (query) {
+      window.setTimeout(() => {
+        try {
+          window.sessionStorage.removeItem(GALLERY_SEARCH_KEY);
+        } catch {
+          // Nothing to clear.
+        }
+      }, 1500);
+    }
+    return query;
+  } catch {
+    return '';
+  }
+}

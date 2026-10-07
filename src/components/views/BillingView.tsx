@@ -194,22 +194,6 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
-      <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400">
-              <CreditCard className="w-5 h-5" />
-            </span>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-              Billing & AI Credit Usage
-            </h2>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Your Lumora OS subscription and credit consumption.
-          </p>
-        </div>
-      </div>
-
       {/* Credit Meter Card */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 to-blue-950 text-white space-y-4 shadow-xl border border-slate-800">
         {subscription === undefined || wallet === undefined ? (

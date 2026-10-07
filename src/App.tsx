@@ -105,6 +105,19 @@ export function App() {
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
+
+  // Ctrl+K (Cmd+K on a Mac) opens or closes the global search from anywhere in the app.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isAuthenticated]);
   const [isTourOpen, setIsTourOpen] = useState<boolean>(false);
   // Set when a visitor clicks a Starter/Pro pricing card on the landing page
   // (see LandingPage's onSignupClick) - carried through the signup form
@@ -238,10 +251,6 @@ export function App() {
   }, []);
 
 
-  const handleRunQuickAI = (prompt: string) => {
-    setCurrentView('ai-studio');
-  };
-
   // Privacy/Terms are static, unauthenticated pages - served regardless of
   // auth/loading state so a direct link (e.g. from Meta's App Review) always
   // resolves, even mid-session for a logged-in user.
@@ -298,7 +307,6 @@ export function App() {
           theme={darkMode ? 'dark' : 'light'}
           onToggleTheme={toggleDarkMode}
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
-          onQuickGenerate={() => setCurrentView('ai-studio')}
           onStartTour={() => setIsTourOpen(true)}
           user={user}
         />
@@ -432,7 +440,6 @@ export function App() {
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         onNavigate={(v) => setCurrentView(v)}
-        onRunQuickAI={handleRunQuickAI}
       />
 
       <MobileNav

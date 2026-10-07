@@ -61,6 +61,16 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 - Landing page, pricing plans, footer and FAQ were reworded to the real product (Image, Video, Voice, Gallery, Team, Calendar,
   Dashboard). Keep them in step with this list when navigation changes.
 
+### Header, titles and global search
+
+- The header (`src/components/Header.tsx`) is the only place a page title and subtitle appear; screens must not repeat them. When you
+  add or rename a screen, update `viewTitles` there. The Create button is a menu (Image / Video / Voiceover).
+- **Ctrl+K (Cmd+K on a Mac)** toggles the global search from anywhere once signed in (listener in `App.tsx`,
+  `src/components/CommandPalette.tsx`). It searches pages, an "Invite a teammate" action (only if allowed), video prompt templates, and
+  the whole team's gallery (`/media/library?scope=team&search=`). Choosing a gallery hit opens Gallery with that search
+  (`requestGallerySearch` in `src/lib/reuse.ts`); choosing a template opens Video Studio with the prompt. To make a new page findable
+  add it to the `pages` list in the palette with a few keywords.
+
 ### Dashboard (src/components/views/DashboardView.tsx)
 
 Studio-focused. Top to bottom: greeting + 7/30/90-day switch; three studio cards (Image, Video, Voice) each with a Create

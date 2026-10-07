@@ -1461,19 +1461,6 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
-      <div className="pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400">
-            <Film className="w-5 h-5" />
-          </span>
-          <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Video Studio</h2>
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Start from a prompt, an upload, a template, or build multi-scene with clips/images and
-          voiceover - then download or share.
-        </p>
-      </div>
-
       {step === 'create' && (
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 items-start">
         <div className="space-y-6 min-w-0">

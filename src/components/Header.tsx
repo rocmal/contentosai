@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import {
   Bell,
   BellOff,
-  Command,
+  ChevronDown,
   HelpCircle,
+  Image as ImageIcon,
+  Mic,
   Moon,
-  Plus,
   Search,
   Sparkles,
   Sun,
-  X,
+  Video,
 } from 'lucide-react';
 import { ThemeMode, ViewType } from '../types';
 import { AuthUser } from '../lib/api';
@@ -20,7 +21,6 @@ interface HeaderProps {
   theme: ThemeMode;
   onToggleTheme: () => void;
   onOpenCommandPalette: () => void;
-  onQuickGenerate: () => void;
   onStartTour?: () => void;
   user: AuthUser | null;
 }
@@ -31,18 +31,18 @@ export const Header: React.FC<HeaderProps> = ({
   theme,
   onToggleTheme,
   onOpenCommandPalette,
-  onQuickGenerate,
   onStartTour,
   user,
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
+  // The shortcut is Cmd+K on a Mac and Ctrl+K everywhere else.
+  const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform);
 
   const viewTitles: Record<ViewType, { title: string; subtitle: string }> = {
     dashboard: {
       title: 'Dashboard',
-      subtitle: user?.firstName
-        ? `Welcome back, ${user.firstName}. Here is your content performance overview.`
-        : 'Here is your content performance overview.',
+      subtitle: 'What you have made, what it cost, and where to start next.',
     },
     'ai-studio': {
       title: 'AI Studio Wizard',
@@ -58,19 +58,19 @@ export const Header: React.FC<HeaderProps> = ({
     },
     calendar: {
       title: 'Content Calendar',
-      subtitle: 'Plan, schedule, review, and auto-publish across all channels.',
+      subtitle: 'See your scheduled and published posts across Facebook, Instagram, LinkedIn and YouTube.',
     },
     'video-studio': {
       title: 'Video Studio',
-      subtitle: 'Script, scene edit, add voiceovers, AI B-roll & generate thumbnails.',
+      subtitle: 'Make a short video from a prompt or template, add narration and text, then download or schedule it.',
     },
     'image-studio': {
       title: 'Image Studio',
-      subtitle: 'AI image generation, upscaling, background removal & magic resize.',
+      subtitle: 'Describe a picture and get the right size for each platform you post to.',
     },
     'voice-studio': {
       title: 'Voice Studio',
-      subtitle: 'Voice library, custom vocal cloning, and emotive voiceover generator.',
+      subtitle: 'Turn a script into a voiceover in Hindi, Punjabi or English, or use your own recorded voice.',
     },
     'character-studio': {
       title: 'Character Studio',
@@ -101,28 +101,28 @@ export const Header: React.FC<HeaderProps> = ({
       subtitle: '1-Click industry content packs for B2B, E-commerce, Real Estate & Healthcare.',
     },
     team: {
-      title: 'Team & Collaboration',
-      subtitle: 'Manage team members, role permissions, and review approvals.',
+      title: 'Team',
+      subtitle: 'Invite teammates and manage who can do what in your workspace.',
     },
     integrations: {
-      title: 'Integrations & API Keys',
-      subtitle: 'Connect AI models, social channels, webhooks & storage providers.',
+      title: 'Integrations',
+      subtitle: 'Connect the social accounts you publish to.',
     },
     billing: {
-      title: 'Billing & AI Credits',
-      subtitle: 'Manage workspace plan, credit consumption, and invoices.',
+      title: 'Billing & Credits',
+      subtitle: 'Your plan, your credits, and renewing or upgrading.',
     },
     settings: {
-      title: 'Workspace Settings',
-      subtitle: 'Configure workspace preferences, security, and defaults.',
+      title: 'Settings',
+      subtitle: 'Theme and workspace details.',
     },
     profile: {
       title: 'Profile',
       subtitle: 'Your account details and plan usage.',
     },
     help: {
-      title: 'Help Center & Tutorials',
-      subtitle: 'Video guides, platform walkthroughs, and FAQ support.',
+      title: 'Help Center',
+      subtitle: 'Step-by-step guides and answers to common questions.',
     },
   };
 
@@ -155,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Search className="w-3.5 h-3.5 text-slate-400" />
           <span>Search or type command...</span>
           <kbd className="px-1.5 py-0.5 text-[10px] bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 font-mono shadow-xs">
-            ⌘K
+            {isMac ? '⌘K' : 'Ctrl K'}
           </kbd>
         </button>
 
@@ -224,14 +224,43 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Quick Create AI Content Button */}
-        <button
-          onClick={onQuickGenerate}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-all hover:shadow-md active:scale-95"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Create Content</span>
-        </button>
+        {/* Create menu: pick a studio */}
+        <div className="relative">
+          <button
+            onClick={() => setShowCreateMenu((open) => !open)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs shadow-sm transition-all hover:shadow-md active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Create</span>
+            <ChevronDown className="w-3 h-3" />
+          </button>
+          {showCreateMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowCreateMenu(false)} />
+              <div className="absolute right-0 mt-2 w-52 z-50 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                {[
+                  { view: 'image-studio' as ViewType, label: 'Image', icon: ImageIcon },
+                  { view: 'video-studio' as ViewType, label: 'Video', icon: Video },
+                  { view: 'voice-studio' as ViewType, label: 'Voiceover', icon: Mic },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.view}
+                      onClick={() => {
+                        setShowCreateMenu(false);
+                        onNavigate(item.view);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    >
+                      <Icon className="w-4 h-4 text-blue-500" /> Create {item.label.toLowerCase()}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

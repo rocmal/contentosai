@@ -26,7 +26,14 @@ import {
   MediaAssetType,
   renameMediaAsset,
 } from '../../lib/api';
-import { cleanPrompt, requestReuse, STUDIO_LABEL, STUDIO_VIEW, studioForType } from '../../lib/reuse';
+import {
+  cleanPrompt,
+  requestReuse,
+  STUDIO_LABEL,
+  STUDIO_VIEW,
+  studioForType,
+  takeGallerySearch,
+} from '../../lib/reuse';
 
 interface MediaLibraryViewProps {
   onNavigate: (view: ViewType) => void;
@@ -81,8 +88,10 @@ const Thumb: React.FC<{ item: LibraryItem; className?: string }> = ({ item, clas
 export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }) => {
   const [tab, setTab] = useState<Tab>('mine');
   const [type, setType] = useState<'all' | MediaAssetType>('all');
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  // Opened from the global search: start with that search typed in.
+  const [initialSearch] = useState(() => takeGallerySearch());
+  const [searchInput, setSearchInput] = useState(initialSearch);
+  const [search, setSearch] = useState(initialSearch);
   const [items, setItems] = useState<LibraryItem[] | null>(null);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -325,27 +334,8 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
 
   return (
     <div className="space-y-5 pb-16 animate-in fade-in duration-200">
-      <div className="flex flex-wrap items-end justify-between gap-3 pb-4 border-b border-slate-200 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400">
-              <FolderOpen className="w-5 h-5" />
-            </span>
-            <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">Gallery</h2>
-          </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Everything you and your team have made. Rename it, download it, or start again from it.
-          </p>
-        </div>
-        {usage && (
-          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-            <span className="font-bold text-slate-700 dark:text-slate-200">{usage.count}</span> of {usage.max} images and
-            videos saved
-          </p>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 w-fit">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 w-fit">
         {TABS.map((t) => {
           const Icon = t.icon;
           return (
@@ -368,6 +358,13 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
             </button>
           );
         })}
+        </div>
+        {usage && (
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+            <span className="font-bold text-slate-700 dark:text-slate-200">{usage.count}</span> of {usage.max} images and
+            videos saved
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
