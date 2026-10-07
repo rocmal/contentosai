@@ -133,6 +133,31 @@ async function checkUser() {
   }
 }
 
+// Character Studio avatars: which image address each card uses, and whether it loads.
+async function checkAvatars() {
+  let conn;
+  try {
+    conn = await require('mysql2/promise').createConnection({
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+    });
+    const [rows] = await conn.execute(
+      'SELECT slug, imageUrl, thumbnailUrl FROM avatars WHERE deletedAt IS NULL ORDER BY createdAt DESC LIMIT 20',
+    );
+    out('avatars', `${rows.length} rows`);
+    for (const row of rows) {
+      out('avatar', `${row.slug} thumb=${short(row.thumbnailUrl, 90)} image=${short(row.imageUrl, 90)}`);
+    }
+  } catch (err) {
+    out('avatars', `check failed: ${short(err.message)}`);
+  } finally {
+    if (conn) await conn.end().catch(() => {});
+  }
+}
+
 async function checkQueue() {
   let queue;
   try {
@@ -167,6 +192,7 @@ async function checkQueue() {
   await checkOpenAi();
   await checkGemini();
   await checkUser();
+  await checkAvatars();
   await checkQueue();
   clearTimeout(timer);
   process.exit(0);

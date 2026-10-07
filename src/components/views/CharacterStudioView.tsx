@@ -53,6 +53,19 @@ const POLL_TIMEOUT_MS: Record<api.CharacterProvider, number> = {
   wav2lip: 45 * 60_000, // 45 min - lighter model than SadTalker, but still CPU-bound here
 };
 
+/** An avatar's picture; if the image can't load, show the person's initial instead of a broken-image icon. */
+function AvatarPicture({ src, name, className }: { src: string | null | undefined; name: string; className: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return (
+      <div className={`flex items-center justify-center bg-gradient-to-br from-indigo-100 to-blue-200 text-2xl font-extrabold text-indigo-600 dark:from-indigo-900/40 dark:to-blue-900/40 dark:text-indigo-300 ${className}`}>
+        {name.trim().charAt(0).toUpperCase() || '?'}
+      </div>
+    );
+  }
+  // eslint-disable-next-line jsx-a11y/img-redundant-alt
+  return <img src={src} alt={name} onError={() => setFailed(true)} className={className} />;
+}
 export const CharacterStudioView: React.FC<CharacterStudioViewProps> = ({ onNavigate }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -322,7 +335,7 @@ export const CharacterStudioView: React.FC<CharacterStudioViewProps> = ({ onNavi
                   {avatars.map((avatar) => (
                     <div key={avatar.id} className={`rounded-xl border bg-white p-3 shadow-sm dark:bg-slate-900 ${selectedAvatar?.id === avatar.id ? 'border-blue-600' : 'border-slate-200 dark:border-slate-700'}`}>
                       <button type="button" onClick={() => void handleUseAvatar(avatar)} className="block aspect-square w-full overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                        <img src={avatar.thumbnailUrl || avatar.imageUrl} alt={avatar.name} className="h-full w-full object-cover" />
+                        <AvatarPicture src={avatar.thumbnailUrl || avatar.imageUrl} name={avatar.name} className="h-full w-full object-cover" />
                       </button>
                       <div className="mt-3 min-h-[76px]">
                         <p className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{avatar.name}</p>
@@ -561,7 +574,7 @@ export const CharacterStudioView: React.FC<CharacterStudioViewProps> = ({ onNavi
           {activeTab === 'existing' && selectedAvatar && (
             <div className="mx-auto max-w-xl space-y-5 rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900 dark:bg-blue-950/20">
               <div className="flex items-center gap-3">
-                <img src={selectedAvatar.thumbnailUrl || selectedAvatar.imageUrl} alt={selectedAvatar.name} className="h-14 w-14 rounded-lg object-cover" />
+                <AvatarPicture src={selectedAvatar.thumbnailUrl || selectedAvatar.imageUrl} name={selectedAvatar.name} className="h-14 w-14 rounded-lg object-cover" />
                 <div>
                   <p className="text-sm font-extrabold text-slate-900 dark:text-white">{selectedAvatar.name}</p>
                   <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Selected avatar</p>
