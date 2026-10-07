@@ -1,6 +1,7 @@
 'use strict';
 
 const { baseColumns } = require('./_helpers/base-columns');
+const { referenceCharsetCollate } = require('./_helpers/reference-collation');
 
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
@@ -30,7 +31,7 @@ module.exports = {
       sampleStorageKey: { type: Sequelize.STRING(255), allowNull: true },
       // The person confirmed the recording is their own voice (or they have permission).
       consentConfirmedAt: { type: Sequelize.DATE, allowNull: false },
-    });
+    }, await referenceCharsetCollate(queryInterface));
 
     await queryInterface.addIndex('custom_voices', ['workspaceId']);
     await queryInterface.addIndex('custom_voices', ['createdBy']);
