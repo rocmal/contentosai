@@ -434,7 +434,7 @@ export function App() {
       />
 
       {/* Floating Elements */}
-      <FloatingAIAssistant currentView={currentView} />
+      <FloatingAIAssistant currentView={currentView} onNavigate={(view) => setCurrentView(view)} />
 
       <CommandPalette
         isOpen={commandPaletteOpen}

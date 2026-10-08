@@ -1,25 +1,56 @@
 import React, { useState } from 'react';
-import { Bot, ChevronDown, Minimize2, Send, Sparkles, X } from 'lucide-react';
+import { Bot, Download, ImageIcon, Minimize2, Send, Sparkles } from 'lucide-react';
 import { ViewType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { ApiError, copilotReply } from '../lib/api';
+import { ApiError, copilotReply, generateImage, getImageOptions } from '../lib/api';
 import VoiceInputButton, { appendSpoken } from './VoiceInputButton';
+
+// "Create an image of...", "generate a poster for...", "/image sunset over Amritsar" - these go to
+// Image Studio's generator instead of the text co-pilot.
+const IMAGE_INTENT =
+  /^\s*(?:\/image\b|(?:please\s+)?(?:(?:can|could) you\s+)?(?:create|generate|make|draw|design|paint|produce|give me|show me)\b[^.?!\n]{0,40}?\b(?:image|picture|photo|poster|logo|illustration|banner|graphic|thumbnail|artwork)\b)/i;
+
+// Video and voice cost far more than text, so the chat points to their studios instead of running them blind.
+const STUDIO_INTENTS: { test: RegExp; view: ViewType; label: string; reply: string }[] = [
+  {
+    test: /^\s*(?:please\s+)?(?:(?:can|could) you\s+)?(?:create|generate|make|produce|give me|show me)\b[^.?!\n]{0,40}?\b(?:video|reel|short|animation)\b/i,
+    view: 'video-studio',
+    label: 'Open Video Studio',
+    reply: 'Videos are made in Video Studio, where you can pick the style, length and see the credit cost before you start.',
+  },
+  {
+    test: /^\s*(?:please\s+)?(?:(?:can|could) you\s+)?(?:create|generate|make|produce|record|give me)\b[^.?!\n]{0,40}?\b(?:voiceover|voice-over|voice over|narration|audio|speech)\b/i,
+    view: 'voice-studio',
+    label: 'Open Voice Studio',
+    reply: 'Voiceovers are made in Voice Studio, where you can choose the language and voice and hear it before saving.',
+  },
+];
+
+type ChatMessage = {
+  sender: 'user' | 'assistant';
+  text: string;
+  isError?: boolean;
+  image?: string;
+  link?: { view: ViewType; label: string };
+};
 
 interface FloatingAIAssistantProps {
   currentView: ViewType;
+  onNavigate?: (view: ViewType) => void;
 }
 
-export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ currentView }) => {
+export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ currentView, onNavigate }) => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ sender: 'user' | 'assistant'; text: string; isError?: boolean }[]>([
+  const [messages, setMessages] = useState<ChatMessage[]>([
     {
       sender: 'assistant',
-      text: `Hi${user?.firstName ? ` ${user.firstName}` : ''}! I'm your Lumora Co-pilot. I can rewrite text, suggest hooks, plan content and explain how to use the platform. Each reply uses 1 credit. How can I help?`,
+      text: `Hi${user?.firstName ? ` ${user.firstName}` : ''}! I'm your Lumora Co-pilot. I can rewrite text, suggest hooks, plan content and explain how to use the platform. Each text reply uses 1 credit. Ask me to "create an image of..." and I'll make one (uses image credits). How can I help?`,
     },
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isMakingImage, setIsMakingImage] = useState(false);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,12 +60,57 @@ export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ curren
     // The greeting and any error bubbles are UI, not conversation - only real turns are sent back.
     const history = messages
       .slice(1)
-      .filter((m) => !m.isError)
+      .filter((m) => !m.isError && !m.image && !m.link)
       .slice(-8)
       .map((m) => ({ role: m.sender, text: m.text }));
     setInput('');
     setMessages((prev) => [...prev, { sender: 'user', text: userMsg }]);
     setIsTyping(true);
+
+    const studio = STUDIO_INTENTS.find((s) => s.test.test(userMsg));
+    if (studio) {
+      setMessages((prev) => [
+        ...prev,
+        { sender: 'assistant', text: studio.reply, link: { view: studio.view, label: studio.label } },
+      ]);
+      setIsTyping(false);
+      return;
+    }
+
+    if (IMAGE_INTENT.test(userMsg)) {
+      setIsMakingImage(true);
+      try {
+        const prompt = userMsg.replace(/^\s*\/image\s*/i, '').trim();
+        const { providers } = await getImageOptions();
+        const provider = providers.find((p) => p.configured) ?? providers.find((p) => p.recommended) ?? providers[0];
+        if (!provider) throw new Error('No image provider is set up on this server.');
+        const quality = provider.qualities.find((q) => q.id === 'standard')?.id ?? provider.qualities[0]?.id;
+        const result = await generateImage({
+          prompt,
+          provider: provider.id,
+          quality,
+          aspectRatio: '1:1',
+          count: 1,
+          saveToGallery: true,
+        });
+        const image = result.images[0];
+        if (!image) throw new ApiError(502, 'The image provider returned no image.');
+        const cost = result.creditsUsed ? ` Used ${result.creditsUsed} credit${result.creditsUsed === 1 ? '' : 's'}; it is saved in your Gallery.` : ' It is saved in your Gallery.';
+        setMessages((prev) => [...prev, { sender: 'assistant', text: `Here's your image.${cost}`, image, link: { view: 'image-studio', label: 'Open Image Studio' } }]);
+      } catch (err) {
+        const message =
+          err instanceof ApiError && err.status === 402
+            ? 'Not enough credits to create an image.'
+            : err instanceof ApiError || err instanceof Error
+              ? err.message
+              : 'Something went wrong.';
+        setMessages((prev) => [...prev, { sender: 'assistant', isError: true, text: `${message} No credit was charged.` }]);
+      } finally {
+        setIsMakingImage(false);
+        setIsTyping(false);
+      }
+      return;
+    }
 
     try {
       const { reply } = await copilotReply({ message: userMsg, screen: currentView, history });
@@ -106,14 +182,40 @@ export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ curren
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-xs border border-slate-200/50 dark:border-slate-700/50'
                   }`}
                 >
+                  {m.image && (
+                    <div className="mb-2">
+                      <img src={m.image} alt="Generated" className="w-full rounded-xl border border-slate-200 dark:border-slate-700" />
+                      <a
+                        href={m.image}
+                        download="lumora-image.png"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        <Download className="w-3 h-3" /> Download
+                      </a>
+                    </div>
+                  )}
                   {m.text}
+                  {m.link && onNavigate && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onNavigate(m.link!.view);
+                        setIsOpen(false);
+                      }}
+                      className="mt-2 block px-2.5 py-1 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-semibold transition-colors"
+                    >
+                      {m.link.label} →
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
             {isTyping && (
               <div className="flex justify-start">
                 <div className="bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl px-3 py-2 text-[11px] animate-pulse">
-                  Lumora Co-pilot is analyzing context...
+                  {isMakingImage ? 'Creating your image... this can take up to a minute' : 'Lumora Co-pilot is analyzing context...'}
                 </div>
               </div>
             )}
@@ -126,6 +228,12 @@ export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ curren
               className="px-2 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-500 whitespace-nowrap"
             >
               ✨ Make punchy
+            </button>
+            <button
+              onClick={() => setInput('Create an image of ')}
+              className="px-2 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-500 whitespace-nowrap inline-flex items-center gap-1"
+            >
+              <ImageIcon className="w-3 h-3" /> Create image
             </button>
             <button
               onClick={() => setInput('Suggest 5 YouTube Short titles')}
