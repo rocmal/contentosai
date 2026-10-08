@@ -1133,7 +1133,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         setError(
           err instanceof api.ApiError
             ? err.message
-            : 'Could not reach the Lumora API. Is the backend running?',
+            : 'We lost connection while making your video. It may still be rendering - check your Gallery in a minute before trying again, so you are not charged twice.',
         );
       }
       setStep('create');

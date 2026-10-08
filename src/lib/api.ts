@@ -1351,11 +1351,23 @@ export async function pollVideoJob(
   const timeoutMs = options?.timeoutMs ?? 180_000;
   const startedAt = Date.now();
 
+  // The job is already running (and charged) vendor-side, so one dropped request - the API restarting
+  // during a deploy, a flaky connection - must not abandon it. Give up only after several in a row.
+  let failedPolls = 0;
   for (;;) {
-    const status = await getVideoJobStatus(provider, jobId, options?.cacheKey);
-    options?.onUpdate?.(status);
-    if (status.status === 'completed' || status.status === 'failed') {
-      return status;
+    let status: VideoGenerationResult | null = null;
+    try {
+      status = await getVideoJobStatus(provider, jobId, options?.cacheKey);
+      failedPolls = 0;
+    } catch (err) {
+      const transient = !(err instanceof ApiError) || err.status >= 502;
+      if (!transient || ++failedPolls >= 5) throw err;
+    }
+    if (status) {
+      options?.onUpdate?.(status);
+      if (status.status === 'completed' || status.status === 'failed') {
+        return status;
+      }
     }
     if (Date.now() - startedAt > timeoutMs) {
       throw new ApiError(408, 'Video generation timed out while waiting for the provider.');
