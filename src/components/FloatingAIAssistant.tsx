@@ -3,6 +3,7 @@ import { Bot, Download, ImageIcon, Minimize2, Send, Sparkles } from 'lucide-reac
 import { ViewType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiError, copilotReply, generateImage, getImageOptions } from '../lib/api';
+import { findHelpAnswer } from '../lib/helpContent';
 import VoiceInputButton, { appendSpoken } from './VoiceInputButton';
 
 // "Create an image of...", "generate a poster for...", "/image sunset over Amritsar" - these go to
@@ -32,6 +33,8 @@ type ChatMessage = {
   isError?: boolean;
   image?: string;
   link?: { view: ViewType; label: string };
+  /** Answered from the built-in guides (free); holds the original question so it can be re-asked to the AI. */
+  guideFor?: string;
 };
 
 interface FloatingAIAssistantProps {
@@ -52,20 +55,41 @@ export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ curren
   const [isTyping, setIsTyping] = useState(false);
   const [isMakingImage, setIsMakingImage] = useState(false);
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isTyping) return;
-
     const userMsg = input;
-    // The greeting and any error bubbles are UI, not conversation - only real turns are sent back.
+    setInput('');
+    void send(userMsg);
+  };
+
+  const send = async (userMsg: string, options: { skipGuide?: boolean } = {}) => {
+    // The greeting, error bubbles and guide/link/image answers are UI, not conversation - only real turns are sent back.
     const history = messages
       .slice(1)
-      .filter((m) => !m.isError && !m.image && !m.link)
+      .filter((m) => !m.isError && !m.image && !m.link && !m.guideFor)
       .slice(-8)
       .map((m) => ({ role: m.sender, text: m.text }));
-    setInput('');
-    setMessages((prev) => [...prev, { sender: 'user', text: userMsg }]);
+    // Re-asking the AI after a guide answer: the question is already the last turn, so don't send it twice.
+    if (options.skipGuide && history[history.length - 1]?.text === userMsg) history.pop();
+    if (!options.skipGuide) setMessages((prev) => [...prev, { sender: 'user', text: userMsg }]);
     setIsTyping(true);
+
+    // "How do I...?" questions are answered from the built-in guides: instant, and no credit or AI call.
+    const guide = options.skipGuide ? null : findHelpAnswer(userMsg);
+    if (guide) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: 'assistant',
+          text: `${guide.title}\n${guide.text}`,
+          guideFor: userMsg,
+          link: guide.view && guide.action ? { view: guide.view, label: guide.action } : undefined,
+        },
+      ]);
+      setIsTyping(false);
+      return;
+    }
 
     const studio = STUDIO_INTENTS.find((s) => s.test.test(userMsg));
     if (studio) {
@@ -176,7 +200,7 @@ export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ curren
                 className={`flex ${m.sender === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3 py-2 leading-relaxed ${
+                  className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 leading-relaxed ${
                     m.sender === 'user'
                       ? 'bg-blue-600 text-white rounded-br-xs font-medium'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-xs border border-slate-200/50 dark:border-slate-700/50'
@@ -208,6 +232,19 @@ export const FloatingAIAssistant: React.FC<FloatingAIAssistantProps> = ({ curren
                     >
                       {m.link.label} →
                     </button>
+                  )}
+                  {m.guideFor && (
+                    <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                      <span>From the Lumora guide - free.</span>
+                      <button
+                        type="button"
+                        disabled={isTyping}
+                        onClick={() => void send(m.guideFor!, { skipGuide: true })}
+                        className="font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                      >
+                        Ask AI instead (1 credit)
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
