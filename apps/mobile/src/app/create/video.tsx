@@ -14,13 +14,10 @@ import { Button, Card, Chip, ChipRow, ErrorText, Field, Input, Muted, Screen } f
 import { MediaActions } from '@/ui/MediaActions';
 import { colors, space } from '@/ui/theme';
 
-// "mock" only works outside production on the server, so it is a dev-only choice here.
+// Production only has a Veo key (see docs/LAUNCH-CHECKLIST.md). To offer another model, add it here once its key is set on the server.
+// "mock" only works outside production, so it is a dev-only choice.
 const PROVIDERS: { id: VideoProvider; label: string }[] = [
   { id: 'veo', label: 'Veo' },
-  { id: 'runway', label: 'Runway' },
-  { id: 'kling', label: 'Kling' },
-  { id: 'pika', label: 'Pika' },
-  { id: 'luma', label: 'Luma' },
   ...(__DEV__ ? [{ id: 'mock' as const, label: 'Mock (dev)' }] : []),
 ];
 const DURATIONS = [5, 10];

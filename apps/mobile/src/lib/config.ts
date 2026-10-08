@@ -16,3 +16,6 @@ function devHostFallback(): string {
 
 export const API_BASE_URL = fromEnv || devHostFallback();
 export const API_PREFIX = '/api/v1';
+
+/** The public website: privacy policy, terms and plan management live here. */
+export const WEBSITE = 'https://lumoraos.in';

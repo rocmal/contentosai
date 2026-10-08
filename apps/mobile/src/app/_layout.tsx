@@ -33,6 +33,7 @@ function Gate() {
       <Stack.Screen name="signup" options={{ headerShown: false }} />
       <Stack.Screen name="team" options={{ title: 'Team' }} />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
+      <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
       <Stack.Screen name="billing" options={{ title: 'Plan and credits' }} />
       <Stack.Screen name="create/image" options={{ title: 'Image' }} />
       <Stack.Screen name="create/video" options={{ title: 'Video' }} />

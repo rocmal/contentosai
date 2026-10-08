@@ -2,7 +2,7 @@ import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-au
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { generateSpeech, getCreditRates, listVoices, type CreditRates, type VoiceInfo, type VoiceProvider } from '@/lib/api';
+import { generateSpeech, getCreditRates, getVoiceProviderStatuses, listVoices, type CreditRates, type VoiceInfo, type VoiceProvider } from '@/lib/api';
 import { writeCacheFile } from '@/lib/files';
 import { useWallet } from '@/lib/useWallet';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Input, Muted, Screen } from '@/ui/kit';
@@ -31,6 +31,7 @@ export default function VoiceStudio() {
   const [voiceId, setVoiceId] = useState<string | undefined>();
   const [language, setLanguage] = useState('hi-IN');
   const [text, setText] = useState('');
+  const [down, setDown] = useState<Set<string>>(new Set());
   const [rates, setRates] = useState<CreditRates | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,9 @@ export default function VoiceStudio() {
 
   useEffect(() => {
     getCreditRates().then(setRates).catch(() => undefined);
+    getVoiceProviderStatuses()
+      .then((s) => setDown(new Set(s.filter((x) => !x.available).map((x) => x.name))))
+      .catch(() => undefined);
     // Play through the speaker even when the iPhone ring/silent switch is on.
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => undefined);
   }, []);
@@ -118,7 +122,7 @@ export default function VoiceStudio() {
         <Field label="Voice type">
           <ChipRow>
             {PROVIDERS.map((p) => (
-              <Chip key={p.id} label={p.label} selected={provider === p.id} onPress={() => setProvider(p.id)} />
+              <Chip key={p.id} label={p.label} selected={provider === p.id} disabled={down.has(p.id)} onPress={() => setProvider(p.id)} />
             ))}
           </ChipRow>
           {active && <Muted>{active.note}</Muted>}

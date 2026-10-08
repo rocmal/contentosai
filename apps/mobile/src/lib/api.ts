@@ -161,6 +161,12 @@ export async function register(input: {
   return getCurrentUser();
 }
 
+/** Permanently deletes the signed-in account. Needs the password unless the account has none (social sign-in). */
+export async function deleteMyAccount(password?: string): Promise<void> {
+  await request('/users/me', { method: 'DELETE', body: JSON.stringify({ password }) });
+  await saveTokens(null);
+}
+
 export async function logout(): Promise<void> {
   const refreshToken = tokens?.refreshToken;
   try {
@@ -290,6 +296,9 @@ export interface VoiceInfo {
 
 export const listVoices = (provider: VoiceProvider) =>
   request<{ voices: VoiceInfo[] }>(`/voice/voices?provider=${provider}`).then((r) => r.voices);
+
+export const getVoiceProviderStatuses = () =>
+  request<{ statuses: { name: string; available: boolean }[] }>('/voice/providers/status').then((r) => r.statuses);
 
 /** POST /voice/generate answers with raw audio bytes, not the JSON envelope. */
 export async function generateSpeech(input: {

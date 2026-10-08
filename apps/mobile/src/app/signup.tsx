@@ -1,8 +1,10 @@
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth';
+import { WEBSITE } from '@/lib/config';
 import { Button, ErrorText, Input, Muted } from '@/ui/kit';
 import { colors, space } from '@/ui/theme';
 
@@ -65,6 +67,17 @@ export default function SignUp() {
             onSubmitEditing={ready ? submit : undefined}
           />
           <ErrorText message={error} />
+          <Muted style={{ fontSize: 12 }}>
+            By creating an account you agree to the{' '}
+            <Text style={{ color: colors.primary }} onPress={() => WebBrowser.openBrowserAsync(`${WEBSITE}/terms`)}>
+              Terms
+            </Text>{' '}
+            and{' '}
+            <Text style={{ color: colors.primary }} onPress={() => WebBrowser.openBrowserAsync(`${WEBSITE}/privacy`)}>
+              Privacy Policy
+            </Text>
+            .
+          </Muted>
           <Button title="Create account" onPress={submit} loading={busy} disabled={!ready} />
           <Button title="I already have an account" variant="secondary" onPress={() => router.replace('/login')} />
         </View>

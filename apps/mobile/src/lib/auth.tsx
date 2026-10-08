@@ -9,6 +9,7 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: (password?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -44,13 +45,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const deleteAccount = useCallback(async (password?: string) => {
+    await disablePush();
+    await api.deleteMyAccount(password);
+    setUser(null);
+  }, []);
+
   // Ask for notification permission once a person is signed in, however they got here.
   const userId = user?.id;
   useEffect(() => {
     if (userId) void enablePush();
   }, [userId]);
 
-  const value = useMemo(() => ({ user, loading, signIn, signUp, signOut }), [user, loading, signIn, signUp, signOut]);
+  const value = useMemo(() => ({ user, loading, signIn, signUp, signOut, deleteAccount }),
+    [user, loading, signIn, signUp, signOut, deleteAccount],);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
