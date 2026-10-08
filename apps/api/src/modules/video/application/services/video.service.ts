@@ -14,6 +14,7 @@ import { VideoProviderFactory } from '../../infrastructure/video-provider.factor
 import { VideoGenerationResult } from '../../domain/interfaces/video-provider.interface';
 import { GenerateVideoDto } from '../dto/generate-video.dto';
 import { VideoJobSubmittedEvent } from '../events/video-job-submitted.event';
+import { friendlyAssetName } from '@modules/media/domain/friendly-name';
 
 const DEFAULT_DURATION_SECONDS = 5;
 
@@ -221,7 +222,7 @@ export class VideoService {
         {
           organizationId: actor.organizationId,
           workspaceId: actor.workspaceId,
-          fileName: `video-${result.jobId}.mp4`,
+          fileName: friendlyAssetName(actor.prompt, 'Video', 'mp4'),
           storageKey: stored.key,
           url: stored.url,
           mimeType,

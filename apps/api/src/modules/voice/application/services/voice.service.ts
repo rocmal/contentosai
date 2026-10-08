@@ -11,6 +11,7 @@ import { CreditTransactionReason } from '@modules/credits/domain/entities/credit
 import { VoiceProviderFactory } from '../../infrastructure/voice-provider.factory';
 import { VoiceGenerationResult, VoiceInfo } from '../../domain/interfaces/voice-provider.interface';
 import { GenerateSpeechDto } from '../dto/generate-speech.dto';
+import { friendlyAssetName } from '@modules/media/domain/friendly-name';
 
 export interface VoiceProviderStatus {
   name: string;
@@ -102,7 +103,7 @@ export class VoiceService {
         {
           organizationId: user.organizationId,
           workspaceId: user.workspaceId,
-          fileName,
+          fileName: friendlyAssetName(dto.text, 'Voiceover', extension),
           storageKey: stored.key,
           url: stored.url,
           mimeType: result.mimeType,

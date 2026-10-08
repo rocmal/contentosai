@@ -13,6 +13,7 @@ import {
   characterCreditsPer10Seconds,
   creditsForDurationSeconds,
 } from '@modules/credits/credits.constants';
+import { friendlyAssetName } from '@modules/media/domain/friendly-name';
 
 const WORDS_PER_MINUTE = 150;
 
@@ -146,7 +147,7 @@ export class CharacterService {
           {
             organizationId: actor.organizationId,
             workspaceId: actor.workspaceId,
-            fileName: `character-${jobId}.mp4`,
+            fileName: friendlyAssetName(null, 'Talking avatar', 'mp4'),
             storageKey: stored.key,
             url: stored.url,
             mimeType: 'video/mp4',

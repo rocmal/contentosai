@@ -13,6 +13,7 @@ import { ImageProviderFactory } from '../../infrastructure/image-provider.factor
 import { ImageGenerationResult } from '../../domain/interfaces/image-provider.interface';
 import { ImageQuality } from '../../domain/image-formats';
 import { GenerateImageDto } from '../dto/generate-image.dto';
+import { friendlyAssetName } from '@modules/media/domain/friendly-name';
 
 export interface ImageProviderOption {
   id: string;
@@ -156,7 +157,7 @@ export class ImageService {
         {
           organizationId: user.organizationId,
           workspaceId: user.workspaceId,
-          fileName: `image-${Date.now()}-${index}.${extension}`,
+          fileName: friendlyAssetName(dto.prompt, 'Image', extension).replace(/(\.\w+)$/, index > 0 ? ` (${index + 1})$1` : '$1'),
           storageKey: stored.key,
           url: stored.url,
           mimeType,
