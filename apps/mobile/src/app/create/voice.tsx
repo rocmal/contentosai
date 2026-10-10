@@ -47,9 +47,8 @@ export default function VoiceStudio() {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => undefined);
   }, []);
 
+  // The voice list is cleared in chooseProvider, so a stale list never shows for the new provider.
   useEffect(() => {
-    setVoices([]);
-    setVoiceId(undefined);
     listVoices(provider)
       .then((v) => {
         setVoices(v);
@@ -57,6 +56,13 @@ export default function VoiceStudio() {
       })
       .catch(() => setVoices([]));
   }, [provider]);
+
+  function chooseProvider(next: VoiceProvider) {
+    if (next === provider) return;
+    setVoices([]);
+    setVoiceId(undefined);
+    setProvider(next);
+  }
 
   const cost = useMemo(() => {
     const perMinute = rates?.voice.perMinute[provider] ?? rates?.voice.perMinute.default;
@@ -120,7 +126,7 @@ export default function VoiceStudio() {
         <Field label="Voice type">
           <ChipRow>
             {PROVIDERS.map((p) => (
-              <Chip key={p.id} label={p.label} selected={provider === p.id} onPress={() => setProvider(p.id)} />
+              <Chip key={p.id} label={p.label} selected={provider === p.id} onPress={() => chooseProvider(p.id)} />
             ))}
           </ChipRow>
           {active && <Muted>{active.note}</Muted>}
