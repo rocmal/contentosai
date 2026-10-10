@@ -77,6 +77,27 @@ export class UsersService {
     await this.usersRepository.delete(id, actorId);
   }
 
+  /**
+   * Account deletion: the row is soft-deleted, so the email and name are overwritten first.
+   * That removes the personal data and frees the email (it is unique) for a new sign-up.
+   */
+  async anonymizeAndRemove(id: string): Promise<void> {
+    await this.findEntityById(id);
+    await this.usersRepository.update(
+      id,
+      {
+        email: `deleted-${id}@deleted.invalid`,
+        firstName: 'Deleted',
+        lastName: 'user',
+        avatarUrl: null,
+        passwordHash: null,
+        status: UserStatus.SUSPENDED,
+      },
+      id,
+    );
+    await this.usersRepository.delete(id, id);
+  }
+
   async markEmailVerified(id: string): Promise<void> {
     await this.usersRepository.update(id, {
       isEmailVerified: true,

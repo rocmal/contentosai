@@ -2,6 +2,8 @@ import { Logger, NotFoundException } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { ContentService } from '@modules/content/application/services/content.service';
+import { NotificationsService } from '@modules/notifications/application/services/notifications.service';
+import { NotificationType } from '@modules/notifications/domain/entities/notification.entity';
 import { IntegrationsService } from '@modules/integrations/application/services/integrations.service';
 import { PublishingJobsService } from '@modules/publishing/application/services/publishing-jobs.service';
 import { PublishingJobStatus } from '@modules/publishing/domain/entities/publishing-job.entity';
@@ -16,6 +18,17 @@ interface PublishableContentMetadata {
   videoUrl?: string;
   caption?: string;
   text?: string;
+}
+
+const PLATFORM_NAMES: Record<string, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  linkedin: 'LinkedIn',
+  youtube: 'YouTube',
+};
+
+function platformName(platform: string): string {
+  return PLATFORM_NAMES[platform] ?? platform;
 }
 
 /**
@@ -34,6 +47,7 @@ export class SocialPublishProcessor extends WorkerHost {
     private readonly integrationsService: IntegrationsService,
     private readonly contentService: ContentService,
     private readonly socialPublisherFactory: SocialPublisherFactory,
+    private readonly notificationsService: NotificationsService,
   ) {
     super();
   }
@@ -82,13 +96,38 @@ export class SocialPublishProcessor extends WorkerHost {
         externalPostId: result.externalPostId,
         permalink: result.permalink,
       });
+      await this.notify(publishingJob.createdBy, {
+        title: `Posted to ${platformName(publishingJob.platform)}`,
+        message: `"${content.title}" is live.`,
+        type: NotificationType.SUCCESS,
+        metadata: { link: 'calendar', publishingJobId, permalink: result.permalink ?? null },
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown publishing error';
       this.logger.error(`Publishing job ${publishingJobId} failed: ${message}`);
       await this.publishingJobsService.updateAsSystem(publishingJobId, {
         status: PublishingJobStatus.FAILED,
       });
+      await this.notify(publishingJob.createdBy, {
+        title: `${platformName(publishingJob.platform)} post failed`,
+        message,
+        type: NotificationType.ERROR,
+        metadata: { link: 'calendar', publishingJobId },
+      });
       throw error;
+    }
+  }
+
+  /** Tells the person who scheduled the post (in-app and push). Never fails the job. */
+  private async notify(
+    userId: string | null,
+    input: { title: string; message: string; type: NotificationType; metadata: Record<string, unknown> },
+  ): Promise<void> {
+    if (!userId) return;
+    try {
+      await this.notificationsService.create({ userId, ...input });
+    } catch (error) {
+      this.logger.warn(`Could not create notification: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

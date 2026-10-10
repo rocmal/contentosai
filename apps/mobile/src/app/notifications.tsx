@@ -1,7 +1,8 @@
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, Text, View } from 'react-native';
 import { listNotifications, markNotificationRead, type AppNotification } from '@/lib/api-account';
+import { routeForLink } from '@/lib/links';
 import { ErrorText, Muted } from '@/ui/kit';
 import { colors, radius, space } from '@/ui/theme';
 
@@ -13,6 +14,7 @@ const DOT: Record<AppNotification['type'], string> = {
 };
 
 export default function Notifications() {
+  const router = useRouter();
   const [items, setItems] = useState<AppNotification[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -36,6 +38,8 @@ export default function Notifications() {
   );
 
   async function open(n: AppNotification) {
+    const href = routeForLink(n.metadata?.link);
+    if (href) router.push(href);
     if (n.readAt) return;
     setItems((prev) => prev?.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)) ?? prev);
     markNotificationRead(n.id).catch(() => undefined);

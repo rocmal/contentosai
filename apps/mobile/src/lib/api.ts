@@ -161,6 +161,22 @@ export async function register(input: {
   return getCurrentUser();
 }
 
+/** Emails a reset link (it opens the website). Always succeeds so it never reveals whether an email has an account. */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}${API_PREFIX}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  await parse<{ sent: boolean }>(res);
+}
+
+/** Permanently deletes the signed-in account, then forgets the tokens on this phone. */
+export async function deleteAccount(password: string): Promise<void> {
+  await request<{ deleted: boolean }>('/auth/delete-account', { method: 'POST', body: JSON.stringify({ password }) });
+  await saveTokens(null);
+}
+
 export async function logout(): Promise<void> {
   const refreshToken = tokens?.refreshToken;
   try {
@@ -332,3 +348,16 @@ export const listMyGallery = (input: { type?: MediaAssetType; page?: number; lim
   if (input.type) p.set('type', input.type);
   return request<Page<MediaAsset>>(`/media/my?${p.toString()}`);
 };
+
+// ---------------------------------------------------------------------------
+// Co-pilot
+// ---------------------------------------------------------------------------
+
+export interface CopilotTurn {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+/** One text reply (1 credit). The server keeps no chat history, so recent turns are sent each time. */
+export const copilotReply = (input: { message: string; history: CopilotTurn[] }) =>
+  request<{ reply: string }>('/ai/copilot', { method: 'POST', body: JSON.stringify({ ...input, screen: 'mobile' }) });

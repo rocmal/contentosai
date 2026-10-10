@@ -252,6 +252,40 @@ export class AuthService {
     await this.refreshTokensRepository.revokeAllForUser(record.userId);
   }
 
+  /**
+   * Self-service account deletion (required by the App Store when an app offers sign-up).
+   * The password is asked again so a borrowed, unlocked phone cannot delete the account.
+   * An owner whose organization still has other members must hand it over first, otherwise
+   * the team would be left without anyone able to manage it.
+   */
+  async deleteAccount(userId: string, password: string | undefined): Promise<void> {
+    const user = await this.usersService.findEntityById(userId);
+    if (user.passwordHash) {
+      const passwordMatches = password ? await this.passwordHasher.compare(password, user.passwordHash) : false;
+      if (!passwordMatches) {
+        throw new UnauthorizedException('Password is incorrect');
+      }
+    }
+
+    const memberships = await this.organizationMembersRepository.listByUser(userId);
+    for (const membership of memberships) {
+      const organization = await this.organizationsRepository.findById(membership.organizationId);
+      if (organization?.ownerId !== userId) continue;
+      const members = await this.organizationMembersRepository.listByOrganization(membership.organizationId);
+      if (members.some((m) => m.userId !== userId)) {
+        throw new BadRequestException(
+          `You own "${organization.name}", which still has other members. Remove them or ask support to transfer ownership first.`,
+        );
+      }
+    }
+
+    for (const membership of memberships) {
+      await this.organizationMembersRepository.delete(membership.id, userId);
+    }
+    await this.refreshTokensRepository.revokeAllForUser(userId);
+    await this.usersService.anonymizeAndRemove(userId);
+  }
+
   async buildAuthenticatedUser(userId: string): Promise<AuthenticatedUser> {
     const user = await this.usersService.findEntityById(userId);
     const memberships = await this.organizationMembersRepository.listByUser(userId);

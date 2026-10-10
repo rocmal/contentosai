@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth';
 import { Button, ErrorText, Input, Muted } from '@/ui/kit';
@@ -64,6 +64,9 @@ export default function Login() {
         <ErrorText message={error} />
         <Button title="Sign in" onPress={submit} loading={busy} disabled={!email.trim() || !password} />
         <Button title="Create an account" variant="secondary" onPress={() => router.replace('/signup')} />
+        <Pressable accessibilityRole="button" onPress={() => router.push('/forgot-password')} hitSlop={8} style={{ alignSelf: 'center', padding: space.sm }}>
+          <Text style={{ color: colors.primary, fontSize: 15, fontWeight: '600' }}>Forgot password?</Text>
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );

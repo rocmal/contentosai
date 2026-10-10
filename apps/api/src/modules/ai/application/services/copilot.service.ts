@@ -20,6 +20,7 @@ const SCREEN_LABELS: Record<string, string> = {
   'video-studio': 'Video Studio',
   'image-studio': 'Image Studio',
   'voice-studio': 'Voice Studio',
+  mobile: 'the Lumora phone app (Image, Video and Voiceover studios, Gallery, Calendar, Team; buying credits and connecting social accounts happen on the website)',
 };
 
 @Injectable()

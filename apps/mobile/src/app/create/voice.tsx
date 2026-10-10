@@ -1,4 +1,5 @@
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -30,7 +31,8 @@ export default function VoiceStudio() {
   const [voices, setVoices] = useState<VoiceInfo[]>([]);
   const [voiceId, setVoiceId] = useState<string | undefined>();
   const [language, setLanguage] = useState('hi-IN');
-  const [text, setText] = useState('');
+  const { prompt: initialPrompt } = useLocalSearchParams<{ prompt?: string }>();
+  const [text, setText] = useState(initialPrompt ?? '');
   const [rates, setRates] = useState<CreditRates | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

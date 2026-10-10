@@ -1,4 +1,7 @@
+import { Logger } from '@nestjs/common';
 import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import { NotificationsService } from '@modules/notifications/application/services/notifications.service';
+import { NotificationType } from '@modules/notifications/domain/entities/notification.entity';
 import { Job, Queue } from 'bullmq';
 import { VideoService } from '@modules/video/application/services/video.service';
 import { VideoGenerationResult } from '@modules/video/domain/interfaces/video-provider.interface';
@@ -34,9 +37,12 @@ const RETRY_OPTIONS = { attempts: 3, backoff: { type: 'exponential' as const, de
  * the idempotent cached result via VideoService's findCached check. */
 @Processor(QueueName.VIDEO)
 export class VideoProcessor extends WorkerHost {
+  private readonly logger = new Logger(VideoProcessor.name);
+
   constructor(
     private readonly videoService: VideoService,
     @InjectQueue(QueueName.VIDEO) private readonly videoQueue: Queue,
+    private readonly notificationsService: NotificationsService,
   ) {
     super();
   }
@@ -61,10 +67,13 @@ export class VideoProcessor extends WorkerHost {
     });
 
     if (result.status === 'completed' || result.status === 'failed') {
+      // A reused clip is handed back at once, so the person already has it - no need to tell them.
+      if (!result.cached) await this.notify(userId, result.status);
       return result;
     }
 
     if (attempt >= MAX_POLL_ATTEMPTS) {
+      await this.notify(userId, 'failed');
       return { ...result, status: 'failed' };
     }
 
@@ -83,5 +92,31 @@ export class VideoProcessor extends WorkerHost {
       { delay: POLL_DELAY_MS, ...RETRY_OPTIONS },
     );
     return result;
+  }
+
+  /** Lets the person leave the app while the clip renders (in-app and push). Never fails the job. */
+  private async notify(userId: string | undefined, status: 'completed' | 'failed'): Promise<void> {
+    if (!userId) return;
+    try {
+      await this.notificationsService.create(
+        status === 'completed'
+          ? {
+              userId,
+              title: 'Your video is ready',
+              message: 'It has been saved to your gallery.',
+              type: NotificationType.SUCCESS,
+              metadata: { link: 'gallery' },
+            }
+          : {
+              userId,
+              title: 'Video could not be made',
+              message: 'Generation failed on the video service. Open Video Studio to try again.',
+              type: NotificationType.ERROR,
+              metadata: { link: 'video' },
+            },
+      );
+    } catch (error) {
+      this.logger.warn(`Could not create notification: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }

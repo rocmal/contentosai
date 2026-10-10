@@ -89,6 +89,8 @@ export interface AppNotification {
   type: 'info' | 'warning' | 'success' | 'error';
   readAt: string | null;
   createdAt: string;
+  /** `link` names the screen to open (see src/lib/links.ts). */
+  metadata?: { link?: string; permalink?: string | null } | null;
 }
 
 export const listNotifications = (page = 1) => request<Page<AppNotification>>(`/notifications?page=${page}&limit=20`);

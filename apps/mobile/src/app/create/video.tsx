@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
 import { Text, View, useWindowDimensions } from 'react-native';
@@ -39,7 +40,8 @@ export default function VideoStudio() {
   const [provider, setProvider] = useState<VideoProvider>(PROVIDERS[0].id);
   const [seconds, setSeconds] = useState(5);
   const [aspect, setAspect] = useState<'9:16' | '16:9'>('9:16');
-  const [prompt, setPrompt] = useState('');
+  const { prompt: initialPrompt } = useLocalSearchParams<{ prompt?: string }>();
+  const [prompt, setPrompt] = useState(initialPrompt ?? '');
   const [rates, setRates] = useState<CreditRates | null>(null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);

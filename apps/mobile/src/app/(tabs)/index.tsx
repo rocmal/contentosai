@@ -49,6 +49,19 @@ export default function CreateHome() {
           </Pressable>
         ))}
 
+        <Pressable accessibilityRole="button" accessibilityLabel="Open Co-pilot" onPress={() => router.push('/copilot')}>
+          {({ pressed }) => (
+            <Card style={{ flexDirection: 'row', alignItems: 'center', gap: space.lg, opacity: pressed ? 0.7 : 1, backgroundColor: colors.primarySoft, borderColor: colors.primaryTint }}>
+              <Ionicons name="sparkles" size={24} color={colors.primary} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Ask Co-pilot</Text>
+                <Muted>Captions, hooks and post ideas. 1 credit per reply.</Muted>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.textFaint} />
+            </Card>
+          )}
+        </Pressable>
+
         <Muted style={{ fontSize: 12 }}>
           AI output is a draft. Check facts, faces and any regulated wording (for example insurance) before you publish.
         </Muted>

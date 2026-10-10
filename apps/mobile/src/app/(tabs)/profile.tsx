@@ -43,11 +43,15 @@ export default function Profile() {
           <Muted>{user?.email}</Muted>
         </Card>
         <Card style={{ paddingVertical: space.sm }}>
+          <Row icon="sparkles" label="Co-pilot" href="/copilot" />
           <Row icon="notifications" label="Notifications" detail={unread ? `${unread} new` : undefined} href="/notifications" />
           <Row icon="people" label="Team" href="/team" />
           <Row icon="card" label="Plan and credits" detail={formatBalance(balance)} href="/billing" />
         </Card>
         <Button title="Sign out" variant="secondary" onPress={signOut} />
+        <Card style={{ paddingVertical: space.sm }}>
+          <Row icon="trash" label="Delete account" href="/delete-account" />
+        </Card>
         {__DEV__ && <Muted style={{ fontSize: 12 }}>API: {API_BASE_URL}</Muted>}
       </View>
     </Screen>

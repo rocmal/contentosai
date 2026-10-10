@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 import {
@@ -34,7 +35,8 @@ export default function ImageStudio() {
   const [provider, setProvider] = useState<ImageProvider | null>(null);
   const [quality, setQuality] = useState<ImageQuality>('standard');
   const [ratio, setRatio] = useState<ImageAspectRatio>('1:1');
-  const [prompt, setPrompt] = useState('');
+  const { prompt: initialPrompt } = useLocalSearchParams<{ prompt?: string }>();
+  const [prompt, setPrompt] = useState(initialPrompt ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);

@@ -4,13 +4,15 @@ import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/lib/auth';
+import { useOpenTappedNotification } from '@/lib/push';
 import { colors } from '@/ui/theme';
 
 function Gate() {
   const { user, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
-  const onLogin = segments[0] === 'login' || segments[0] === 'signup';
+  const onLogin = segments[0] === 'login' || segments[0] === 'signup' || segments[0] === 'forgot-password';
+  useOpenTappedNotification(!!user && !loading);
 
   useEffect(() => {
     if (loading) return;
@@ -31,6 +33,9 @@ function Gate() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="signup" options={{ headerShown: false }} />
+      <Stack.Screen name="forgot-password" options={{ headerShown: false }} />
+      <Stack.Screen name="copilot" options={{ title: 'Co-pilot' }} />
+      <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
       <Stack.Screen name="team" options={{ title: 'Team' }} />
       <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="billing" options={{ title: 'Plan and credits' }} />

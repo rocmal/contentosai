@@ -4,7 +4,8 @@ Expo (React Native, TypeScript, expo-router). Talks to the same NestJS API as th
 
 ## What is in it
 
-- **Sign up / sign in**
+- **Sign up / sign in**, forgot password (emails a link that opens the website), **delete account** (Profile; asks for the password; required by both stores)
+- **Co-pilot:** text chat (1 credit per reply). "Make a video/voiceover/image" requests open that studio with the prompt filled in
 - **Create:** Image, Video and Voiceover studios (credit cost shown before you spend)
 - **Calendar:** upcoming, published and failed posts; cancel an upcoming one; open the live post
 - **Gallery:** your images, videos and voiceovers; save to photos, share, and schedule a video to a connected social account
@@ -24,7 +25,8 @@ The phone registers an Expo push token with `POST /notifications/push-tokens`; t
 3. A real build or dev build. Push does not work in the iOS simulator, and Expo Go on Android no longer supports it.
 4. iOS: an Apple Developer account (EAS sets up the push key). Android: an FCM credential (`eas credentials`).
 
-Nothing in the API creates notifications on its own yet (they are only created through `POST /notifications`), so no push will arrive until something calls it, for example the publishing worker when a post goes live or fails.
+The API creates notifications when a scheduled post goes live or fails (`SocialPublishProcessor`) and when a video finishes or fails (`VideoProcessor`; reused clips are skipped).
+`metadata.link` (`gallery`, `calendar`, `video`, ...) travels in the push data; tapping the push or the in-app row opens that screen (`src/lib/links.ts`).
 
 ## Run it
 
@@ -54,5 +56,6 @@ Bundle id / package: `in.lumoraos.app` (change in `app.json` before the first st
 
 - `src/lib/api.ts`: API client (bearer auth, silent refresh, tokens in the OS keychain)
 - `src/lib/files.ts`: temp files, save to photos, share
-- `src/app/`: screens (`login`, `(tabs)/index|gallery|profile`, `create/image|video|voice`)
+- `src/app/`: screens (`login`, `signup`, `forgot-password`, `(tabs)/index|calendar|gallery|profile`, `create/image|video|voice`, `copilot`,
+  `notifications`, `team`, `billing`, `delete-account`). Studios accept a `prompt` route param.
 - `src/ui/`: shared components and the palette from `design_handoff_mobile_app`
