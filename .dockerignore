@@ -4,6 +4,7 @@ node_modules
 dist
 apps
 ai-services
+deploy
 design_handoff_landing_page
 docs
 .git

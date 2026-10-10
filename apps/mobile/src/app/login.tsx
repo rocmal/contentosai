@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/lib/auth';
 import { Button, ErrorText, Input, Muted } from '@/ui/kit';
+import { LogoMark } from '@/ui/LogoMark';
 import { colors, space } from '@/ui/theme';
 
 export default function Login() {
@@ -33,9 +34,7 @@ export default function Login() {
       style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + space.xl * 2, paddingHorizontal: space.xl }}
     >
       <View style={{ gap: space.sm, marginBottom: space.xl * 1.5 }}>
-        <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: '#fff', fontSize: 28, fontWeight: '800' }}>L</Text>
-        </View>
+        <LogoMark />
         <Text style={{ fontSize: 30, fontWeight: '700', color: colors.text, marginTop: space.md }}>Welcome back</Text>
         <Muted>Sign in to create images, videos and voiceovers.</Muted>
       </View>

@@ -1,0 +1,97 @@
+# LOCAL copy of the production stack, served at https://lumoraos.in on this PC.
+#
+#   Browser -> XAMPP Apache (443, self-signed cert, deploy/local/apache/lumoraos.in.conf)
+#               |- /api/v1/*, /storage/uploads/* -> 127.0.0.1:3000 (api)
+#               '- everything else               -> 127.0.0.1:3100 (web)
+#
+# Same images and same path split as deploy/docker-compose.yml, but MySQL and Redis run here
+# as containers (on the VPS they run on the host). Everything binds to 127.0.0.1 only.
+# Setup and day-to-day commands: deploy/local/README.md.
+
+name: lumora-local
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: lumora
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      # 3307, not 3306, so it never clashes with XAMPP's own MySQL/MariaDB.
+      - '127.0.0.1:3307:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-proot']  # TCP: the first-run init server is socket-only
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: runs migrations then seeders, then exits. `api` waits for it.
+  migrate:
+    build:
+      context: ../../apps/api
+    env_file: .env.api
+    environment: &api-env
+      DB_HOST: mysql
+      DB_PORT: 3306
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    command: ['sh', '-c', 'npm run db:migrate && npm run db:seed']
+    entrypoint: []
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ../../apps/api
+    restart: unless-stopped
+    env_file: .env.api
+    environment:
+      <<: *api-env
+      # Inside the container it must listen on all interfaces for the port mapping to work;
+      # the mapping below keeps it reachable from this PC only.
+      APP_HOST: 0.0.0.0
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - api_storage:/app/storage
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../..
+      args:
+        # Baked into the browser bundle: the browser calls this origin and Apache routes /api/v1 to the api.
+        VITE_API_URL: https://lumoraos.in
+    restart: unless-stopped
+    env_file: .env.web
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - '127.0.0.1:3100:3000'
+
+volumes:
+  mysql_data:
+  redis_data:
+  api_storage:

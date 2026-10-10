@@ -122,6 +122,10 @@ Rewritten 2026-10-07 for the current product. The old walkthrough video file (`p
 - `deploy/scripts/ops-check.js` prints read-only facts in the deploy log: SMTP, OpenAI and Gemini key status, owner user,
   email queue, avatar image addresses, saved video templates. Never prints secrets.
 - Seeders run once per database (sequelize_seeds storage); use a new seeder or migration for data fixes.
+- **Local copy at https://lumoraos.in** (added 2026-10-10): `deploy/local/` = Docker stack (mysql on 3307, redis, api :3000, web :3100)
+  behind XAMPP Apache with a self-signed cert, plus a hosts-file entry. `deploy/local/setup.ps1` sets it all up; `-Hosts off`
+  points the domain back at the live server. While the hosts entry is on, this PC cannot reach production by name.
+- Mobile app icon/splash: the spark mark from `design_handoff_mobile_app` (`apps/mobile/assets/images`, `src/ui/LogoMark.tsx`).
 
 ## Pending (as of 2026-10-07)
 
