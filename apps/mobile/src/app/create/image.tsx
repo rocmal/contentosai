@@ -3,7 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
 import { ApiError, generateImage, getImageOptions, type ImageAspectRatio, type ImageProviderOption, type ImageQuality } from '@/lib/api';
-import { uploadToGallery } from '@/lib/api-ai';
+import { uploadToGallery } from '@/lib/upload';
 import { IMAGE_COMPOSITION_NOTE, IMAGE_NO_TEXT_NOTE, IMAGE_WRITER, WANTS_TEXT } from '@/lib/studioPrompts';
 import { formatBalance, useWallet } from '@/lib/useWallet';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, Screen, SwitchRow } from '@/ui/kit';

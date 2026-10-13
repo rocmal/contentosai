@@ -58,7 +58,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Lumora uses the microphone so you can speak your prompt or script instead of typing it.",
+          "microphonePermission": "Lumora uses the microphone so you can speak your prompts instead of typing, and record videos with sound.",
           "enableBackgroundPlayback": false
         }
       ],
@@ -68,6 +68,14 @@
         {
           "savePhotosPermission": "Lumora saves the images and videos you create to your photo library.",
           "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Lumora lets you choose photos and videos to upload to your gallery.",
+          "cameraPermission": "Lumora uses the camera so you can take photos and videos for your gallery.",
+          "microphonePermission": "Lumora uses the microphone so you can speak your prompts instead of typing, and record videos with sound."
         }
       ],
       "expo-asset",

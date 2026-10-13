@@ -9,6 +9,7 @@ import { listMyGallery, type MediaAsset, type MediaAssetType } from '@/lib/api';
 import { Button, Chip, ChipRow, ErrorText, Muted } from '@/ui/kit';
 import { MediaActions } from '@/ui/MediaActions';
 import { ScheduleSheet } from '@/ui/ScheduleSheet';
+import { UploadBar } from '@/ui/UploadBar';
 import { colors, space } from '@/ui/theme';
 
 const FILTERS: { id: MediaAssetType | undefined; label: string }[] = [
@@ -94,7 +95,8 @@ export default function Gallery() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ padding: space.lg, paddingBottom: space.sm }}>
+      <View style={{ padding: space.lg, paddingBottom: space.sm, gap: space.md }}>
+        <UploadBar onUploaded={() => load(filter, 1, true)} />
         <ChipRow>
           {FILTERS.map((f) => (
             <Chip key={f.label} label={f.label} selected={filter === f.id} onPress={() => pick(f.id)} />
@@ -126,7 +128,7 @@ export default function Gallery() {
           loading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: space.xl * 2 }} />
           ) : error ? null : (
-            <Muted style={{ textAlign: 'center', marginTop: space.xl * 2 }}>Nothing here yet. Create something and it will show up here.</Muted>
+            <Muted style={{ textAlign: 'center', marginTop: space.xl * 2 }}>Nothing here yet. Create something, or tap Upload from phone to add your own photos and videos.</Muted>
           )
         }
         renderItem={({ item }) => (
