@@ -11,3 +11,33 @@
     cursor: pointer;
   }
 }
+
+/* Sign-in artwork (src/components/auth/LoginArt.tsx). Calm, slow motion; all of it stops for
+   people who ask for reduced motion. */
+@keyframes lumora-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes lumora-aurora { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(4%, 3%) scale(1.08); } }
+@keyframes lumora-wave { 0%, 100% { transform: scaleY(0.45); } 50% { transform: scaleY(1); } }
+@keyframes lumora-progress { 0% { width: 8%; } 100% { width: 92%; } }
+@keyframes lumora-pop { 0% { transform: scale(0.6); opacity: 0; } 60% { transform: scale(1.06); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes lumora-rise { 0% { transform: translateY(12px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+@keyframes lumora-halo { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.15); } }
+@keyframes lumora-load { 0% { width: 0; } 100% { width: 100%; } }
+
+.lumora-float { animation: lumora-float 7s ease-in-out infinite; }
+.lumora-float-delay { animation-delay: -2.5s; }
+.lumora-float-slow { animation-duration: 9s; animation-delay: -4s; }
+.lumora-aurora { animation: lumora-aurora 18s ease-in-out infinite; }
+.lumora-aurora-slow { animation-duration: 26s; animation-direction: reverse; }
+.lumora-wave { transform-origin: center; animation: lumora-wave 1.4s ease-in-out infinite; }
+.lumora-progress { animation: lumora-progress 6s ease-in-out infinite alternate; }
+.lumora-pop { animation: lumora-pop 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.lumora-rise { animation: lumora-rise 0.6s ease-out 0.25s both; }
+.lumora-rise-delay { animation-delay: 0.45s; }
+.lumora-halo { animation: lumora-halo 2.4s ease-in-out infinite; }
+.lumora-load { animation: lumora-load 1.6s ease-in-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lumora-float, .lumora-aurora, .lumora-wave, .lumora-progress, .lumora-pop,
+  .lumora-rise, .lumora-halo, .lumora-load { animation: none; }
+  .lumora-progress { width: 60%; }
+}

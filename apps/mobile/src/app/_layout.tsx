@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { useOpenTappedNotification } from '@/lib/push';
+import { LogoMark } from '@/ui/LogoMark';
 import { colors } from '@/ui/theme';
 
 function Gate() {
@@ -22,8 +23,11 @@ function Gate() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={colors.primary} />
+      // Same navy and centred spark as the native launch screen, so start-up has no white flash.
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0a0f24' }}>
+        <StatusBar style="light" />
+        <LogoMark size={88} />
+        <ActivityIndicator color="#818cf8" style={{ position: 'absolute', bottom: 64 }} />
       </View>
     );
   }
