@@ -5,6 +5,7 @@ import { ActivityIndicator, FlatList, KeyboardAvoidingView, Platform, Pressable,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { copilotReply, type CopilotTurn } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useDictation } from '@/lib/useDictation';
 import { colors, radius, space } from '@/ui/theme';
 
 interface Message {
@@ -51,6 +52,7 @@ export default function Copilot() {
   const insets = useSafeAreaInsets();
   const list = useRef<FlatList<Message>>(null);
   const [input, setInput] = useState('');
+  const dictation = useDictation((spoken) => setInput(input.trim() ? `${input.trim()} ${spoken}` : spoken));
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -138,6 +140,9 @@ export default function Copilot() {
           );
         }}
       />
+      {dictation.error && (
+        <Text style={{ color: colors.danger, fontSize: 13, paddingHorizontal: space.lg, paddingBottom: space.xs }}>{dictation.error}</Text>
+      )}
       <View
         style={{
           flexDirection: 'row',
@@ -150,10 +155,23 @@ export default function Copilot() {
           borderTopColor: colors.border,
         }}
       >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={dictation.phase === 'recording' ? 'Stop recording' : 'Speak your message'}
+          onPress={dictation.toggle}
+          disabled={dictation.phase === 'processing' || busy}
+          style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: dictation.phase === 'recording' ? colors.danger : colors.surface, alignItems: 'center', justifyContent: 'center' }}
+        >
+          {dictation.phase === 'processing' ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <Ionicons name={dictation.phase === 'recording' ? 'stop' : 'mic'} size={20} color={dictation.phase === 'recording' ? '#fff' : colors.text} />
+          )}
+        </Pressable>
         <TextInput
           value={input}
           onChangeText={setInput}
-          placeholder="Ask for a caption, hook or plan..."
+          placeholder={dictation.phase === 'recording' ? `Listening… ${dictation.seconds}s, tap stop when done` : 'Ask for a caption, hook or plan...'}
           placeholderTextColor={colors.textFaint}
           multiline
           maxLength={2000}

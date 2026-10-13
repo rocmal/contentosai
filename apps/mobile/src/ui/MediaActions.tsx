@@ -33,7 +33,7 @@ export function MediaActions({ source, ext, savable = true }: { source: string; 
       <View style={{ flexDirection: 'row', gap: space.sm }}>
         {savable && (
           <View style={{ flex: 1 }}>
-            <Button title="Save" variant="secondary" onPress={() => run('save')} loading={busy === 'save'} disabled={busy !== null} />
+            <Button title="Save to phone" variant="secondary" onPress={() => run('save')} loading={busy === 'save'} disabled={busy !== null} />
           </View>
         )}
         <View style={{ flex: 1 }}>

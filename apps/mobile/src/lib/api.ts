@@ -3,7 +3,7 @@
  * bearer auth, one silent refresh on 401, and the { success, data } envelope.
  * Tokens live in the OS keychain/keystore via expo-secure-store.
  */
-import * as SecureStore from 'expo-secure-store';
+import { tokenStore } from './tokenStore';
 import { API_BASE_URL, API_PREFIX } from './config';
 
 export class ApiError extends Error {
@@ -49,7 +49,7 @@ export function setSessionExpiredHandler(fn: () => void): void {
 
 export async function loadTokens(): Promise<boolean> {
   try {
-    const raw = await SecureStore.getItemAsync(TOKEN_KEY);
+    const raw = await tokenStore.get(TOKEN_KEY);
     tokens = raw ? (JSON.parse(raw) as TokenPair) : null;
   } catch {
     tokens = null;
@@ -59,8 +59,8 @@ export async function loadTokens(): Promise<boolean> {
 
 async function saveTokens(next: TokenPair | null): Promise<void> {
   tokens = next;
-  if (next) await SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(next));
-  else await SecureStore.deleteItemAsync(TOKEN_KEY);
+  if (next) await tokenStore.set(TOKEN_KEY, JSON.stringify(next));
+  else await tokenStore.remove(TOKEN_KEY);
 }
 
 function errorMessage(body: unknown, fallback: string): string {
@@ -109,7 +109,9 @@ function refresh(): Promise<boolean> {
 async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const run = () => {
     const headers = new Headers(init.headers);
-    if (!headers.has('Content-Type') && init.body) headers.set('Content-Type', 'application/json');
+    // FormData sets its own multipart boundary, so only JSON bodies get a Content-Type here.
+    const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData;
+    if (!headers.has('Content-Type') && init.body && !isForm) headers.set('Content-Type', 'application/json');
     if (tokens) headers.set('Authorization', `Bearer ${tokens.accessToken}`);
     return fetch(`${API_BASE_URL}${API_PREFIX}${path}`, { ...init, headers });
   };
@@ -239,6 +241,8 @@ export const generateImage = (input: {
   aspectRatio: ImageAspectRatio;
   quality: ImageQuality;
   count?: number;
+  /** false = preview only: the image comes back inline and nothing is stored (see uploadToGallery). */
+  saveToGallery?: boolean;
 }) => request<ImageResult>('/image/generate', { method: 'POST', body: JSON.stringify(input) });
 
 // ---------------------------------------------------------------------------
@@ -263,6 +267,8 @@ export const generateVideo = (input: {
   provider: VideoProvider;
   durationSeconds?: number;
   aspectRatio?: '16:9' | '9:16';
+  /** true = make a new clip even if the same prompt was made before (otherwise the saved one comes back free). */
+  fresh?: boolean;
 }) => request<VideoResult>('/video/generate', { method: 'POST', body: JSON.stringify(input) });
 
 export const getVideoJob = (provider: string, jobId: string, cacheKey?: string) =>
@@ -312,6 +318,8 @@ export async function generateSpeech(input: {
   text: string;
   provider: VoiceProvider;
   voiceId?: string;
+  /** Sarvam model of the chosen voice (bulbul:v2 or bulbul:v3). */
+  model?: string;
   languageCode?: string;
 }): Promise<{ bytes: Uint8Array; mimeType: string }> {
   const res = await authedFetch('/voice/generate', { method: 'POST', body: JSON.stringify(input) });

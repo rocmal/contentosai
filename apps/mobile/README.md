@@ -6,7 +6,15 @@ Expo (React Native, TypeScript, expo-router). Talks to the same NestJS API as th
 
 - **Sign up / sign in**, forgot password (emails a link that opens the website), **delete account** (Profile; asks for the password; required by both stores)
 - **Co-pilot:** text chat (1 credit per reply). "Make a video/voiceover/image" requests open that studio with the prompt filled in
-- **Create:** Image, Video and Voiceover studios (credit cost shown before you spend)
+- **Create:** Image, Video and Voiceover studios, matching the website (credit cost shown before you spend, same rules as the server)
+  - Every prompt box (`src/ui/PromptBox.tsx`): **Speak** (voice typing in Hindi, Punjabi or English, `POST /ai/transcribe`) and
+    **Generate with AI / Improve with AI** with Undo (`POST /ai/generate`, free). Writing instructions: `src/lib/studioPrompts.ts`.
+  - Image: where it will be posted (decides the shape), No text switch, quality. Makes a preview first; **Save to gallery** uploads it
+    (`POST /media/upload`), so Try again really makes a new picture.
+  - Video: 17 ready-made ideas (`src/lib/videoTemplates.ts`, copied from the website), Vertical/Wide, style, always 8 s with Veo
+    (180 credits). Progress timer, then Save, Share, Schedule and Make another version (`fresh`). Dev builds offer a free test mode.
+  - Voiceover: Sarvam only, Hindi/Punjabi/English, Female/Male voices with a free sample (`/voice-samples/sarvam` on the website).
+  - The browser preview (`npx expo start`, press w) uses `*.web.ts` versions of token storage, files and push.
 - **Calendar:** upcoming, published and failed posts; cancel an upcoming one; open the live post
 - **Gallery:** your images, videos and voiceovers; save to photos, share, and schedule a video to a connected social account
 - **Team:** list members; add by email and remove (only for people with `organizations.manage-members`)

@@ -1,45 +1,59 @@
+import { Ionicons } from '@expo/vector-icons';
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
-import { generateSpeech, getCreditRates, listVoices, type CreditRates, type VoiceInfo, type VoiceProvider } from '@/lib/api';
-import { writeCacheFile } from '@/lib/files';
-import { useWallet } from '@/lib/useWallet';
-import { Button, Card, Chip, ChipRow, ErrorText, Field, Input, Muted, Screen } from '@/ui/kit';
-import { space } from '@/ui/theme';
+import { Platform, Pressable, Text, View } from 'react-native';
+import { ApiError, generateSpeech, getCreditRates, type CreditRates } from '@/lib/api';
+import type { DictationLanguage } from '@/lib/api-ai';
+import { SITE_URL } from '@/lib/config';
+import { saveToPhotos, uniqueName, writeCacheFile } from '@/lib/files';
+import { SARVAM_VOICE_CATALOG, voiceSampleUrl, type SarvamVoiceGender } from '@/lib/sarvamVoices';
+import { scriptWriter, type ScriptLanguage } from '@/lib/studioPrompts';
+import { formatBalance, useWallet } from '@/lib/useWallet';
+import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, PillButton, Screen } from '@/ui/kit';
+import { PromptBox } from '@/ui/PromptBox';
+import { colors, space } from '@/ui/theme';
 
-const PROVIDERS: { id: VoiceProvider; label: string; note: string }[] = [
-  { id: 'edge', label: 'Standard', note: 'Free, clear English and Hindi voices.' },
-  { id: 'sarvam', label: 'Indian languages', note: 'Hindi, Punjabi and other Indian languages.' },
-  { id: 'elevenlabs', label: 'Premium', note: 'Most natural sounding.' },
+/** Sarvam only, like the website: it is the one provider built for Indian voices and accents. */
+const PROVIDER = 'sarvam';
+
+const LANGUAGES: { id: ScriptLanguage; label: string; code: string; dictation: DictationLanguage; sample: 'en' | 'hi' }[] = [
+  { id: 'hindi', label: 'हिंदी Hindi', code: 'hi-IN', dictation: 'hi-IN', sample: 'hi' },
+  { id: 'punjabi', label: 'ਪੰਜਾਬੀ Punjabi', code: 'pa-IN', dictation: 'pa-IN', sample: 'hi' },
+  { id: 'english', label: 'English', code: 'en-IN', dictation: 'en-IN', sample: 'en' },
 ];
 
-const SARVAM_LANGUAGES = [
-  { code: 'hi-IN', label: 'Hindi' },
-  { code: 'pa-IN', label: 'Punjabi' },
-  { code: 'en-IN', label: 'English' },
-  { code: 'gu-IN', label: 'Gujarati' },
-  { code: 'mr-IN', label: 'Marathi' },
-  { code: 'ta-IN', label: 'Tamil' },
-  { code: 'bn-IN', label: 'Bengali' },
-];
+const PLACEHOLDER: Record<ScriptLanguage, string> = {
+  hindi: 'उदाहरण: नमस्ते! अपने परिवार के भविष्य को सुरक्षित करें…',
+  punjabi: 'ਉਦਾਹਰਨ: ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਆਪਣੇ ਪਰਿਵਾਰ ਦੇ ਭਵਿੱਖ ਨੂੰ ਸੁਰੱਖਿਅਤ ਕਰੋ…',
+  english: 'For example: Hello! Plan today for your family’s tomorrow…',
+};
+
+function clock(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
 
 export default function VoiceStudio() {
-  const { reload } = useWallet();
-  const [provider, setProvider] = useState<VoiceProvider>('edge');
-  const [voices, setVoices] = useState<VoiceInfo[]>([]);
-  const [voiceId, setVoiceId] = useState<string | undefined>();
-  const [language, setLanguage] = useState('hi-IN');
+  const router = useRouter();
+  const { balance, reload } = useWallet();
   const { prompt: initialPrompt } = useLocalSearchParams<{ prompt?: string }>();
   const [text, setText] = useState(initialPrompt ?? '');
+  const [languageId, setLanguageId] = useState<ScriptLanguage>('hindi');
+  const [gender, setGender] = useState<SarvamVoiceGender>('female');
+  const [voiceId, setVoiceId] = useState('anushka');
+  const [moreVoices, setMoreVoices] = useState(false);
   const [rates, setRates] = useState<CreditRates | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [outOfCredits, setOutOfCredits] = useState(false);
   const [audioUri, setAudioUri] = useState<string | null>(null);
 
   const player = useAudioPlayer(audioUri);
-  const playing = useAudioPlayerStatus(player).playing;
+  const status = useAudioPlayerStatus(player);
+  const sample = useAudioPlayer(null);
+  const sampleStatus = useAudioPlayerStatus(sample);
 
   useEffect(() => {
     getCreditRates().then(setRates).catch(() => undefined);
@@ -47,140 +61,186 @@ export default function VoiceStudio() {
     setAudioModeAsync({ playsInSilentMode: true }).catch(() => undefined);
   }, []);
 
-  // The voice list is cleared in chooseProvider, so a stale list never shows for the new provider.
-  useEffect(() => {
-    listVoices(provider)
-      .then((v) => {
-        setVoices(v);
-        setVoiceId(v[0]?.id);
-      })
-      .catch(() => setVoices([]));
-  }, [provider]);
-
-  function chooseProvider(next: VoiceProvider) {
-    if (next === provider) return;
-    setVoices([]);
-    setVoiceId(undefined);
-    setProvider(next);
-  }
-
-  const cost = useMemo(() => {
-    const perMinute = rates?.voice.perMinute[provider] ?? rates?.voice.perMinute.default;
-    if (perMinute === undefined || !rates) return undefined;
-    const words = text.trim().split(/\s+/).filter(Boolean).length;
-    return Math.max(1, Math.ceil((words / rates.voice.wordsPerMinute) * perMinute));
-  }, [rates, provider, text]);
-
-  async function create() {
-    setBusy(true);
-    setError(null);
-    try {
-      const { bytes } = await generateSpeech({
-        text: text.trim(),
-        provider,
-        voiceId,
-        languageCode: provider === 'sarvam' ? language : undefined,
-      });
-      setAudioUri(writeCacheFile(bytes, `voiceover-${Date.now()}.mp3`).uri);
-      reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create the voiceover.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  // A fresh file loads asynchronously; start playback once the new source is set.
+  // A fresh voiceover loads asynchronously; start playback once the new source is set.
   useEffect(() => {
     if (audioUri) player.play();
   }, [audioUri, player]);
 
+  const language = LANGUAGES.find((l) => l.id === languageId) ?? LANGUAGES[0];
+  const mainVoices = SARVAM_VOICE_CATALOG.filter((v) => v.gender === gender);
+  const otherVoices = SARVAM_VOICE_CATALOG.filter((v) => !v.gender);
+  const voice = SARVAM_VOICE_CATALOG.find((v) => v.id === voiceId) ?? mainVoices[0];
+
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const { minutes, cost } = useMemo(() => {
+    // Charged per whole minute of speech (at least one), the same rule the server uses.
+    const wpm = rates?.voice.wordsPerMinute ?? 150;
+    const mins = Math.max(1, Math.ceil(words / wpm));
+    const perMinute = rates ? (rates.voice.perMinute[PROVIDER] ?? rates.voice.perMinute.default) : undefined;
+    return { minutes: mins, cost: perMinute !== undefined ? mins * perMinute : undefined };
+  }, [rates, words]);
+  const tooFewCredits = typeof balance === 'number' && cost !== undefined && cost > balance;
+
+  function pickGender(next: SarvamVoiceGender) {
+    setGender(next);
+    const first = SARVAM_VOICE_CATALOG.find((v) => v.gender === next);
+    if (first) setVoiceId(first.id);
+  }
+
+  function listen() {
+    if (!voice) return;
+    if (sampleStatus.playing) {
+      sample.pause();
+      return;
+    }
+    sample.replace({ uri: voiceSampleUrl(SITE_URL, voice.id, language.sample) });
+    sample.play();
+  }
+
+  async function create() {
+    if (!voice || !text.trim()) return;
+    setBusy(true);
+    setError(null);
+    setOutOfCredits(false);
+    sample.pause();
+    try {
+      const { bytes } = await generateSpeech({ text: text.trim(), provider: PROVIDER, voiceId: voice.id, model: voice.model, languageCode: language.code });
+      setAudioUri(writeCacheFile(bytes, uniqueName('voiceover', 'mp3')).uri);
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 402) setOutOfCredits(true);
+      else setError(e instanceof Error ? e.message : 'Could not create the voiceover.');
+    } finally {
+      setBusy(false);
+      reload();
+    }
+  }
+
   async function share() {
     if (!audioUri) return;
     try {
-      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(audioUri, { mimeType: 'audio/mpeg' });
+      // The browser preview has no share sheet for local audio; it downloads the file instead.
+      if (Platform.OS === 'web') await saveToPhotos(audioUri, 'mp3');
+      else if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(audioUri, { mimeType: 'audio/mpeg', UTI: 'public.mp3' });
       else setError('Sharing is not available on this device.');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not share the file.');
     }
   }
 
-  const active = PROVIDERS.find((p) => p.id === provider);
+  function togglePlay() {
+    if (status.playing) player.pause();
+    else {
+      if (status.duration > 0 && status.currentTime >= status.duration - 0.2) player.seekTo(0);
+      player.play();
+    }
+  }
 
   return (
     <Screen>
       <View style={{ gap: space.xl, paddingTop: space.md }}>
-        <Field label="Script">
-          <Input
-            multiline
-            value={text}
-            onChangeText={setText}
-            maxLength={5000}
-            placeholder="Type or paste what the voice should say…"
-            accessibilityLabel="Voiceover script"
-            style={{ minHeight: 160 }}
-          />
-          <Muted>{text.length} / 5000 characters</Muted>
-        </Field>
-
-        <Field label="Voice type">
+        <Field label="Language">
           <ChipRow>
-            {PROVIDERS.map((p) => (
-              <Chip key={p.id} label={p.label} selected={provider === p.id} onPress={() => chooseProvider(p.id)} />
+            {LANGUAGES.map((l) => (
+              <Chip key={l.id} label={l.label} selected={languageId === l.id} disabled={busy} onPress={() => setLanguageId(l.id)} />
             ))}
           </ChipRow>
-          {active && <Muted>{active.note}</Muted>}
         </Field>
 
-        {provider === 'sarvam' && (
-          <Field label="Language">
-            <ChipRow>
-              {SARVAM_LANGUAGES.map((l) => (
-                <Chip key={l.code} label={l.label} selected={language === l.code} onPress={() => setLanguage(l.code)} />
-              ))}
-            </ChipRow>
-          </Field>
-        )}
+        <PromptBox
+          label="What should the voice say?"
+          value={text}
+          onChangeText={setText}
+          placeholder={PLACEHOLDER[languageId]}
+          ai={scriptWriter(languageId)}
+          dictationLanguage={language.dictation}
+          maxLength={5000}
+          minHeight={150}
+          editable={!busy}
+          footer={words ? `${words} words · about ${minutes} minute${minutes === 1 ? '' : 's'} of speech` : 'Tip: type a topic and tap Generate with AI to get a script.'}
+        />
 
-        {voices.length > 0 && (
-          <Field label="Voice">
+        <Field label="Voice">
+          <ChipRow>
+            <Chip label="Female" selected={gender === 'female'} disabled={busy} onPress={() => pickGender('female')} />
+            <Chip label="Male" selected={gender === 'male'} disabled={busy} onPress={() => pickGender('male')} />
+          </ChipRow>
+          <ChipRow>
+            {mainVoices.map((v) => (
+              <Chip key={v.id} label={v.name} selected={voiceId === v.id} disabled={busy} onPress={() => setVoiceId(v.id)} />
+            ))}
+          </ChipRow>
+          <Pressable accessibilityRole="button" onPress={() => setMoreVoices(!moreVoices)} hitSlop={8}>
+            <Text style={{ color: colors.primary, fontWeight: '600', fontSize: 14 }}>
+              {moreVoices ? 'Fewer voices' : `More voices (${otherVoices.length})`}
+            </Text>
+          </Pressable>
+          {moreVoices && (
             <ChipRow>
-              {voices.slice(0, 12).map((v) => (
-                <Chip key={v.id} label={v.name} selected={voiceId === v.id} onPress={() => setVoiceId(v.id)} />
+              {otherVoices.map((v) => (
+                <Chip key={v.id} label={v.name} selected={voiceId === v.id} disabled={busy} onPress={() => setVoiceId(v.id)} />
               ))}
             </ChipRow>
-          </Field>
-        )}
+          )}
+          {voice && (
+            <View style={{ flexDirection: 'row' }}>
+              <PillButton
+                icon={sampleStatus.playing ? 'pause' : 'play'}
+                label={sampleStatus.playing ? 'Pause sample' : `Listen to ${voice.name} (free)`}
+                tone="primary"
+                onPress={listen}
+              />
+            </View>
+          )}
+        </Field>
 
         <ErrorText message={error} />
+        {outOfCredits && (
+          <Card style={{ gap: space.sm }}>
+            <Muted style={{ color: colors.text, fontWeight: '600' }}>Not enough credits for this voiceover.</Muted>
+            <Muted>You have {formatBalance(balance)} credits; this needs {cost}. Add credits on the Lumora website.</Muted>
+            <Button title="See plan and credits" variant="secondary" onPress={() => router.push('/billing')} />
+          </Card>
+        )}
+
         <Button
-          title={cost !== undefined ? `Create voiceover · ~${cost} credits` : 'Create voiceover'}
+          title={busy ? 'Creating voiceover…' : cost !== undefined && words ? `Create voiceover · ${cost} credits` : 'Create voiceover'}
           onPress={create}
           loading={busy}
-          disabled={!text.trim()}
+          disabled={!text.trim() || !voice || tooFewCredits}
         />
+        {tooFewCredits && !outOfCredits && <Muted>You have {formatBalance(balance)} credits; this needs {cost}.</Muted>}
 
         {audioUri && (
           <Card style={{ gap: space.md }}>
-            <View style={{ flexDirection: 'row', gap: space.sm }}>
-              <View style={{ flex: 1 }}>
-                <Button
-                  title={playing ? 'Pause' : 'Play'}
-                  variant="secondary"
-                  onPress={() => {
-                    if (playing) player.pause();
-                    else {
-                      player.seekTo(0);
-                      player.play();
-                    }
-                  }}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Button title="Share" variant="secondary" onPress={share} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={status.playing ? 'Pause' : 'Play'}
+                onPress={togglePlay}
+                style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name={status.playing ? 'pause' : 'play'} size={26} color="#fff" />
+              </Pressable>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>
+                  {voice?.name} · {language.label}
+                </Text>
+                <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surface, overflow: 'hidden' }}>
+                  <View
+                    style={{
+                      height: 6,
+                      width: `${status.duration > 0 ? Math.min(100, (status.currentTime / status.duration) * 100) : 0}%`,
+                      backgroundColor: colors.primary,
+                    }}
+                  />
+                </View>
+                <Muted style={{ fontSize: 12 }}>
+                  {clock(status.currentTime)} / {clock(status.duration)}
+                </Muted>
               </View>
             </View>
-            <Muted>Also saved in your Gallery.</Muted>
+            <Button title="Share" variant="secondary" onPress={share} />
+            <Muted style={{ fontSize: 12 }}>Saved in your Gallery. Listen to the whole clip before you post: AI voices can mispronounce names.</Muted>
           </Card>
         )}
       </View>
