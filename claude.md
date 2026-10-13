@@ -133,6 +133,9 @@ Rewritten 2026-10-07 for the current product. The old walkthrough video file (`p
   image preview then Save to gallery, Veo-only 8 s video with the 17 templates, Sarvam-only voices with samples. Video templates, Sarvam
   voices and writing instructions are copied from the website (`apps/mobile/src/lib/videoTemplates.ts`, `sarvamVoices.ts`,
   `studioPrompts.ts`) - change both when one changes. Phone recordings are .m4a; the API maps the type for Sarvam (`speechUpload`).
+- Mobile uploads: always add files to FormData with `appendFile` (`apps/mobile/src/lib/filePart.ts`). The app's fetch is Expo's
+  (SDK 54+) and refuses React Native's `{ uri, name, type }` parts ("Unsupported FormDataPart implementation"); the browser preview
+  hides this, so test uploads on a phone.
 
 ## Pending (as of 2026-10-07)
 
