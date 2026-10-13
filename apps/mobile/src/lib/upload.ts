@@ -25,10 +25,10 @@ export async function uploadToGallery(
   return request<MediaAsset>('/media/upload', { method: 'POST', body: form });
 }
 
-/** A photo or video picked on the phone (or taken with the camera). */
+/** A photo, video or audio file picked on the phone (or taken with the camera). */
 export interface DeviceFile {
   uri: string;
-  kind: 'image' | 'video';
+  kind: 'image' | 'video' | 'audio';
   fileName?: string | null;
   mimeType?: string | null;
   fileSize?: number | null;
@@ -46,6 +46,20 @@ const EXT_MIME: Record<string, string> = {
   m4v: 'video/x-m4v',
   webm: 'video/webm',
   '3gp': 'video/3gpp',
+  mp3: 'audio/mpeg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  opus: 'audio/opus',
+  flac: 'audio/flac',
+  amr: 'audio/amr',
+};
+
+const DEFAULTS: Record<DeviceFile['kind'], { ext: string; mime: string; label: string }> = {
+  image: { ext: 'jpg', mime: 'image/jpeg', label: 'photo' },
+  video: { ext: 'mp4', mime: 'video/mp4', label: 'video' },
+  audio: { ext: 'm4a', mime: 'audio/mp4', label: 'audio' },
 };
 
 function extensionOf(name: string | null | undefined, uri: string): string | undefined {
@@ -56,16 +70,19 @@ export function formatSize(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-/** Adds a photo or video from the phone to the Gallery as-is (no prompt: it was not made with AI). */
+/** Adds a photo, video or audio file from the phone to the Gallery as-is (no prompt: it was not made with AI). */
 export async function uploadDeviceFile(file: DeviceFile): Promise<MediaAsset> {
   // Checked before reading the file, so a huge video is never loaded into memory just to be refused.
   const size = file.fileSize ?? localFileSize(file.uri);
   if (size && size > MAX_UPLOAD_BYTES) {
-    throw new ApiError(413, `Too big (${formatSize(size)}). Files can be up to 25 MB: trim the video or pick a shorter one.`);
+    throw new ApiError(413, `Too big (${formatSize(size)}). Files can be up to 25 MB: trim it or pick a shorter one.`);
   }
-  const ext = extensionOf(file.fileName, file.uri) ?? (file.kind === 'video' ? 'mp4' : 'jpg');
-  const type = file.mimeType || EXT_MIME[ext] || (file.kind === 'video' ? 'video/mp4' : 'image/jpeg');
-  const name = file.fileName || `${file.kind === 'video' ? 'video' : 'photo'}-${Date.now()}.${ext}`;
+  const fallback = DEFAULTS[file.kind];
+  const ext = extensionOf(file.fileName, file.uri) ?? fallback.ext;
+  const guessed = file.mimeType || EXT_MIME[ext] || fallback.mime;
+  // Some phones report .m4a/.mp4 audio as video/mp4; a pick from the audio picker is always stored as audio.
+  const type = file.kind === 'audio' && !guessed.startsWith('audio/') ? fallback.mime : guessed;
+  const name = file.fileName || `${fallback.label}-${Date.now()}.${ext}`;
   const form = new FormData();
   await appendFile(form, 'file', file.uri, name, type);
   try {
@@ -73,7 +90,7 @@ export async function uploadDeviceFile(file: DeviceFile): Promise<MediaAsset> {
   } catch (e) {
     // The server's size check answers "Validation failed (expected size is less than ...)".
     if (e instanceof ApiError && /expected size/i.test(e.message)) {
-      throw new ApiError(e.status, 'Too big. Files can be up to 25 MB: trim the video or pick a shorter one.');
+      throw new ApiError(e.status, 'Too big. Files can be up to 25 MB: trim it or pick a shorter one.');
     }
     throw e;
   }

@@ -16,7 +16,7 @@ Expo (React Native, TypeScript, expo-router). Talks to the same NestJS API as th
   - Voiceover: Sarvam only, Hindi/Punjabi/English, Female/Male voices with a free sample (`/voice-samples/sarvam` on the website).
   - The browser preview (`npx expo start`, press w) uses `*.web.ts` versions of token storage, files and push.
 - **Calendar:** upcoming, published and failed posts; cancel an upcoming one; open the live post
-- **Gallery:** your images, videos and voiceovers; save to photos, share, and schedule a video to a connected social account. **Upload from phone** (photo/video picker, up to 10 at a time) and **Camera** (photo, or a video up to 15 s), `src/ui/UploadBar.tsx`; the server takes up to 25 MB per file and 100 images/videos per person
+- **Gallery:** your images, videos and voiceovers; save to photos, share, and schedule a video to a connected social account. **Upload** follows the tab (`src/ui/UploadBar.tsx`): Images opens a photo-only picker, Videos video-only, Audio the Files picker for audio only, All asks which; Camera takes a photo or a video up to 15 s. Up to 10 files at a time, 25 MB each; images and videos share a 100-item limit, audio does not count. Audio items play in the app
 - **Team:** list members; add by email and remove (only for people with `organizations.manage-members`)
 - **Notifications:** in-app list plus push notifications
 - **Plan and credits:** read-only. Buying happens on the website (no purchase buttons in the app, which keeps clear of App Store in-app-purchase rules)
