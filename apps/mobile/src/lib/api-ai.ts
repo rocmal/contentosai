@@ -1,7 +1,7 @@
 /** AI helpers shared by the studios: Improve with AI and voice typing. */
 import { Platform } from 'react-native';
 import { request } from './api';
-import { appendFile } from './upload';
+import { appendFile } from './filePart';
 
 /** Rewrites (or, from an empty box, invents) a prompt or script. Free: no credits are taken. */
 export async function improveText(input: {

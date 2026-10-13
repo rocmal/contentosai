@@ -1,22 +1,10 @@
-/** Multipart uploads that work from the phone and from the browser preview. */
-import { Platform } from 'react-native';
+/** Multipart uploads that work from the phone and from the browser preview (file parts: filePart.ts / .web.ts). */
 import { ApiError, request, type MediaAsset } from './api';
+import { appendFile, localFileSize } from './filePart';
 import { toLocalFile } from './files';
 
 /** The server's per-file limit for gallery uploads (apps/api media-assets.controller MAX_UPLOAD_BYTES). */
 export const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
-
-/**
- * A file part for multipart uploads. The phone hands React Native a file path; the browser preview needs a Blob.
- * (React Native's FormData accepts `{ uri, name, type }`, which the DOM typings do not know about.)
- */
-export async function appendFile(form: FormData, field: string, uri: string, name: string, type: string): Promise<void> {
-  if (Platform.OS === 'web') {
-    form.append(field, await (await fetch(uri)).blob(), name);
-  } else {
-    form.append(field, { uri, name, type } as unknown as Blob);
-  }
-}
 
 function mimeOf(source: string, fallback: string): string {
   return /^data:([^;]+);/.exec(source)?.[1] ?? fallback;
@@ -70,15 +58,25 @@ export function formatSize(bytes: number): string {
 
 /** Adds a photo or video from the phone to the Gallery as-is (no prompt: it was not made with AI). */
 export async function uploadDeviceFile(file: DeviceFile): Promise<MediaAsset> {
-  if (file.fileSize && file.fileSize > MAX_UPLOAD_BYTES) {
-    throw new ApiError(413, `Too big (${formatSize(file.fileSize)}). Files can be up to 25 MB: trim the video or pick a shorter one.`);
+  // Checked before reading the file, so a huge video is never loaded into memory just to be refused.
+  const size = file.fileSize ?? localFileSize(file.uri);
+  if (size && size > MAX_UPLOAD_BYTES) {
+    throw new ApiError(413, `Too big (${formatSize(size)}). Files can be up to 25 MB: trim the video or pick a shorter one.`);
   }
   const ext = extensionOf(file.fileName, file.uri) ?? (file.kind === 'video' ? 'mp4' : 'jpg');
   const type = file.mimeType || EXT_MIME[ext] || (file.kind === 'video' ? 'video/mp4' : 'image/jpeg');
   const name = file.fileName || `${file.kind === 'video' ? 'video' : 'photo'}-${Date.now()}.${ext}`;
   const form = new FormData();
   await appendFile(form, 'file', file.uri, name, type);
-  return request<MediaAsset>('/media/upload', { method: 'POST', body: form });
+  try {
+    return await request<MediaAsset>('/media/upload', { method: 'POST', body: form });
+  } catch (e) {
+    // The server's size check answers "Validation failed (expected size is less than ...)".
+    if (e instanceof ApiError && /expected size/i.test(e.message)) {
+      throw new ApiError(e.status, 'Too big. Files can be up to 25 MB: trim the video or pick a shorter one.');
+    }
+    throw e;
+  }
 }
 
 /** How many images and videos this person has in the Gallery, against the shared limit. */
