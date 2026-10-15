@@ -315,6 +315,11 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // A saved voice recording sent here from Voice Studio opens the Scene Builder, where it becomes the narration.
   const [recordedNarration, setRecordedNarration] = useState<NarrationAudio | null>(() => takeNarrationAudio());
   const [source, setSource] = useState<CreateSource>(() => (takeNarrationAudio() ? 'scenes' : 'prompt'));
+  // Voices the person recorded in Voice Studio, offered as narration as they were recorded.
+  const [myRecordings, setMyRecordings] = useState<api.CustomVoice[]>([]);
+  useEffect(() => {
+    api.listCustomVoices().then(setMyRecordings).catch(() => undefined);
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // "Create from prompt" state
@@ -2272,6 +2277,31 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                     <span>{narrationText.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
                   </button>
                 </div>
+                <select
+                  value={recordedNarration ? (myRecordings.find((v) => v.sampleUrl === recordedNarration.url)?.id ?? 'sent') : ''}
+                  onChange={(e) => {
+                    const picked = myRecordings.find((v) => v.id === e.target.value);
+                    if (picked?.sampleUrl) setRecordedNarration({ name: picked.name, url: picked.sampleUrl });
+                    else if (!e.target.value) setRecordedNarration(null);
+                  }}
+                  className="w-full text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+                >
+                  <option value="">
+                    {myRecordings.length === 0
+                      ? 'My recorded voices: none yet (record one in Voice Studio)'
+                      : 'My recorded voices: use a typed script instead'}
+                  </option>
+                  {recordedNarration && !myRecordings.some((v) => v.sampleUrl === recordedNarration.url) && (
+                    <option value="sent">{recordedNarration.name}</option>
+                  )}
+                  {myRecordings
+                    .filter((v) => v.sampleUrl)
+                    .map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                </select>
                 {recordedNarration && (
                   <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/60 space-y-1.5">
                     <div className="flex items-center justify-between gap-2 text-[11px]">
