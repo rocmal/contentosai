@@ -42,7 +42,7 @@ import { ViewType } from '../../types';
 import * as api from '../../lib/api';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '../../lib/videoPromptTemplates';
-import { takeReuse, VIDEO_STYLE_SUFFIXES } from '../../lib/reuse';
+import { takeNarrationAudio, takeReuse, VIDEO_STYLE_SUFFIXES, type NarrationAudio } from '../../lib/reuse';
 import { useCreditRates, videoCreditCost } from '../../lib/creditCost';
 import {
   compositeScenes,
@@ -312,7 +312,9 @@ type ShareStatus = 'idle' | 'sharing' | 'shared' | 'copied' | 'unsupported';
 export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('create');
-  const [source, setSource] = useState<CreateSource>('prompt');
+  // A saved voice recording sent here from Voice Studio opens the Scene Builder, where it becomes the narration.
+  const [recordedNarration, setRecordedNarration] = useState<NarrationAudio | null>(() => takeNarrationAudio());
+  const [source, setSource] = useState<CreateSource>(() => (takeNarrationAudio() ? 'scenes' : 'prompt'));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // "Create from prompt" state
@@ -1008,7 +1010,9 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     try {
       let globalAudioUrl: string | null = null;
 
-      if (narrationText.trim()) {
+      if (recordedNarration) {
+        globalAudioUrl = recordedNarration.url;
+      } else if (narrationText.trim()) {
         setProgressLabel('Generating narration...');
         const pickedVoice = narrationVoiceId
           ? SARVAM_VOICE_CATALOG.find((v) => v.id === narrationVoiceId)
@@ -2268,6 +2272,26 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                     <span>{narrationText.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
                   </button>
                 </div>
+                {recordedNarration && (
+                  <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/60 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                        Using your own recording: {recordedNarration.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setRecordedNarration(null)}
+                        className="font-semibold text-slate-500 hover:text-red-600 shrink-0"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <audio controls src={recordedNarration.url} className="w-full h-9" />
+                    <p className="text-[10px] text-slate-500">
+                      It plays as the narration of this video, as recorded. No narration credits are used.
+                    </p>
+                  </div>
+                )}
                 <textarea
                   rows={3}
                   value={narrationText}

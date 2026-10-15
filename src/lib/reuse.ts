@@ -114,3 +114,39 @@ export function takeGallerySearch(): string {
     return '';
   }
 }
+
+const NARRATION_AUDIO_KEY = 'lumora.narrationAudio';
+
+export interface NarrationAudio {
+  name: string;
+  url: string;
+}
+
+/** Hand a saved recording to Video Studio to use as the narration. */
+export function requestNarrationAudio(audio: NarrationAudio): void {
+  try {
+    window.sessionStorage.setItem(NARRATION_AUDIO_KEY, JSON.stringify(audio));
+  } catch {
+    // Storage blocked: Video Studio just opens without it.
+  }
+}
+
+/** The recording left for Video Studio, if any. Cleared a moment later because React may run an initializer twice in development. */
+export function takeNarrationAudio(): NarrationAudio | null {
+  try {
+    const raw = window.sessionStorage.getItem(NARRATION_AUDIO_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as NarrationAudio;
+    if (typeof parsed.url !== 'string' || typeof parsed.name !== 'string') return null;
+    window.setTimeout(() => {
+      try {
+        window.sessionStorage.removeItem(NARRATION_AUDIO_KEY);
+      } catch {
+        // Nothing to clear.
+      }
+    }, 1500);
+    return parsed;
+  } catch {
+    return null;
+  }
+}

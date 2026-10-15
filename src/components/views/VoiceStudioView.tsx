@@ -19,6 +19,7 @@ import RecordVoicePanel from '../RecordVoicePanel';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { takeReuse } from '../../lib/reuse';
 import { useCreditRates, voiceCreditCost } from '../../lib/creditCost';
+import { requestGallerySearch, requestNarrationAudio } from '../../lib/reuse';
 import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG, sarvamVoiceSampleUrl } from '../../lib/sarvamVoices';
 
 interface VoiceStudioViewProps {
@@ -378,8 +379,8 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                     Speaking in your voice "{selectedCustomVoice.name}" ({PROVIDER_INFO[selectedCustomVoice.provider].name}).
                   </p>
                 ) : (
-                  <p className="text-[10px] text-amber-600">
-                    "{selectedCustomVoice.name}" is saved as a recording. It cannot read a new script yet, so the standard voice is used until it is made into a voice.
+                  <p className="text-[10px] text-emerald-600">
+                    "{selectedCustomVoice.name}" is saved. Use it in a video as it is, or find it in your Gallery.
                   </p>
                 )}
                 {confirmDeleteCustom ? (
@@ -407,13 +408,37 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                 {selectedCustomVoice.sampleUrl && (
                   <audio controls src={selectedCustomVoice.sampleUrl} className="w-full h-9" />
                 )}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!selectedCustomVoice.sampleUrl) return;
+                      requestNarrationAudio({ name: selectedCustomVoice.name, url: selectedCustomVoice.sampleUrl });
+                      onNavigate('video-studio');
+                    }}
+                    disabled={!selectedCustomVoice.sampleUrl}
+                    className="py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold disabled:opacity-50"
+                  >
+                    Use in a video
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      requestGallerySearch(selectedCustomVoice.name);
+                      onNavigate('media-library');
+                    }}
+                    className="py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 text-[11px] font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+                  >
+                    View in Gallery
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={handleActivateCustomVoice}
                   disabled={activatingCustom}
                   className="w-full py-2 rounded-xl border border-blue-300 text-blue-700 dark:text-blue-300 text-[11px] font-bold hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50"
                 >
-                  {activatingCustom ? 'Making your voice...' : 'Make it speak new scripts'}
+                  {activatingCustom ? 'Making your voice...' : 'Also make it read new scripts (needs voice cloning)'}
                 </button>
               </div>
             )}
