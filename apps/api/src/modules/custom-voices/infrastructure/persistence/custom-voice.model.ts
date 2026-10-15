@@ -19,8 +19,8 @@ export class CustomVoiceModel extends BaseModel {
   @Column({ type: DataType.STRING(50), allowNull: false })
   declare provider: string;
 
-  @Column({ type: DataType.STRING(150), allowNull: false })
-  declare providerVoiceId: string;
+  @Column({ type: DataType.STRING(150), allowNull: true })
+  declare providerVoiceId: string | null;
 
   @Column({ type: DataType.STRING(255), allowNull: true })
   declare sampleStorageKey: string | null;

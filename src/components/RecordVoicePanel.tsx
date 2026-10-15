@@ -110,7 +110,13 @@ export default function RecordVoicePanel({ onSaved }: RecordVoicePanelProps) {
     setPhase('saving');
     setError(null);
     try {
-      const voice = await api.createCustomVoice(name.trim(), blobRef.current, consent);
+      const recording = blobRef.current;
+      const voice = await api.createCustomVoice(name.trim(), recording, consent);
+      // A copy in the Gallery, so the recording itself can be played, downloaded and reused.
+      const extension = /mp4/i.test(recording.type) ? 'mp4' : /ogg/i.test(recording.type) ? 'ogg' : 'webm';
+      void api
+        .uploadToGallery(new File([recording], name.trim() + ' (recording).' + extension, { type: recording.type }))
+        .catch(() => undefined);
       onSaved(voice);
       setName('');
       setConsent(false);
@@ -206,7 +212,7 @@ export default function RecordVoicePanel({ onSaved }: RecordVoicePanelProps) {
           >
             {phase === 'saving' ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating your voice...
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving your voice...
               </>
             ) : (
               <>

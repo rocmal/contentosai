@@ -45,7 +45,7 @@ export class CustomVoicesController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<CustomVoiceResponseDto> {
     const voice = await this.customVoicesService.create(user, dto.name, dto.consent, file);
-    return new CustomVoiceResponseDto(voice);
+    return new CustomVoiceResponseDto(voice, await this.customVoicesService.sampleUrl(voice));
   }
 
   @Get()
@@ -53,7 +53,27 @@ export class CustomVoicesController {
   @ApiOperation({ summary: 'List the voices recorded in this workspace' })
   async list(@CurrentUser() user: AuthenticatedUser): Promise<{ items: CustomVoiceResponseDto[] }> {
     const voices = await this.customVoicesService.list(user.workspaceId);
-    return { items: voices.map((voice) => new CustomVoiceResponseDto(voice)) };
+    const items = await Promise.all(
+      voices.map(
+        async (voice) =>
+          new CustomVoiceResponseDto(voice, await this.customVoicesService.sampleUrl(voice)),
+      ),
+    );
+    return { items };
+  }
+
+  @Post(':id/activate')
+  @RequirePermissions('voice.generate')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Make a saved recording speak new text (needs voice cloning to be set up)',
+  })
+  async activate(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CustomVoiceResponseDto> {
+    const voice = await this.customVoicesService.activate(id, user);
+    return new CustomVoiceResponseDto(voice, await this.customVoicesService.sampleUrl(voice));
   }
 
   @Delete(':id')

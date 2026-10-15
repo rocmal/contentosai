@@ -104,7 +104,7 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   17 prompt templates (`src/lib/videoPromptTemplates.ts`); Improve with AI; same prompt+length+format by the same user returns
   the saved clip free (`cacheKey`, `fresh` forces a new one); result and edit previews no longer loop.
 - **Voice Studio:** Sarvam for Indian languages; record-your-own-voice (custom voices, ElevenLabs instant clone, needs
-  ELEVENLABS_API_KEY); mic dictation on script boxes.
+  ELEVENLABS_API_KEY). Without the key a recording is still saved (voices list as "recording only" + a copy in the Gallery); "Make it speak new scripts" (`POST /custom-voices/:id/activate`) clones it once the key exists. Sarvam bulbul:v2 was retired; v3 only. Mic dictation on script boxes.
 - Voice and video buttons show the credit cost before generating (`GET /credits/rates`, `src/lib/creditCost.ts`); the server charges
   from the same tables. Voice is charged per whole minute (150 words each), video per 10 seconds.
 - Credit prices target 50% margin: see `apps/api/src/modules/credits/credits.constants.ts` (image 2/13/50, voice 7 per minute with

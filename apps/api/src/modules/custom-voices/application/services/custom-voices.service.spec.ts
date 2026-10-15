@@ -36,11 +36,13 @@ function build(overrides: { existing?: unknown[]; configured?: boolean } = {}) {
   const repository = {
     findAll: jest.fn().mockResolvedValue({ items: overrides.existing ?? [] }),
     findById: jest.fn(),
+    update: jest.fn().mockImplementation(async (_id, data) => ({ id: 'cv-1', ...data })),
     create: jest.fn().mockImplementation(async (data) => ({ id: 'cv-1', ...data })),
     delete: jest.fn().mockResolvedValue(undefined),
   };
   const storage = {
     uploadFile: jest.fn().mockResolvedValue({ key: 'custom-voices/x.webm' }),
+    readFile: jest.fn().mockResolvedValue(Buffer.from('audio')),
     delete: jest.fn().mockResolvedValue(undefined),
   };
   const factory = { getProvider: jest.fn().mockReturnValue(provider) };
@@ -97,13 +99,26 @@ describe('CustomVoicesService.create', () => {
     expect(full.provider.cloneVoice).not.toHaveBeenCalled();
   });
 
-  it('says so plainly when voice cloning is not configured', async () => {
-    const { service, provider } = build({ configured: false });
+  it('still saves the recording when voice cloning is not configured', async () => {
+    const { service, provider, repository } = build({ configured: false });
+
+    const voice = await service.create(user, 'My voice', true, goodFile());
+
+    expect(provider.cloneVoice).not.toHaveBeenCalled();
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ providerVoiceId: null, sampleStorageKey: 'custom-voices/x.webm' }),
+      'u1',
+    );
+    expect(voice.providerVoiceId).toBeNull();
+  });
+
+  it('refuses when cloning is off and the recording cannot be stored either', async () => {
+    const { service, storage } = build({ configured: false });
+    storage.uploadFile.mockRejectedValue(new Error('disk full'));
 
     await expect(service.create(user, 'My voice', true, goodFile())).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
-    expect(provider.cloneVoice).not.toHaveBeenCalled();
   });
 
   it('removes the clone again if saving the voice fails, so no slot is leaked', async () => {
@@ -112,6 +127,44 @@ describe('CustomVoicesService.create', () => {
 
     await expect(service.create(user, 'My voice', true, goodFile())).rejects.toThrow('db down');
     expect(provider.deleteVoice).toHaveBeenCalledWith('el-voice-1');
+  });
+});
+
+describe('CustomVoicesService.activate', () => {
+  const saved = {
+    id: 'cv-1',
+    workspaceId: 'ws-1',
+    name: 'My voice',
+    providerVoiceId: null,
+    sampleStorageKey: 'custom-voices/x.webm',
+  };
+
+  it('clones a saved recording and stores the new voice id', async () => {
+    const { service, provider, repository, storage } = build();
+    repository.findById.mockResolvedValue(saved);
+
+    const voice = await service.activate('cv-1', user);
+
+    expect(provider.cloneVoice).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'My voice', mimeType: 'audio/webm' }),
+    );
+    expect(voice.providerVoiceId).toBe('el-voice-1');
+  });
+
+  it('says so plainly while cloning is still not configured', async () => {
+    const { service, repository } = build({ configured: false });
+    repository.findById.mockResolvedValue(saved);
+
+    await expect(service.activate('cv-1', user)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+  });
+
+  it('hides voices from other workspaces', async () => {
+    const { service, repository } = build();
+    repository.findById.mockResolvedValue({ ...saved, workspaceId: 'other' });
+
+    await expect(service.activate('cv-1', user)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

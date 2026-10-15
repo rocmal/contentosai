@@ -103,6 +103,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
   const [showRecordPanel, setShowRecordPanel] = useState(false);
   const [confirmDeleteCustom, setConfirmDeleteCustom] = useState(false);
   const [customVoiceError, setCustomVoiceError] = useState<string | null>(null);
+  const [activatingCustom, setActivatingCustom] = useState(false);
   const selectedCustomVoice = customVoices.find((v) => v.id === selectedCustomId) ?? null;
 
   useEffect(() => {
@@ -122,16 +123,42 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
       return;
     }
     setSelectedCustomId(voice.id);
-    setProvider(voice.provider);
-    setVoiceId(voice.voiceId);
+    // A recording that has not been cloned cannot speak yet; keep the standard voice for generating.
+    if (voice.cloned && voice.voiceId) {
+      setProvider(voice.provider);
+      setVoiceId(voice.voiceId);
+    } else {
+      setProvider('sarvam');
+      setVoiceId('');
+    }
+  };
+
+  const handleActivateCustomVoice = async () => {
+    if (!selectedCustomVoice) return;
+    setCustomVoiceError(null);
+    setActivatingCustom(true);
+    try {
+      const updated = await api.activateCustomVoice(selectedCustomVoice.id);
+      setCustomVoices((previous) => previous.map((v) => (v.id === updated.id ? updated : v)));
+      if (updated.voiceId) {
+        setProvider(updated.provider);
+        setVoiceId(updated.voiceId);
+      }
+    } catch (err) {
+      setCustomVoiceError(err instanceof api.ApiError ? err.message : 'Could not reach the Lumora API. Please try again.');
+    } finally {
+      setActivatingCustom(false);
+    }
   };
 
   const handleCustomVoiceSaved = (voice: api.CustomVoice) => {
     setCustomVoices((previous) => [voice, ...previous]);
     setShowRecordPanel(false);
     setSelectedCustomId(voice.id);
-    setProvider(voice.provider);
-    setVoiceId(voice.voiceId);
+    if (voice.cloned && voice.voiceId) {
+      setProvider(voice.provider);
+      setVoiceId(voice.voiceId);
+    }
   };
 
   const handleDeleteCustomVoice = async () => {
@@ -339,16 +366,22 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
               </option>
               {customVoices.map((voice) => (
                 <option key={voice.id} value={voice.id}>
-                  {voice.name}
+                  {voice.cloned ? voice.name : voice.name + ' (recording only)'}
                 </option>
               ))}
             </select>
 
             {selectedCustomVoice && (
               <div className="mt-1.5 flex items-center justify-between gap-2">
-                <p className="text-[10px] text-emerald-600">
-                  Speaking in your voice "{selectedCustomVoice.name}" ({PROVIDER_INFO[selectedCustomVoice.provider].name}).
-                </p>
+                {selectedCustomVoice.cloned ? (
+                  <p className="text-[10px] text-emerald-600">
+                    Speaking in your voice "{selectedCustomVoice.name}" ({PROVIDER_INFO[selectedCustomVoice.provider].name}).
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-amber-600">
+                    "{selectedCustomVoice.name}" is saved as a recording. It cannot read a new script yet, so the standard voice is used until it is made into a voice.
+                  </p>
+                )}
                 {confirmDeleteCustom ? (
                   <span className="flex items-center gap-2 text-[10px] shrink-0">
                     <button type="button" onClick={handleDeleteCustomVoice} className="font-bold text-red-600">
@@ -367,6 +400,21 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                     Delete this voice
                   </button>
                 )}
+              </div>
+            )}
+            {selectedCustomVoice && !selectedCustomVoice.cloned && (
+              <div className="mt-2 space-y-1.5">
+                {selectedCustomVoice.sampleUrl && (
+                  <audio controls src={selectedCustomVoice.sampleUrl} className="w-full h-9" />
+                )}
+                <button
+                  type="button"
+                  onClick={handleActivateCustomVoice}
+                  disabled={activatingCustom}
+                  className="w-full py-2 rounded-xl border border-blue-300 text-blue-700 dark:text-blue-300 text-[11px] font-bold hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50"
+                >
+                  {activatingCustom ? 'Making your voice...' : 'Make it speak new scripts'}
+                </button>
               </div>
             )}
             {customVoiceError && <p className="text-[10px] text-red-600 mt-1">{customVoiceError}</p>}

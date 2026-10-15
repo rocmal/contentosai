@@ -2172,7 +2172,12 @@ export interface CustomVoice {
   id: string;
   name: string;
   provider: VoiceProvider;
-  voiceId: string;
+  /** Null while the voice is only a saved recording (cloning is not set up yet). */
+  voiceId: string | null;
+  /** True when this voice can speak new text. */
+  cloned: boolean;
+  /** Where the original recording can be played. */
+  sampleUrl: string | null;
   createdAt: string;
 }
 
@@ -2187,6 +2192,11 @@ export function createCustomVoice(name: string, recording: Blob, consent: boolea
   formData.append('name', name);
   formData.append('consent', String(consent));
   return apiRequest<CustomVoice>('/custom-voices', { method: 'POST', body: formData });
+}
+
+/** Makes a saved recording speak new text (needs voice cloning to be set up on the server). */
+export function activateCustomVoice(id: string): Promise<CustomVoice> {
+  return apiRequest<CustomVoice>(`/custom-voices/${encodeURIComponent(id)}/activate`, { method: 'POST' });
 }
 
 export function deleteCustomVoice(id: string): Promise<{ deleted: boolean }> {

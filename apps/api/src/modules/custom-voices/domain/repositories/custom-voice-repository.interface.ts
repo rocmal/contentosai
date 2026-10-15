@@ -6,7 +6,7 @@ export interface CreateCustomVoiceData {
   workspaceId: string;
   name: string;
   provider: string;
-  providerVoiceId: string;
+  providerVoiceId: string | null;
   sampleStorageKey?: string | null;
   consentConfirmedAt: Date;
 }
