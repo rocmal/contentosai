@@ -16,18 +16,10 @@ export type SarvamVoiceGender = 'female' | 'male';
 export interface SarvamVoiceOption {
   id: string;
   name: string;
-  model: 'bulbul:v2' | 'bulbul:v3';
   gender?: SarvamVoiceGender;
 }
 
 export const SARVAM_VOICE_CATALOG: SarvamVoiceOption[] = [
-  { id: 'anushka', name: 'Anushka', model: 'bulbul:v2', gender: 'female' },
-  { id: 'manisha', name: 'Manisha', model: 'bulbul:v2', gender: 'female' },
-  { id: 'vidya', name: 'Vidya', model: 'bulbul:v2', gender: 'female' },
-  { id: 'arya', name: 'Arya', model: 'bulbul:v2', gender: 'female' },
-  { id: 'abhilash', name: 'Abhilash', model: 'bulbul:v2', gender: 'male' },
-  { id: 'karun', name: 'Karun', model: 'bulbul:v2', gender: 'male' },
-  { id: 'hitesh', name: 'Hitesh', model: 'bulbul:v2', gender: 'male' },
   { id: 'shubh', name: 'Shubh', model: 'bulbul:v3' },
   { id: 'aditya', name: 'Aditya', model: 'bulbul:v3' },
   { id: 'ritu', name: 'Ritu', model: 'bulbul:v3' },

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Sarvam's voice catalog, shared between Voice Studio and Scene Builder so
  * the 44-entry list isn't duplicated. Mirrors apps/api's SarvamVoiceProvider
  * SARVAM_VOICES - kept in sync manually since this is a display/selection
@@ -14,18 +14,11 @@ export type SarvamVoiceGender = 'female' | 'male';
 export interface SarvamVoiceOption {
   id: string;
   name: string;
-  model: 'bulbul:v2' | 'bulbul:v3';
+  model: 'bulbul:v3';
   gender?: SarvamVoiceGender;
 }
 
 export const SARVAM_VOICE_CATALOG: SarvamVoiceOption[] = [
-  { id: 'anushka', name: 'Anushka', model: 'bulbul:v2', gender: 'female' },
-  { id: 'manisha', name: 'Manisha', model: 'bulbul:v2', gender: 'female' },
-  { id: 'vidya', name: 'Vidya', model: 'bulbul:v2', gender: 'female' },
-  { id: 'arya', name: 'Arya', model: 'bulbul:v2', gender: 'female' },
-  { id: 'abhilash', name: 'Abhilash', model: 'bulbul:v2', gender: 'male' },
-  { id: 'karun', name: 'Karun', model: 'bulbul:v2', gender: 'male' },
-  { id: 'hitesh', name: 'Hitesh', model: 'bulbul:v2', gender: 'male' },
   { id: 'shubh', name: 'Shubh', model: 'bulbul:v3' },
   { id: 'aditya', name: 'Aditya', model: 'bulbul:v3' },
   { id: 'ritu', name: 'Ritu', model: 'bulbul:v3' },
@@ -65,11 +58,11 @@ export const SARVAM_VOICE_CATALOG: SarvamVoiceOption[] = [
   { id: 'rupali', name: 'Rupali', model: 'bulbul:v3' },
 ];
 
-/** Default voice per gender when nothing specific is picked - both are
- * bulbul:v2 since that's the only model with a Sarvam-documented gender. */
+/** Default voice per gender when nothing specific is picked. Sarvam retired
+ * bulbul:v2 (requests now fail with 400), so both defaults are bulbul:v3. */
 export const SARVAM_VOICE_BY_GENDER: Record<SarvamVoiceGender, { voiceId: string; model: string }> = {
-  female: { voiceId: 'anushka', model: 'bulbul:v2' },
-  male: { voiceId: 'abhilash', model: 'bulbul:v2' },
+  female: { voiceId: 'priya', model: 'bulbul:v3' },
+  male: { voiceId: 'shubh', model: 'bulbul:v3' },
 };
 
 export type SarvamVoiceSampleLanguage = 'en' | 'hi';

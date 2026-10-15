@@ -21,8 +21,8 @@ import {
 const CLONING_PROVIDER = 'elevenlabs';
 /** Per workspace - the vendor limits how many cloned voices an account may hold. */
 export const MAX_CUSTOM_VOICES_PER_WORKSPACE = 10;
-/** Below this a recording is certainly too short to clone from (about 30 s of compressed audio is larger). */
-export const MIN_RECORDING_BYTES = 30_000;
+/** Below this a recording is certainly too short to clone from (about 10 s of compressed audio is larger). */
+export const MIN_RECORDING_BYTES = 8_000;
 
 export interface RecordingFile {
   buffer: Buffer;
@@ -58,7 +58,7 @@ export class CustomVoicesService {
     }
     if (!file.buffer || file.buffer.length < MIN_RECORDING_BYTES) {
       throw new BadRequestException(
-        'That recording is too short. Record at least 30 seconds of clear speech.',
+        'That recording is too short. Record at least 10 seconds of clear speech.',
       );
     }
 

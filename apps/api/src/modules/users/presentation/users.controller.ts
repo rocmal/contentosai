@@ -8,7 +8,6 @@ import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { UsersService } from '../application/services/users.service';
 import { CreateUserDto } from '../application/dto/create-user.dto';
 import { UpdateUserDto } from '../application/dto/update-user.dto';
-import { DeleteAccountDto } from '../application/dto/delete-account.dto';
 import { UserResponseDto } from '../application/dto/user-response.dto';
 
 @ApiTags('users')
@@ -63,16 +62,6 @@ export class UsersController {
       // What this person may do - lets the app show or hide actions such as inviting teammates.
       permissions: currentUser.permissions,
     };
-  }
-
-  @Delete('me')
-  @ApiOperation({ summary: 'Delete my own account' })
-  async deleteMe(
-    @Body() dto: DeleteAccountDto,
-    @CurrentUser('id') userId: string,
-  ): Promise<{ deleted: boolean }> {
-    await this.usersService.deleteOwnAccount(userId, dto.password);
-    return { deleted: true };
   }
 
   @Get(':id')

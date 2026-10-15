@@ -407,7 +407,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                   ))}
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Used when Voice below is left on "Auto" - {SARVAM_VOICE_BY_GENDER[gender].voiceId} (bulbul:v2),
+                  Used when Voice below is left on "Auto" - {SARVAM_VOICE_BY_GENDER[gender].voiceId} (bulbul:v3),
                   Sarvam's only model with a documented gender per voice.
                 </p>
               </div>

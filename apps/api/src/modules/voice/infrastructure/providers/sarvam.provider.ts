@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+﻿import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   IVoiceProvider,
@@ -17,19 +17,19 @@ interface SarvamTTSResponse {
 // live 2026-08-09: every voice below returns real audio (HTTP 200) for both
 // hi-IN and en-IN via /text-to-speech.
 //
-// bulbul:v2's speakers are the ONLY ones Sarvam documents a gender for
-// ("Female: anushka, manisha, vidya, arya" / "Male: abhilash, karun,
-// hitesh"). bulbul:v3's 37 speakers list names only, no gender - do not
-// guess/assign gender to those, it would be fabricated data.
+// bulbul:v2 was retired by Sarvam (2026-10); its speakers are mapped to a v3
+// speaker below so old saved choices keep working.
+const V2_SPEAKER_REPLACEMENTS: Record<string, string> = {
+  anushka: 'priya',
+  manisha: 'priya',
+  vidya: 'priya',
+  arya: 'priya',
+  abhilash: 'shubh',
+  karun: 'shubh',
+  hitesh: 'shubh',
+};
+
 const SARVAM_VOICES: VoiceInfo[] = [
-  // bulbul:v2 - gender confirmed by Sarvam's docs.
-  { id: 'anushka', name: 'Anushka', gender: 'female' },
-  { id: 'manisha', name: 'Manisha', gender: 'female' },
-  { id: 'vidya', name: 'Vidya', gender: 'female' },
-  { id: 'arya', name: 'Arya', gender: 'female' },
-  { id: 'abhilash', name: 'Abhilash', gender: 'male' },
-  { id: 'karun', name: 'Karun', gender: 'male' },
-  { id: 'hitesh', name: 'Hitesh', gender: 'male' },
   // bulbul:v3 - full documented roster, gender not documented by Sarvam so
   // left unset rather than guessed.
   { id: 'shubh', name: 'Shubh' },
@@ -96,7 +96,10 @@ export class SarvamVoiceProvider implements IVoiceProvider {
       throw new ServiceUnavailableException('Sarvam voice generation is not configured');
     }
 
-    const model = request.model ?? this.defaultModel;
+    // Sarvam retired bulbul:v2 and its speakers; older clients and saved
+    // choices may still send it, so always use v3.
+    const model = !request.model || request.model === 'bulbul:v2' ? this.defaultModel : request.model;
+    const speaker = V2_SPEAKER_REPLACEMENTS[request.voiceId ?? ''] ?? request.voiceId ?? this.defaultVoiceId;
 
     const response = await fetch('https://api.sarvam.ai/text-to-speech', {
       method: 'POST',
@@ -107,7 +110,7 @@ export class SarvamVoiceProvider implements IVoiceProvider {
       body: JSON.stringify({
         text: request.text,
         language_code: request.languageCode ?? this.defaultLanguageCode,
-        speaker: request.voiceId ?? this.defaultVoiceId,
+        speaker,
         model,
       }),
     });

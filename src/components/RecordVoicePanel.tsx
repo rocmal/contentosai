@@ -7,7 +7,7 @@ interface RecordVoicePanelProps {
   onSaved: (voice: api.CustomVoice) => void;
 }
 
-const MIN_SECONDS = 30;
+const MIN_SECONDS = 10;
 const MAX_SECONDS = 120;
 
 // Something natural to read aloud, so the sample has varied sounds and steady pace.
@@ -135,7 +135,7 @@ export default function RecordVoicePanel({ onSaved }: RecordVoicePanelProps) {
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Read this aloud</p>
         <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">{READ_ALOUD}</p>
         <p className="text-[10px] text-slate-500 mt-2">
-          Record {MIN_SECONDS}+ seconds in a quiet room, close to the microphone, at your normal pace.
+          Record at least {MIN_SECONDS} seconds (30 or more gives a closer match) in a quiet room, close to the microphone.
         </p>
       </div>
 

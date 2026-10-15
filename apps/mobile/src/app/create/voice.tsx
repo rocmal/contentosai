@@ -42,7 +42,7 @@ export default function VoiceStudio() {
   const [text, setText] = useState(initialPrompt ?? '');
   const [languageId, setLanguageId] = useState<ScriptLanguage>('hindi');
   const [gender, setGender] = useState<SarvamVoiceGender>('female');
-  const [voiceId, setVoiceId] = useState('anushka');
+  const [voiceId, setVoiceId] = useState('priya');
   const [moreVoices, setMoreVoices] = useState(false);
   const [rates, setRates] = useState<CreditRates | null>(null);
   const [busy, setBusy] = useState(false);
