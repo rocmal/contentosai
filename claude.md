@@ -122,6 +122,20 @@ Rewritten 2026-10-07 for the current product. The old walkthrough video file (`p
 - `deploy/scripts/ops-check.js` prints read-only facts in the deploy log: SMTP, OpenAI and Gemini key status, owner user,
   email queue, avatar image addresses, saved video templates. Never prints secrets.
 - Seeders run once per database (sequelize_seeds storage); use a new seeder or migration for data fixes.
+- **Local copy at https://lumoraos.in** (added 2026-10-10): `deploy/local/` = Docker stack (mysql on 3307, redis, api :3000, web :3100)
+  behind XAMPP Apache with a self-signed cert, plus a hosts-file entry. `deploy/local/setup.ps1` sets it all up; `-Hosts off`
+  points the domain back at the live server. While the hosts entry is on, this PC cannot reach production by name.
+- **Dev mode** (added 2026-10-13): `deploy/local/dev.ps1` stops the api/web containers and runs API (`start:dev`, :3000), web
+  (`npm run dev`, http://localhost:3100) and Expo from source against the same Docker MySQL/Redis; `-Stop` switches back.
+  API settings: `apps/api/.env.development`. Full change → test → build loop: `deploy/local/README.md`.
+- Mobile app icon/splash: the spark mark from `design_handoff_mobile_app` (`apps/mobile/assets/images`, `src/ui/LogoMark.tsx`).
+- Mobile studios mirror the website (2026-10-13): Speak + Generate/Improve with AI on every prompt (`apps/mobile/src/ui/PromptBox.tsx`),
+  image preview then Save to gallery, Veo-only 8 s video with the 17 templates, Sarvam-only voices with samples. Video templates, Sarvam
+  voices and writing instructions are copied from the website (`apps/mobile/src/lib/videoTemplates.ts`, `sarvamVoices.ts`,
+  `studioPrompts.ts`) - change both when one changes. Phone recordings are .m4a; the API maps the type for Sarvam (`speechUpload`).
+- Mobile uploads: always add files to FormData with `appendFile` (`apps/mobile/src/lib/filePart.ts`). The app's fetch is Expo's
+  (SDK 54+) and refuses React Native's `{ uri, name, type }` parts ("Unsupported FormDataPart implementation"); the browser preview
+  hides this, so test uploads on a phone.
 
 ## Pending (as of 2026-10-07)
 

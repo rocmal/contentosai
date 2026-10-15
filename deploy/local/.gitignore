@@ -1,0 +1,4 @@
+certs/
+.env.api
+.env.web
+preview/

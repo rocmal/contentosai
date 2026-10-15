@@ -4,10 +4,19 @@ Expo (React Native, TypeScript, expo-router). Talks to the same NestJS API as th
 
 ## What is in it
 
-- **Sign up / sign in**
-- **Create:** Image, Video and Voiceover studios (credit cost shown before you spend)
+- **Sign up / sign in**, forgot password (emails a link that opens the website), **delete account** (Profile; asks for the password; required by both stores)
+- **Co-pilot:** text chat (1 credit per reply). "Make a video/voiceover/image" requests open that studio with the prompt filled in
+- **Create:** Image, Video and Voiceover studios, matching the website (credit cost shown before you spend, same rules as the server)
+  - Every prompt box (`src/ui/PromptBox.tsx`): **Speak** (voice typing in Hindi, Punjabi or English, `POST /ai/transcribe`) and
+    **Generate with AI / Improve with AI** with Undo (`POST /ai/generate`, free). Writing instructions: `src/lib/studioPrompts.ts`.
+  - Image: where it will be posted (decides the shape), No text switch, quality. Makes a preview first; **Save to gallery** uploads it
+    (`POST /media/upload`), so Try again really makes a new picture.
+  - Video: 17 ready-made ideas (`src/lib/videoTemplates.ts`, copied from the website), Vertical/Wide, style, always 8 s with Veo
+    (180 credits). Progress timer, then Save, Share, Schedule and Make another version (`fresh`). Dev builds offer a free test mode.
+  - Voiceover: Sarvam only, Hindi/Punjabi/English, Female/Male voices with a free sample (`/voice-samples/sarvam` on the website).
+  - The browser preview (`npx expo start`, press w) uses `*.web.ts` versions of token storage, files and push.
 - **Calendar:** upcoming, published and failed posts; cancel an upcoming one; open the live post
-- **Gallery:** your images, videos and voiceovers; save to photos, share, and schedule a video to a connected social account
+- **Gallery:** your images, videos and voiceovers; save to photos, share, and schedule a video to a connected social account. **Upload** follows the tab (`src/ui/UploadBar.tsx`): Images opens a photo-only picker, Videos video-only, Audio the Files picker for audio only, All asks which; Camera takes a photo or a video up to 15 s. Up to 10 files at a time, 25 MB each; images and videos share a 100-item limit, audio does not count. Audio items play in the app
 - **Team:** list members; add by email and remove (only for people with `organizations.manage-members`)
 - **Notifications:** in-app list plus push notifications
 - **Plan and credits:** read-only. Buying happens on the website (no purchase buttons in the app, which keeps clear of App Store in-app-purchase rules)
@@ -24,7 +33,8 @@ The phone registers an Expo push token with `POST /notifications/push-tokens`; t
 3. A real build or dev build. Push does not work in the iOS simulator, and Expo Go on Android no longer supports it.
 4. iOS: an Apple Developer account (EAS sets up the push key). Android: an FCM credential (`eas credentials`).
 
-Nothing in the API creates notifications on its own yet (they are only created through `POST /notifications`), so no push will arrive until something calls it, for example the publishing worker when a post goes live or fails.
+The API creates notifications when a scheduled post goes live or fails (`SocialPublishProcessor`) and when a video finishes or fails (`VideoProcessor`; reused clips are skipped).
+`metadata.link` (`gallery`, `calendar`, `video`, ...) travels in the push data; tapping the push or the in-app row opens that screen (`src/lib/links.ts`).
 
 ## Run it
 
@@ -54,5 +64,6 @@ Bundle id / package: `in.lumoraos.app` (change in `app.json` before the first st
 
 - `src/lib/api.ts`: API client (bearer auth, silent refresh, tokens in the OS keychain)
 - `src/lib/files.ts`: temp files, save to photos, share
-- `src/app/`: screens (`login`, `(tabs)/index|gallery|profile`, `create/image|video|voice`)
+- `src/app/`: screens (`login`, `signup`, `forgot-password`, `(tabs)/index|calendar|gallery|profile`, `create/image|video|voice`, `copilot`,
+  `notifications`, `team`, `billing`, `delete-account`). Studios accept a `prompt` route param.
 - `src/ui/`: shared components and the palette from `design_handoff_mobile_app`

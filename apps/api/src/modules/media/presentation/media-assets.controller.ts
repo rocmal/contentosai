@@ -23,7 +23,7 @@ import {
   MediaAssetsService,
   MAX_GALLERY_MEDIA_PER_USER,
 } from '../application/services/media-assets.service';
-import { MediaAssetType } from '../domain/entities/media-asset.entity';
+import { galleryTypeForUpload } from '../domain/upload-type';
 import { CreateMediaAssetDto } from '../application/dto/create-media-asset.dto';
 import { UpdateMediaAssetDto } from '../application/dto/update-media-asset.dto';
 import {
@@ -115,7 +115,7 @@ export class MediaAssetsController {
   @Post('upload')
   @RequirePermissions('media.create')
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload an image or video clip directly into the gallery' })
+  @ApiOperation({ summary: 'Upload an image, video clip or audio file directly into the gallery' })
   @UseInterceptors(FileInterceptor('file'))
   async uploadToGallery(
     @UploadedFile(
@@ -130,11 +130,12 @@ export class MediaAssetsController {
         'An active organization and workspace are required to upload to your gallery',
       );
     }
-    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('video/')) {
-      throw new BadRequestException('Only images and video clips can be added to the gallery');
+    const type = galleryTypeForUpload(file.mimetype);
+    if (!type) {
+      throw new BadRequestException(
+        'Only images, videos and audio files can be added to the gallery',
+      );
     }
-
-    const type = file.mimetype.startsWith('image/') ? MediaAssetType.IMAGE : MediaAssetType.VIDEO;
     const stored = await this.storageService.uploadFile(file, 'gallery');
     const mediaAsset = await this.mediaAssetsService.saveGenerated(
       {

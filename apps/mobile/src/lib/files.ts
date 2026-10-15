@@ -9,6 +9,11 @@ function extensionFor(source: string, fallback: string): string {
   return fromUrl?.toLowerCase() || fallback;
 }
 
+/** A unique file name such as voiceover-1760000000000.mp3. */
+export function uniqueName(prefix: string, ext: string): string {
+  return `${prefix}-${Date.now()}.${ext}`;
+}
+
 /** Writes raw bytes (e.g. generated speech) to the cache directory and returns the file. */
 export function writeCacheFile(bytes: Uint8Array, name: string): File {
   const file = new File(Paths.cache, name);

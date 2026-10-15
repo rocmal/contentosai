@@ -1,5 +1,5 @@
 import { BadGatewayException, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
-import { TranscriptionService } from './transcription.service';
+import { speechUpload, TranscriptionService } from './transcription.service';
 
 const config = (values: Record<string, string>) => ({ get: (key: string) => values[key] }) as never;
 const audio = Buffer.from([1, 2, 3]);
@@ -53,5 +53,29 @@ describe('TranscriptionService', () => {
     await expect(service().transcribe(audio, 'audio/webm')).rejects.toBeInstanceOf(BadGatewayException);
     fetchMock.mockRejectedValue(new Error('network'));
     await expect(service().transcribe(audio, 'audio/webm')).rejects.toBeInstanceOf(BadGatewayException);
+  });
+});
+describe('speechUpload', () => {
+  it('names phone recordings (AAC in MP4) as mp4 so Sarvam decodes them', () => {
+    expect(speechUpload('audio/m4a')).toEqual({ name: 'speech.mp4', type: 'audio/mp4' });
+    expect(speechUpload('audio/x-m4a')).toEqual({ name: 'speech.mp4', type: 'audio/mp4' });
+    expect(speechUpload('audio/mp4')).toEqual({ name: 'speech.mp4', type: 'audio/mp4' });
+    expect(speechUpload('audio/aac')).toEqual({ name: 'speech.mp4', type: 'audio/mp4' });
+  });
+
+  it('keeps browser WebM recordings as they are', () => {
+    expect(speechUpload('audio/webm;codecs=opus')).toEqual({ name: 'speech.webm', type: 'audio/webm;codecs=opus' });
+    expect(speechUpload('video/webm')).toEqual({ name: 'speech.webm', type: 'video/webm' });
+  });
+
+  it('falls back to WebM when the type is missing or not audio', () => {
+    expect(speechUpload(undefined)).toEqual({ name: 'speech.webm', type: 'audio/webm' });
+    expect(speechUpload('application/octet-stream')).toEqual({ name: 'speech.webm', type: 'audio/webm' });
+  });
+
+  it('maps mp3, wav and ogg', () => {
+    expect(speechUpload('audio/mpeg').name).toBe('speech.mp3');
+    expect(speechUpload('audio/wav').name).toBe('speech.wav');
+    expect(speechUpload('audio/ogg').name).toBe('speech.ogg');
   });
 });

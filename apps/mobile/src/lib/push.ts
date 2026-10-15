@@ -2,7 +2,10 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { registerPushToken, unregisterPushToken } from './api-account';
+import { useRouter } from 'expo-router';
+import { useEffect, useRef } from 'react';
+import { markNotificationRead, registerPushToken, unregisterPushToken } from './api-account';
+import { routeForLink } from './links';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -53,4 +56,25 @@ export async function disablePush(): Promise<void> {
     // Signing out matters more.
   }
   currentToken = null;
+}
+
+/**
+ * Opens the screen a tapped push points at (for example Gallery when a video is ready).
+ * Covers taps that launched the app as well as taps while it was running. Each tap is handled once.
+ */
+export function useOpenTappedNotification(enabled: boolean): void {
+  const response = Notifications.useLastNotificationResponse();
+  const router = useRouter();
+  const handled = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !response) return;
+    const id = response.notification.request.identifier;
+    if (handled.current === id) return;
+    handled.current = id;
+    const data = response.notification.request.content.data as { link?: unknown; notificationId?: unknown } | undefined;
+    const href = routeForLink(data?.link) ?? '/notifications';
+    if (typeof data?.notificationId === 'string') markNotificationRead(data.notificationId).catch(() => undefined);
+    router.push(href);
+  }, [enabled, response, router]);
 }

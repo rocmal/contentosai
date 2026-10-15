@@ -11,6 +11,7 @@ import { WorkspacesModule } from '@modules/workspaces/workspaces.module';
 import { CreditsModule } from '@modules/credits/credits.module';
 import { OrganizationsModule } from '@modules/organizations/organizations.module';
 import { UsersModule } from '@modules/users/users.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { QueueName } from './queue-names';
 import { RenewalReminderService } from './renewal-reminder.service';
 import { AiProcessor } from './processors/ai.processor';
@@ -61,6 +62,7 @@ import { VideoEventsListener } from './listeners/video-events.listener';
     CreditsModule,
     OrganizationsModule,
     UsersModule,
+    NotificationsModule,
   ],
   providers: [
     RenewalReminderService,

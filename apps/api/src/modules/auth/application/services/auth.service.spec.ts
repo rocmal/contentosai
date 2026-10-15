@@ -331,4 +331,54 @@ describe('AuthService', () => {
       expect(organizationsRepository.create).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('deleteAccount', () => {
+    const membership = { id: 'member-1', organizationId: 'org-1', userId: 'user-1', roleId: 'role-1' };
+
+    beforeEach(() => {
+      usersService.findEntityById.mockResolvedValue(activeUser);
+      (usersService as unknown as { anonymizeAndRemove: jest.Mock }).anonymizeAndRemove = jest.fn();
+      (organizationMembersRepository as unknown as { listByOrganization: jest.Mock }).listByOrganization = jest.fn();
+      (organizationMembersRepository as unknown as { delete: jest.Mock }).delete = jest.fn();
+      (organizationsRepository as unknown as { findById: jest.Mock }).findById = jest.fn();
+    });
+
+    it('refuses a wrong password and deletes nothing', async () => {
+      passwordHasher.compare.mockResolvedValue(false);
+
+      await expect(authService.deleteAccount('user-1', 'wrong')).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(usersService.anonymizeAndRemove).not.toHaveBeenCalled();
+    });
+
+    it('refuses a missing password when the account has one', async () => {
+      await expect(authService.deleteAccount('user-1', undefined)).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(passwordHasher.compare).not.toHaveBeenCalled();
+    });
+
+    it('refuses an owner whose organization still has other members', async () => {
+      passwordHasher.compare.mockResolvedValue(true);
+      organizationMembersRepository.listByUser.mockResolvedValue([membership] as never);
+      (organizationsRepository.findById as jest.Mock).mockResolvedValue({ id: 'org-1', name: 'Acme', ownerId: 'user-1' });
+      (organizationMembersRepository.listByOrganization as jest.Mock).mockResolvedValue([
+        membership,
+        { ...membership, id: 'member-2', userId: 'user-2' },
+      ]);
+
+      await expect(authService.deleteAccount('user-1', 'secret')).rejects.toThrow(/still has other members/);
+      expect(organizationMembersRepository.delete).not.toHaveBeenCalled();
+      expect(usersService.anonymizeAndRemove).not.toHaveBeenCalled();
+    });
+
+    it('removes memberships, signs out everywhere and anonymizes the user', async () => {
+      passwordHasher.compare.mockResolvedValue(true);
+      organizationMembersRepository.listByUser.mockResolvedValue([membership] as never);
+      (organizationsRepository.findById as jest.Mock).mockResolvedValue({ id: 'org-1', name: 'Acme', ownerId: 'someone-else' });
+
+      await authService.deleteAccount('user-1', 'secret');
+
+      expect(organizationMembersRepository.delete).toHaveBeenCalledWith('member-1', 'user-1');
+      expect(refreshTokensRepository.revokeAllForUser).toHaveBeenCalledWith('user-1');
+      expect(usersService.anonymizeAndRemove).toHaveBeenCalledWith('user-1');
+    });
+  });
 });

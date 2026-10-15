@@ -34,10 +34,12 @@ export class NotificationsService {
       actorId,
     );
     // Fire and forget: PushService never throws, and the in-app record is already saved.
+    // `link` names the app screen to open when the push is tapped (gallery, calendar, video).
+    const link = typeof dto.metadata?.link === 'string' ? dto.metadata.link : undefined;
     void this.pushService.sendToUser(dto.userId, {
       title: dto.title,
       body: dto.message,
-      data: { notificationId: notification.id },
+      data: link ? { notificationId: notification.id, link } : { notificationId: notification.id },
     });
     return notification;
   }

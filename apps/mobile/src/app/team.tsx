@@ -27,7 +27,14 @@ export default function Team() {
   }, [user]);
 
   useEffect(() => {
-    load();
+    if (user) {
+      listTeamMembers(user)
+        .then(setMembers)
+        .catch((e: unknown) => {
+          setError(e instanceof Error ? e.message : 'Could not load your team.');
+          setMembers([]);
+        });
+    }
     if (canManage) {
       listRoles()
         .then((r) => {
@@ -36,7 +43,7 @@ export default function Team() {
         })
         .catch(() => undefined);
     }
-  }, [load, canManage]);
+  }, [user, canManage]);
 
   async function invite() {
     if (!user || !roleId) return;

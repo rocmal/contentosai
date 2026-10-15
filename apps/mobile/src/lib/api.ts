@@ -3,7 +3,7 @@
  * bearer auth, one silent refresh on 401, and the { success, data } envelope.
  * Tokens live in the OS keychain/keystore via expo-secure-store.
  */
-import * as SecureStore from 'expo-secure-store';
+import { tokenStore } from './tokenStore';
 import { API_BASE_URL, API_PREFIX } from './config';
 
 export class ApiError extends Error {
@@ -49,7 +49,7 @@ export function setSessionExpiredHandler(fn: () => void): void {
 
 export async function loadTokens(): Promise<boolean> {
   try {
-    const raw = await SecureStore.getItemAsync(TOKEN_KEY);
+    const raw = await tokenStore.get(TOKEN_KEY);
     tokens = raw ? (JSON.parse(raw) as TokenPair) : null;
   } catch {
     tokens = null;
@@ -59,8 +59,8 @@ export async function loadTokens(): Promise<boolean> {
 
 async function saveTokens(next: TokenPair | null): Promise<void> {
   tokens = next;
-  if (next) await SecureStore.setItemAsync(TOKEN_KEY, JSON.stringify(next));
-  else await SecureStore.deleteItemAsync(TOKEN_KEY);
+  if (next) await tokenStore.set(TOKEN_KEY, JSON.stringify(next));
+  else await tokenStore.remove(TOKEN_KEY);
 }
 
 function errorMessage(body: unknown, fallback: string): string {
@@ -109,7 +109,9 @@ function refresh(): Promise<boolean> {
 async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const run = () => {
     const headers = new Headers(init.headers);
-    if (!headers.has('Content-Type') && init.body) headers.set('Content-Type', 'application/json');
+    // FormData sets its own multipart boundary, so only JSON bodies get a Content-Type here.
+    const isForm = typeof FormData !== 'undefined' && init.body instanceof FormData;
+    if (!headers.has('Content-Type') && init.body && !isForm) headers.set('Content-Type', 'application/json');
     if (tokens) headers.set('Authorization', `Bearer ${tokens.accessToken}`);
     return fetch(`${API_BASE_URL}${API_PREFIX}${path}`, { ...init, headers });
   };
@@ -161,9 +163,19 @@ export async function register(input: {
   return getCurrentUser();
 }
 
-/** Permanently deletes the signed-in account. Needs the password unless the account has none (social sign-in). */
-export async function deleteMyAccount(password?: string): Promise<void> {
-  await request('/users/me', { method: 'DELETE', body: JSON.stringify({ password }) });
+/** Emails a reset link (it opens the website). Always succeeds so it never reveals whether an email has an account. */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const res = await fetch(`${API_BASE_URL}${API_PREFIX}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  await parse<{ sent: boolean }>(res);
+}
+
+/** Permanently deletes the signed-in account, then forgets the tokens on this phone. */
+export async function deleteAccount(password: string): Promise<void> {
+  await request<{ deleted: boolean }>('/auth/delete-account', { method: 'POST', body: JSON.stringify({ password }) });
   await saveTokens(null);
 }
 
@@ -229,6 +241,8 @@ export const generateImage = (input: {
   aspectRatio: ImageAspectRatio;
   quality: ImageQuality;
   count?: number;
+  /** false = preview only: the image comes back inline and nothing is stored (see uploadToGallery). */
+  saveToGallery?: boolean;
 }) => request<ImageResult>('/image/generate', { method: 'POST', body: JSON.stringify(input) });
 
 // ---------------------------------------------------------------------------
@@ -253,6 +267,8 @@ export const generateVideo = (input: {
   provider: VideoProvider;
   durationSeconds?: number;
   aspectRatio?: '16:9' | '9:16';
+  /** true = make a new clip even if the same prompt was made before (otherwise the saved one comes back free). */
+  fresh?: boolean;
 }) => request<VideoResult>('/video/generate', { method: 'POST', body: JSON.stringify(input) });
 
 export const getVideoJob = (provider: string, jobId: string, cacheKey?: string) =>
@@ -297,14 +313,13 @@ export interface VoiceInfo {
 export const listVoices = (provider: VoiceProvider) =>
   request<{ voices: VoiceInfo[] }>(`/voice/voices?provider=${provider}`).then((r) => r.voices);
 
-export const getVoiceProviderStatuses = () =>
-  request<{ statuses: { name: string; available: boolean }[] }>('/voice/providers/status').then((r) => r.statuses);
-
 /** POST /voice/generate answers with raw audio bytes, not the JSON envelope. */
 export async function generateSpeech(input: {
   text: string;
   provider: VoiceProvider;
   voiceId?: string;
+  /** Sarvam model of the chosen voice (bulbul:v2 or bulbul:v3). */
+  model?: string;
   languageCode?: string;
 }): Promise<{ bytes: Uint8Array; mimeType: string }> {
   const res = await authedFetch('/voice/generate', { method: 'POST', body: JSON.stringify(input) });
@@ -341,3 +356,16 @@ export const listMyGallery = (input: { type?: MediaAssetType; page?: number; lim
   if (input.type) p.set('type', input.type);
   return request<Page<MediaAsset>>(`/media/my?${p.toString()}`);
 };
+
+// ---------------------------------------------------------------------------
+// Co-pilot
+// ---------------------------------------------------------------------------
+
+export interface CopilotTurn {
+  role: 'user' | 'assistant';
+  text: string;
+}
+
+/** One text reply (1 credit). The server keeps no chat history, so recent turns are sent each time. */
+export const copilotReply = (input: { message: string; history: CopilotTurn[] }) =>
+  request<{ reply: string }>('/ai/copilot', { method: 'POST', body: JSON.stringify({ ...input, screen: 'mobile' }) });

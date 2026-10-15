@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Public } from '@common/decorators/public.decorator';
@@ -12,6 +12,8 @@ import { RefreshTokenDto } from '../application/dto/refresh-token.dto';
 import { ForgotPasswordDto } from '../application/dto/forgot-password.dto';
 import { ResetPasswordDto } from '../application/dto/reset-password.dto';
 import { VerifyEmailDto } from '../application/dto/verify-email.dto';
+import { DeleteAccountDto } from '../application/dto/delete-account.dto';
+import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { AuthTokensResponseDto } from '../application/dto/auth-tokens-response.dto';
 import { UserResponseDto } from '@modules/users/application/dto/user-response.dto';
 
@@ -93,6 +95,19 @@ export class AuthController {
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ reset: boolean }> {
     await this.authService.resetPassword(dto.token, dto.newPassword);
     return { reset: true };
+  }
+
+  @ApiBearerAuth('access-token')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('delete-account')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Permanently delete the signed-in account (asks for the password again)' })
+  async deleteAccount(
+    @Body() dto: DeleteAccountDto,
+    @CurrentUser('id') userId: string,
+  ): Promise<{ deleted: boolean }> {
+    await this.authService.deleteAccount(userId, dto.password);
+    return { deleted: true };
   }
 
   @Public()

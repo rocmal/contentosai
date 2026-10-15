@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useAuth } from '@/lib/auth';
 import { Button, Card, ErrorText, Field, Input, Muted, Screen } from '@/ui/kit';
-import { space } from '@/ui/theme';
+import { colors, space } from '@/ui/theme';
 
+/** Required by the App Store and Google Play for apps that let people sign up. */
 export default function DeleteAccount() {
-  const { deleteAccount } = useAuth();
+  const { user, deleteAccount } = useAuth();
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -13,30 +14,33 @@ export default function DeleteAccount() {
   function confirm() {
     Alert.alert('Delete your account?', 'This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete account',
-        style: 'destructive',
-        onPress: async () => {
-          setBusy(true);
-          setError(null);
-          try {
-            await deleteAccount(password || undefined);
-          } catch (e) {
-            setError(e instanceof Error ? e.message : 'Could not delete your account.');
-            setBusy(false);
-          }
-        },
-      },
+      { text: 'Delete', style: 'destructive', onPress: run },
     ]);
+  }
+
+  async function run() {
+    setBusy(true);
+    setError(null);
+    try {
+      // On success the session ends and the app returns to sign-in on its own.
+      await deleteAccount(password);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not delete the account.');
+      setBusy(false);
+    }
   }
 
   return (
     <Screen>
-      <View style={{ gap: space.lg, paddingTop: space.md }}>
-        <Card style={{ gap: space.sm }}>
+      <View style={{ gap: space.lg, paddingTop: space.lg }}>
+        <Card style={{ gap: space.sm, borderColor: colors.danger }}>
+          <Muted style={{ color: colors.text, fontWeight: '600' }}>This permanently deletes {user?.email}.</Muted>
           <Muted>
-            Deleting your account removes your sign-in, name and email, and you will be signed out everywhere. Content your team created in a
-            shared workspace stays with that workspace. To cancel a paid plan first, use the Lumora website.
+            You are signed out on every device and can no longer sign in. Your name and email are removed. Images, videos and
+            posts you saved to a shared team workspace stay with that team. Unused credits are not refunded.
+          </Muted>
+          <Muted>
+            If you own a workspace that still has other members, remove them first (Team) so nobody is left without an owner.
           </Muted>
         </Card>
         <Field label="Confirm with your password">
@@ -45,13 +49,12 @@ export default function DeleteAccount() {
             onChangeText={setPassword}
             secureTextEntry
             autoComplete="password"
-            placeholder="Password"
+            textContentType="password"
             accessibilityLabel="Password"
           />
-          <Muted>Signed up with Google or another provider and never set a password? Leave this empty.</Muted>
         </Field>
         <ErrorText message={error} />
-        <Button title="Delete my account" onPress={confirm} loading={busy} />
+        <Button title="Delete my account" onPress={confirm} loading={busy} disabled={!password} />
       </View>
     </Screen>
   );

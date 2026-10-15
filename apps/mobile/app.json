@@ -8,8 +8,9 @@
     "scheme": "lumora",
     "userInterfaceStyle": "light",
     "ios": {
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "in.lumoraos.app",
-      "supportsTablet": false,
+      "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -22,10 +23,24 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "in.lumoraos.app"
+      "package": "in.lumoraos.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
+      ],
+      "blockedPermissions": [
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -33,14 +48,20 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#2563EB",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 120
+          "backgroundColor": "#0A0F24",
+          "image": "./assets/images/splash-tile.png",
+          "imageWidth": 88
         }
       ],
       "expo-secure-store",
       "expo-video",
-      "expo-audio",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Lumora uses the microphone so you can speak your prompts instead of typing, and record videos with sound.",
+          "enableBackgroundPlayback": false
+        }
+      ],
       "expo-sharing",
       [
         "expo-media-library",
@@ -49,18 +70,27 @@
           "isAccessMediaLocationEnabled": false
         }
       ],
-      "expo-asset",
-      "@react-native-community/datetimepicker",
       [
-        "expo-notifications",
+        "expo-image-picker",
         {
-          "color": "#2563EB"
+          "photosPermission": "Lumora lets you choose photos and videos to upload to your gallery.",
+          "cameraPermission": "Lumora uses the camera so you can take photos and videos for your gallery.",
+          "microphonePermission": "Lumora uses the microphone so you can speak your prompts instead of typing, and record videos with sound."
         }
-      ]
+      ],
+      "expo-asset",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "11c3dd5d-efbd-4fdf-bfc3-1d2f2e8db788"
+      }
+    },
+    "owner": "rocmal"
   }
 }

@@ -1,10 +1,4 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { FindAllOptions, PaginatedResult } from '@shared/interfaces/base-repository.interface';
 import { IPasswordHasher, PASSWORD_HASHER } from '@shared/security/password-hasher.interface';
@@ -84,27 +78,23 @@ export class UsersService {
   }
 
   /**
-   * Self-service account deletion (required by the App Store and Google Play).
-   * The row is anonymised before the soft delete so the email can be used to sign up again,
-   * and the person's name and picture are not kept. Sign-in stops at once because the
-   * request guard re-reads the user on every call. Workspace content stays with the organisation.
+   * Account deletion: the row is soft-deleted, so the email and name are overwritten first.
+   * That removes the personal data and frees the email (it is unique) for a new sign-up.
    */
-  async deleteOwnAccount(id: string, password?: string): Promise<void> {
-    const user = await this.findEntityById(id);
-    if (user.passwordHash) {
-      const ok = password ? await this.passwordHasher.compare(password, user.passwordHash) : false;
-      if (!ok) {
-        throw new UnauthorizedException('That password is not correct.');
-      }
-    }
-    await this.usersRepository.update(id, {
-      email: `deleted+${id}@deleted.invalid`,
-      firstName: 'Deleted',
-      lastName: 'user',
-      avatarUrl: null,
-      passwordHash: null,
-      status: UserStatus.SUSPENDED,
-    }, id);
+  async anonymizeAndRemove(id: string): Promise<void> {
+    await this.findEntityById(id);
+    await this.usersRepository.update(
+      id,
+      {
+        email: `deleted-${id}@deleted.invalid`,
+        firstName: 'Deleted',
+        lastName: 'user',
+        avatarUrl: null,
+        passwordHash: null,
+        status: UserStatus.SUSPENDED,
+      },
+      id,
+    );
     await this.usersRepository.delete(id, id);
   }
 

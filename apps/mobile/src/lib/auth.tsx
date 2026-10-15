@@ -9,7 +9,8 @@ interface AuthState {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   signOut: () => Promise<void>;
-  deleteAccount: (password?: string) => Promise<void>;
+  /** Permanently deletes the account; the person lands back on sign-in. */
+  deleteAccount: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -45,9 +46,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const deleteAccount = useCallback(async (password?: string) => {
+  const deleteAccount = useCallback(async (password: string) => {
+    // The push token is dropped first, while the session can still authorise it.
     await disablePush();
-    await api.deleteMyAccount(password);
+    await api.deleteAccount(password);
     setUser(null);
   }, []);
 
@@ -57,8 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userId) void enablePush();
   }, [userId]);
 
-  const value = useMemo(() => ({ user, loading, signIn, signUp, signOut, deleteAccount }),
-    [user, loading, signIn, signUp, signOut, deleteAccount],);
+  const value = useMemo(
+    () => ({ user, loading, signIn, signUp, signOut, deleteAccount }),
+    [user, loading, signIn, signUp, signOut, deleteAccount],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

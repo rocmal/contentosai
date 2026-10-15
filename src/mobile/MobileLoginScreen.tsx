@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { AuroraBackdrop, LoginSplash, SparkMark, Waveform } from '../components/auth/LoginArt';
 
 export const MobileLoginScreen: React.FC = () => {
   const { login, error } = useAuth();
@@ -22,17 +22,22 @@ export const MobileLoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col px-7 pt-6 pb-8 overflow-y-auto min-h-screen">
-      <div className="flex items-center gap-2.5 mb-8">
-        <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center flex-none">
-          <Sparkles className="w-[18px] h-[18px] text-white" />
+    <div className="flex-1 flex flex-col overflow-y-auto min-h-screen">
+      <LoginSplash />
+      <div className="relative overflow-hidden px-7 pt-8 pb-14 text-white">
+        <AuroraBackdrop />
+        <div className="relative">
+          <div className="flex items-center gap-2.5 mb-10">
+            <SparkMark size={40} />
+            <span className="font-display text-[19px]">Lumora</span>
+          </div>
+          <h1 className="font-display text-[27px] mb-1.5">Welcome back</h1>
+          <p className="text-[13px] text-white/60">Sign in to keep creating.</p>
+          <Waveform animated className="mt-5 opacity-80" />
         </div>
-        <span className="font-display text-[19px] text-slate-900">Lumora</span>
       </div>
-      <h1 className="font-display text-[27px] text-slate-900 mb-1.5">Welcome back</h1>
-      <p className="text-[13px] text-slate-500 mb-6">Sign in to keep creating.</p>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+      <form onSubmit={handleSubmit} className="relative -mt-6 flex-1 flex flex-col gap-3.5 rounded-t-[28px] bg-white px-7 pt-7 pb-8">
         <div>
           <label className="block text-xs text-slate-600 mb-1.5" htmlFor="mobile-login-email">
             Email

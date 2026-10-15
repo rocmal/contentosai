@@ -1,9 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -98,6 +100,70 @@ export function ChipRow({ children }: { children: ReactNode }) {
   return <View style={styles.chipRow}>{children}</View>;
 }
 
+/** Compact rounded button for toolbars (Speak, Improve with AI, Listen). */
+export function PillButton({
+  icon,
+  label,
+  onPress,
+  loading,
+  disabled,
+  tone = 'default',
+  accessibilityLabel,
+}: {
+  icon?: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  tone?: 'default' | 'primary' | 'danger';
+  accessibilityLabel?: string;
+}) {
+  const bg = tone === 'danger' ? colors.danger : tone === 'primary' ? colors.primarySoft : colors.surface;
+  const fg = tone === 'danger' ? '#fff' : tone === 'primary' ? colors.primary : colors.text;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      onPress={onPress}
+      disabled={disabled || loading}
+      hitSlop={6}
+      style={({ pressed }) => [styles.pill, { backgroundColor: bg, opacity: disabled ? 0.45 : pressed ? 0.7 : 1 }]}
+    >
+      {loading ? <ActivityIndicator size="small" color={fg} /> : icon ? <Ionicons name={icon} size={16} color={fg} /> : null}
+      <Text style={[styles.pillText, { color: fg }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** A labelled on/off switch with an optional explanation underneath. */
+export function SwitchRow({
+  label,
+  detail,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  detail?: string;
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{label}</Text>
+        {detail ? <Text style={styles.muted}>{detail}</Text> : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ true: colors.primary, false: colors.border }}
+        thumbColor="#fff"
+        accessibilityLabel={label}
+      />
+    </View>
+  );
+}
+
 export function Card({ children, style }: { children: ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
@@ -152,4 +218,13 @@ const styles = StyleSheet.create({
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   card: { backgroundColor: colors.background, borderRadius: radius.card, borderWidth: 1, borderColor: colors.border, padding: space.lg },
   error: { backgroundColor: colors.dangerTint, borderRadius: radius.control, padding: space.md },
+  pill: {
+    minHeight: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+  },
+  pillText: { fontSize: 14, fontWeight: '600' },
 });
