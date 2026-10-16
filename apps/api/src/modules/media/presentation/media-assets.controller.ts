@@ -23,6 +23,7 @@ import {
   MediaAssetsService,
   MAX_GALLERY_MEDIA_PER_USER,
 } from '../application/services/media-assets.service';
+import { uploadedFileName } from '../domain/upload-name';
 import { galleryTypeForUpload } from '../domain/upload-type';
 import { CreateMediaAssetDto } from '../application/dto/create-media-asset.dto';
 import { UpdateMediaAssetDto } from '../application/dto/update-media-asset.dto';
@@ -141,7 +142,7 @@ export class MediaAssetsController {
       {
         organizationId: user.organizationId,
         workspaceId: user.workspaceId,
-        fileName: file.originalname,
+        fileName: uploadedFileName(file.originalname, type),
         storageKey: stored.key,
         url: stored.url,
         mimeType: file.mimetype,
