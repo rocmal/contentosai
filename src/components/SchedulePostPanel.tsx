@@ -81,10 +81,18 @@ export const SchedulePostPanel: React.FC<SchedulePostPanelProps> = ({
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduledPosts, setScheduledPosts] = useState<api.PublishingJob[]>([]);
 
+  const [postTitles, setPostTitles] = useState<Record<string, string>>({});
+  const [confirmCancel, setConfirmCancel] = useState<api.PublishingJob | null>(null);
+
   const refreshScheduledPosts = () => {
     api
       .listScheduledPosts()
       .then(setScheduledPosts)
+      .catch(() => undefined);
+    // The jobs only carry a content id; the titles come from the content list.
+    api
+      .listContent()
+      .then((items) => setPostTitles(Object.fromEntries(items.map((c) => [c.id, c.title]))))
       .catch(() => undefined);
   };
 
@@ -285,6 +293,7 @@ export const SchedulePostPanel: React.FC<SchedulePostPanelProps> = ({
       {(scheduledPosts?.length ?? 0) > 0 && (
         <div className="max-w-2xl mx-auto p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5">
           <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Your Scheduled Posts</h3>
+          <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 custom-scroll">
           {scheduledPosts.map((job) => (
             <div
               key={job.id}
@@ -305,13 +314,18 @@ export const SchedulePostPanel: React.FC<SchedulePostPanelProps> = ({
                     {job.status}
                   </span>
                 </p>
+                {job.contentId && postTitles[job.contentId] && (
+                  <p className="text-xs text-slate-700 dark:text-slate-200 truncate" title={postTitles[job.contentId]}>
+                    {postTitles[job.contentId]}
+                  </p>
+                )}
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">
                   {job.scheduledAt ? new Date(job.scheduledAt).toLocaleString() : '—'}
                 </p>
               </div>
               {job.status === 'scheduled' && (
                 <button
-                  onClick={() => handleCancelScheduledPost(job.id)}
+                  onClick={() => setConfirmCancel(job)}
                   className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                   title="Cancel"
                 >
@@ -320,6 +334,52 @@ export const SchedulePostPanel: React.FC<SchedulePostPanelProps> = ({
               )}
             </div>
           ))}
+          </div>
+        </div>
+      )}
+
+      {confirmCancel && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => setConfirmCancel(null)}
+        >
+          <div
+            className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-5 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white">Cancel this scheduled post?</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {confirmCancel.contentId && postTitles[confirmCancel.contentId]
+                    ? '"' + postTitles[confirmCancel.contentId] + '" on '
+                    : 'The post on '}
+                  <span className="capitalize">{confirmCancel.platform}</span> will not be published. This cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmCancel(null)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Keep it
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const id = confirmCancel.id;
+                  setConfirmCancel(null);
+                  handleCancelScheduledPost(id);
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
+              >
+                Yes, cancel post
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
