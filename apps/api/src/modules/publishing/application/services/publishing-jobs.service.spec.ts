@@ -7,6 +7,7 @@ import { PublishingActor, PublishingJobsService } from './publishing-jobs.servic
 describe('PublishingJobsService', () => {
   let repository: jest.Mocked<IPublishingJobsRepository>;
   let service: PublishingJobsService;
+  let contentService: { findById: jest.Mock; update: jest.Mock };
 
   const me: PublishingActor = { id: 'user-1', workspaceId: 'ws-1', roles: ['member'] };
   const mine = { id: 'j1', workspaceId: 'ws-1', createdBy: 'user-1' } as PublishingJob;
@@ -23,9 +24,12 @@ describe('PublishingJobsService', () => {
       delete: jest.fn(),
       count: jest.fn(),
     } as unknown as jest.Mocked<IPublishingJobsRepository>;
-    service = new PublishingJobsService(repository, {
-      emit: jest.fn(),
-    } as unknown as EventEmitter2);
+    contentService = { findById: jest.fn(), update: jest.fn() };
+    service = new PublishingJobsService(
+      repository,
+      { emit: jest.fn() } as unknown as EventEmitter2,
+      contentService as never,
+    );
   });
 
   describe('listForWorkspace', () => {
@@ -114,5 +118,69 @@ describe('PublishingJobsService', () => {
       expect.objectContaining({ status: PublishingJobStatus.PUBLISHED }),
       undefined,
     );
+  });
+
+  describe('editScheduledPost', () => {
+    const scheduled = {
+      id: 'j1',
+      workspaceId: 'ws-1',
+      createdBy: 'user-1',
+      contentId: 'c1',
+      status: PublishingJobStatus.SCHEDULED,
+    } as PublishingJob;
+    const content = { id: 'c1', workspaceId: 'ws-1', metadata: { videoUrl: 'v.mp4', caption: 'old' } };
+
+    beforeEach(() => {
+      repository.findById.mockResolvedValue(scheduled);
+      repository.update.mockResolvedValue(scheduled);
+      contentService.findById.mockResolvedValue(content);
+    });
+
+    it('changes the title and the text, keeping the video in the metadata', async () => {
+      await service.editScheduledPost('j1', { title: ' New title ', caption: 'New text #lic' }, me);
+
+      expect(contentService.update).toHaveBeenCalledWith(
+        'c1',
+        {
+          title: 'New title',
+          body: 'New text #lic',
+          metadata: { videoUrl: 'v.mp4', caption: 'New text #lic' },
+        },
+        'user-1',
+      );
+    });
+
+    it('moves the time and queues the post again', async () => {
+      const when = new Date(Date.now() + 3_600_000).toISOString();
+
+      await service.editScheduledPost('j1', { scheduledAt: when }, me);
+
+      expect(repository.update).toHaveBeenCalledWith(
+        'j1',
+        { scheduledAt: new Date(when) },
+        'user-1',
+      );
+    });
+
+    it('refuses a time in the past, an empty title, and a post that already went out', async () => {
+      await expect(
+        service.editScheduledPost('j1', { scheduledAt: new Date(Date.now() - 1000).toISOString() }, me),
+      ).rejects.toThrow('at least a minute');
+      await expect(service.editScheduledPost('j1', { title: '  ' }, me)).rejects.toThrow('title');
+
+      repository.findById.mockResolvedValue({ ...scheduled, status: PublishingJobStatus.PUBLISHED });
+      await expect(service.editScheduledPost('j1', { caption: 'x' }, me)).rejects.toThrow(
+        'still scheduled',
+      );
+    });
+
+    it("does not touch another workspace's content", async () => {
+      contentService.findById.mockResolvedValue({ ...content, workspaceId: 'ws-9' });
+
+      await expect(service.editScheduledPost('j1', { caption: 'x' }, me)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(contentService.update).not.toHaveBeenCalled();
+    });
   });
 });

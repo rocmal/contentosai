@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaginatedResult } from '@shared/interfaces/base-repository.interface';
 import { PublishingJob, PublishingJobStatus } from '../../domain/entities/publishing-job.entity';
@@ -9,6 +9,8 @@ import {
 import { CreatePublishingJobDto } from '../dto/create-publishing-job.dto';
 import { UpdatePublishingJobDto } from '../dto/update-publishing-job.dto';
 import { PublishingJobCreatedEvent } from '../events/publishing-job-created.event';
+import { EditScheduledPostDto } from '../dto/edit-scheduled-post.dto';
+import { ContentService } from '@modules/content/application/services/content.service';
 
 /** Who is asking - taken from the signed-in user, never from the request body. */
 export interface PublishingActor {
@@ -39,6 +41,7 @@ export class PublishingJobsService {
     @Inject(PUBLISHING_JOBS_REPOSITORY)
     private readonly publishingJobsRepository: IPublishingJobsRepository,
     private readonly eventEmitter: EventEmitter2,
+    private readonly contentService: ContentService,
   ) {}
 
   async create(dto: CreatePublishingJobDto, actorId?: string): Promise<PublishingJob> {
@@ -161,6 +164,64 @@ export class PublishingJobsService {
       },
       actorId,
     );
+  }
+
+  /** Change the title, text (hashtags included) or time of a post that has not gone out yet. */
+  async editScheduledPost(
+    id: string,
+    dto: EditScheduledPostDto,
+    actor: PublishingActor,
+  ): Promise<PublishingJob> {
+    const publishingJob = await this.findManageable(id, actor);
+    if (publishingJob.status !== PublishingJobStatus.SCHEDULED) {
+      throw new BadRequestException('Only a post that is still scheduled can be edited.');
+    }
+
+    if (dto.title !== undefined || dto.caption !== undefined) {
+      if (!publishingJob.contentId) {
+        throw new BadRequestException('This post has no content to edit.');
+      }
+      const content = await this.contentService.findById(publishingJob.contentId);
+      if (content.workspaceId !== actor.workspaceId) {
+        throw new NotFoundException(`PublishingJob with id "${id}" not found`);
+      }
+      const title = dto.title?.trim();
+      const caption = dto.caption?.trim();
+      if (title !== undefined && !title) {
+        throw new BadRequestException('The title cannot be empty.');
+      }
+      await this.contentService.update(
+        content.id,
+        {
+          title,
+          body: caption,
+          // The publisher posts metadata.caption first, so keep it in step with the text.
+          metadata:
+            caption !== undefined ? { ...(content.metadata ?? {}), caption } : undefined,
+        },
+        actor.id,
+      );
+    }
+
+    if (dto.scheduledAt) {
+      const when = new Date(dto.scheduledAt);
+      if (Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 60_000) {
+        throw new BadRequestException('Pick a time at least a minute from now.');
+      }
+      const updated = await this.publishingJobsRepository.update(
+        id,
+        { scheduledAt: when },
+        actor.id,
+      );
+      // Queue the post for the new time; the worker skips the earlier queued run.
+      this.eventEmitter.emit(
+        'publishing.created',
+        new PublishingJobCreatedEvent(updated.id, updated.workspaceId, updated.status, when),
+      );
+      return updated;
+    }
+
+    return publishingJob;
   }
 
   async remove(id: string, actor: PublishingActor): Promise<void> {

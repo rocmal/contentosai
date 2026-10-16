@@ -17,6 +17,7 @@ import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { PublishingJobsService } from '../application/services/publishing-jobs.service';
 import { CreatePublishingJobDto } from '../application/dto/create-publishing-job.dto';
+import { EditScheduledPostDto } from '../application/dto/edit-scheduled-post.dto';
 import { UpdatePublishingJobDto } from '../application/dto/update-publishing-job.dto';
 import { PublishingJobResponseDto } from '../application/dto/publishing-job-response.dto';
 
@@ -77,6 +78,18 @@ export class PublishingJobsController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<PublishingJobResponseDto> {
     const publishingJob = await this.publishingJobsService.findForActor(id, user);
+    return new PublishingJobResponseDto(publishingJob);
+  }
+
+  @Patch(':id/post')
+  @RequirePermissions('publishing.update')
+  @ApiOperation({ summary: 'Edit the title, text/hashtags or time of a scheduled post' })
+  async editPost(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @Body() dto: EditScheduledPostDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<PublishingJobResponseDto> {
+    const publishingJob = await this.publishingJobsService.editScheduledPost(id, dto, user);
     return new PublishingJobResponseDto(publishingJob);
   }
 

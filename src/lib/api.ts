@@ -1723,6 +1723,17 @@ export function getPublishingSummary(): Promise<{ scheduled: number; published: 
   return apiRequest('/publishing/jobs/summary');
 }
 
+/** Change the title, text (with hashtags) or time of a post that has not been published yet. */
+export function editScheduledPost(
+  id: string,
+  changes: { title?: string; caption?: string; scheduledAt?: string },
+): Promise<PublishingJob> {
+  return apiRequest<PublishingJob>(`/publishing/jobs/${encodeURIComponent(id)}/post`, {
+    method: 'PATCH',
+    body: JSON.stringify(changes),
+  });
+}
+
 export function cancelScheduledPost(id: string): Promise<{ deleted: boolean }> {
   return apiRequest(`/publishing/jobs/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }

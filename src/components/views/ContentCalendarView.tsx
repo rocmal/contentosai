@@ -9,8 +9,10 @@ import {
   Kanban,
   Linkedin,
   Loader2,
+  Pencil,
   RefreshCw,
   Video,
+  X,
   XCircle,
   Youtube,
 } from 'lucide-react';
@@ -78,6 +80,105 @@ function postDate(job: api.PublishingJob): Date | null {
   return raw ? new Date(raw) : null;
 }
 
+/** The value a datetime-local input wants (local time, no seconds). */
+function toLocalInput(date: Date | null): string {
+  if (!date) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+    'T' + pad(date.getHours()) + ':' + pad(date.getMinutes())
+  );
+}
+
+/** Edit the title, text with hashtags, and time of a post that has not gone out yet. */
+const EditPostModal: React.FC<{
+  post: CalendarPost;
+  onClose: () => void;
+  onSaved: () => void;
+}> = ({ post, onClose, onSaved }) => {
+  const { job, content } = post;
+  const originalCaption = content?.metadata?.caption ?? content?.body ?? '';
+  const [title, setTitle] = useState(content?.title ?? '');
+  const [caption, setCaption] = useState(originalCaption);
+  const [when, setWhen] = useState(toLocalInput(postDate(job)));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const changes: { title?: string; caption?: string; scheduledAt?: string } = {};
+      if (title !== (content?.title ?? '')) changes.title = title;
+      if (caption !== originalCaption) changes.caption = caption;
+      if (when && when !== toLocalInput(postDate(job))) changes.scheduledAt = new Date(when).toISOString();
+      if (Object.keys(changes).length > 0) await api.editScheduledPost(job.id, changes);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save your changes.');
+      setSaving(false);
+    }
+  };
+
+  const field =
+    'w-full text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500';
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-5 space-y-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+            Edit scheduled {PLATFORM_LABEL[job.platform] ?? job.platform} post
+          </h3>
+          <button type="button" onClick={onClose} className="p-1 text-slate-400 hover:text-slate-700" aria-label="Close">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">Title</label>
+          <input type="text" value={title} maxLength={255} onChange={(e) => setTitle(e.target.value)} className={field} />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">Post text and hashtags</label>
+          <textarea
+            rows={6}
+            value={caption}
+            maxLength={5000}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="What is posted with the video. Add hashtags like #LICIndia here."
+            className={field}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">Publish at</label>
+          <input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} className={field} />
+        </div>
+        {error && <p className="text-[11px] text-red-600 dark:text-red-400">{error}</p>}
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving || !title.trim()}
+            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5"
+          >
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Save changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function formatDateTime(date: Date | null): string {
   if (!date) return 'No date';
   return date.toLocaleString(undefined, {
@@ -94,6 +195,7 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<CalendarPost | null>(null);
 
   const load = async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
@@ -263,8 +365,20 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
                               <PlatformIcon className="w-3 h-3" />
                               {PLATFORM_LABEL[job.platform] ?? job.platform}
                             </span>
-                            <span className={`px-2 py-0.5 rounded-full font-semibold ${meta.badge}`}>
-                              {meta.label}
+                            <span className="flex items-center gap-1.5">
+                              {job.status === 'scheduled' && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditing({ job, content })}
+                                  className="flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                  title="Edit title, text, hashtags or time"
+                                >
+                                  <Pencil className="w-3 h-3" /> Edit
+                                </button>
+                              )}
+                              <span className={`px-2 py-0.5 rounded-full font-semibold ${meta.badge}`}>
+                                {meta.label}
+                              </span>
                             </span>
                           </div>
 
@@ -339,6 +453,8 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
                                 : 'bg-blue-600'
                           }`}
                           title={content?.title || 'Untitled post'}
+                          onClick={job.status === 'scheduled' ? () => setEditing({ job, content }) : undefined}
+                          style={job.status === 'scheduled' ? { cursor: 'pointer' } : undefined}
                         >
                           {PLATFORM_SHORT_LABEL[job.platform] ?? job.platform}:{' '}
                           {content?.title || 'Untitled'}
@@ -351,6 +467,17 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
             })}
           </div>
         </div>
+      )}
+
+      {editing && (
+        <EditPostModal
+          post={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            load(true);
+          }}
+        />
       )}
     </div>
   );

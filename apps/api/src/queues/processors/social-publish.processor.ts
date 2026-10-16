@@ -137,7 +137,12 @@ export class SocialPublishProcessor extends WorkerHost {
   private async loadPendingJob(publishingJobId: string) {
     try {
       const publishingJob = await this.publishingJobsService.findById(publishingJobId);
-      return publishingJob.status === PublishingJobStatus.SCHEDULED ? publishingJob : null;
+      if (publishingJob.status !== PublishingJobStatus.SCHEDULED) return null;
+      // Moved to a later time after this run was queued: a newer queued run will publish it.
+      if (publishingJob.scheduledAt && publishingJob.scheduledAt.getTime() > Date.now() + 60_000) {
+        return null;
+      }
+      return publishingJob;
     } catch (error) {
       if (error instanceof NotFoundException) {
         this.logger.warn(`Publishing job ${publishingJobId} no longer exists - skipping`);

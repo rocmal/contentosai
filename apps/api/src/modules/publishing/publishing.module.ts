@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
+import { ContentModule } from '@modules/content/content.module';
 import { PublishingJobModel } from './infrastructure/persistence/publishing-job.model';
 import { PublishingJobsRepository } from './infrastructure/persistence/publishing-jobs.repository';
 import { PUBLISHING_JOBS_REPOSITORY } from './domain/repositories/publishing-job-repository.interface';
@@ -12,7 +13,7 @@ import { PublishingJobsService } from './application/services/publishing-jobs.se
 import { PublishingJobsController } from './presentation/publishing-jobs.controller';
 
 @Module({
-  imports: [SequelizeModule.forFeature([PublishingJobModel])],
+  imports: [SequelizeModule.forFeature([PublishingJobModel]), ContentModule],
   controllers: [PublishingJobsController],
   providers: [
     PublishingJobsService,
