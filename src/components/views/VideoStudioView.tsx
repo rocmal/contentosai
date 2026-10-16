@@ -406,6 +406,21 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // result step, since a template needs a finished video to attach to.
   const [sceneSaveAsTemplate, setSceneSaveAsTemplate] = useState(false);
   const [pastProjects, setPastProjects] = useState<api.VideoProject[]>([]);
+  const [showAllDrafts, setShowAllDrafts] = useState(false);
+  const [draftToDelete, setDraftToDelete] = useState<api.VideoProject | null>(null);
+
+  const handleDeleteDraft = async () => {
+    if (!draftToDelete) return;
+    const id = draftToDelete.id;
+    setDraftToDelete(null);
+    try {
+      await api.deleteVideoProject(id);
+      setPastProjects((previous) => previous.filter((project) => project.id !== id));
+      if (videoProjectId === id) setVideoProjectId(null);
+    } catch {
+      // Still listed; the person can try again.
+    }
+  };
   const [isSavingToGallery, setIsSavingToGallery] = useState(false);
   const [savedToGallery, setSavedToGallery] = useState(false);
   const autoSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -528,7 +543,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   useEffect(() => {
     loadVideoTemplates();
     api.getGalleryUsage().then(setGalleryUsage).catch(() => undefined);
-    api.listMyVideoProjects(10).then(setPastProjects).catch(() => undefined);
+    api.listMyVideoProjects(30).then(setPastProjects).catch(() => undefined);
   }, []);
 
   // Lazily creates the persisted draft the moment the Scene Builder
@@ -1798,27 +1813,85 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
               {scenes.length === 0 && pastProjects.some((p) => p.status === 'draft') && (
                 <div className="space-y-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Continue a draft
+                    Continue a draft ({pastProjects.filter((p) => p.status === 'draft').length})
                   </span>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 max-h-[220px] overflow-y-auto pr-1 custom-scroll">
                     {pastProjects
                       .filter((p) => p.status === 'draft')
-                      .slice(0, 4)
+                      .slice(0, showAllDrafts ? undefined : 4)
                       .map((p) => (
-                        <button
+                        <div
                           key={p.id}
-                          type="button"
-                          onClick={() => handleResumeProject(p)}
-                          className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-left hover:border-blue-400 transition-colors"
+                          className="relative rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-400 transition-colors"
                         >
-                          <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                            {p.title}
-                          </div>
-                          <div className="text-[10px] text-slate-400">
-                            {p.scenes.length} scene{p.scenes.length === 1 ? '' : 's'}
-                          </div>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => handleResumeProject(p)}
+                            className="pl-3 pr-8 py-2 text-left"
+                          >
+                            <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                              {p.title}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {p.scenes.length} scene{p.scenes.length === 1 ? '' : 's'} - {new Date(p.updatedAt).toLocaleDateString()}
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDraftToDelete(p)}
+                            title="Delete this draft"
+                            className="absolute top-1.5 right-1.5 p-1 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       ))}
+                  </div>
+                  {pastProjects.filter((p) => p.status === 'draft').length > 4 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllDrafts((v) => !v)}
+                      className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      {showAllDrafts ? 'Show fewer' : 'Show all drafts'}
+                    </button>
+                  )}
+                  <p className="text-[10px] text-slate-400">
+                    Drafts are saved automatically as you work. The most recent 30 are kept in this list, so delete the ones you no longer need.
+                  </p>
+                </div>
+              )}
+
+              {draftToDelete && (
+                <div
+                  className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+                  onClick={() => setDraftToDelete(null)}
+                >
+                  <div
+                    className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl p-5 space-y-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">Delete this draft?</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      "{draftToDelete.title}" ({draftToDelete.scenes.length} scene
+                      {draftToDelete.scenes.length === 1 ? '' : 's'}) will be removed. Your uploaded images and clips in the Gallery are not deleted. This cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDraftToDelete(null)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        Keep it
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteDraft}
+                        className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold"
+                      >
+                        Delete draft
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
