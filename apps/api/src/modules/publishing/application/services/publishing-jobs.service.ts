@@ -177,18 +177,24 @@ export class PublishingJobsService {
       throw new BadRequestException('Only a post that is still scheduled can be edited.');
     }
 
-    if (dto.title !== undefined || dto.caption !== undefined) {
+    // Check everything before changing anything, so a refused time never leaves the text half-saved.
+    const when = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
+    if (when && (Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 60_000)) {
+      throw new BadRequestException('Pick a time at least a minute from now.');
+    }
+    const title = dto.title?.trim();
+    const caption = dto.caption?.trim();
+    if (title !== undefined && !title) {
+      throw new BadRequestException('The title cannot be empty.');
+    }
+
+    if (title !== undefined || caption !== undefined) {
       if (!publishingJob.contentId) {
         throw new BadRequestException('This post has no content to edit.');
       }
       const content = await this.contentService.findById(publishingJob.contentId);
       if (content.workspaceId !== actor.workspaceId) {
         throw new NotFoundException(`PublishingJob with id "${id}" not found`);
-      }
-      const title = dto.title?.trim();
-      const caption = dto.caption?.trim();
-      if (title !== undefined && !title) {
-        throw new BadRequestException('The title cannot be empty.');
       }
       await this.contentService.update(
         content.id,
@@ -203,11 +209,7 @@ export class PublishingJobsService {
       );
     }
 
-    if (dto.scheduledAt) {
-      const when = new Date(dto.scheduledAt);
-      if (Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 60_000) {
-        throw new BadRequestException('Pick a time at least a minute from now.');
-      }
+    if (when) {
       const updated = await this.publishingJobsRepository.update(
         id,
         { scheduledAt: when },

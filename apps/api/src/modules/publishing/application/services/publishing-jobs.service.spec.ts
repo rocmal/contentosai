@@ -174,6 +174,23 @@ describe('PublishingJobsService', () => {
       );
     });
 
+    it('saves nothing when the new time is refused, even if the text changed too', async () => {
+      await expect(
+        service.editScheduledPost(
+          'j1',
+          {
+            title: 'New title',
+            caption: 'New text',
+            scheduledAt: new Date(Date.now() - 1000).toISOString(),
+          },
+          me,
+        ),
+      ).rejects.toThrow('at least a minute');
+
+      expect(contentService.update).not.toHaveBeenCalled();
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+
     it("does not touch another workspace's content", async () => {
       contentService.findById.mockResolvedValue({ ...content, workspaceId: 'ws-9' });
 
