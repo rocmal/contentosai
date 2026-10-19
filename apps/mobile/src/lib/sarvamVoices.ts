@@ -16,6 +16,8 @@ export type SarvamVoiceGender = 'female' | 'male';
 export interface SarvamVoiceOption {
   id: string;
   name: string;
+  /** Sarvam retired bulbul:v2, so every voice is v3. */
+  model: 'bulbul:v3';
   gender?: SarvamVoiceGender;
 }
 

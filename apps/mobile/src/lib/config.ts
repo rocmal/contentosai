@@ -20,6 +20,9 @@ function devHostFallback(): string {
 export const API_BASE_URL = fromEnv || devHostFallback();
 export const API_PREFIX = '/api/v1';
 
+/** The public website, for links that must always open the live pages (privacy policy, terms). */
+export const WEBSITE = 'https://lumoraos.in';
+
 /** The website (public files such as voice samples). Production serves both from one domain; in dev mode the API is
  * on port 3000 and the website on 3100 (deploy/local/dev.ps1). */
 export const SITE_URL = API_BASE_URL.replace(/:3000$/, ':3100');
