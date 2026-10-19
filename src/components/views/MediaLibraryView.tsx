@@ -12,6 +12,7 @@ import {
   Pencil,
   RefreshCw,
   Search,
+  Send,
   Trash2,
   Users,
   X,
@@ -34,6 +35,7 @@ import {
   studioForType,
   takeGallerySearch,
 } from '../../lib/reuse';
+import { openPostComposer } from '../../lib/socialPosts';
 
 interface MediaLibraryViewProps {
   onNavigate: (view: ViewType) => void;
@@ -243,6 +245,17 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
 
   const canCreateAgain = (item: LibraryItem) => Boolean(studioForType(item.type) && item.prompt);
 
+  /** Images and videos can go straight into a social post. */
+  const canPost = (item: LibraryItem) => item.type === 'image' || item.type === 'video' || item.type === 'character';
+
+  const postItem = (item: LibraryItem) => {
+    const studio = studioForType(item.type);
+    openPostComposer({
+      media: { assetId: item.id, type: item.type === 'image' ? 'image' : 'video', url: item.url, name: item.fileName },
+      topic: item.prompt && studio ? cleanPrompt(studio, item.prompt) : undefined,
+    });
+  };
+
   const showCreator = tab === 'team';
   const emptyText =
     search || type !== 'all'
@@ -254,7 +267,7 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
           : 'Nothing saved yet. Generate something in a studio and save it to see it here.';
 
   const actionButton =
-    'inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all';
+    'inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1.5 rounded-lg text-[11px] font-bold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-all';
 
   const renderName = (item: LibraryItem) =>
     renamingId === item.id ? (
@@ -517,9 +530,18 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
+                  {canPost(item) && (
+                    <button
+                      type="button"
+                      onClick={() => postItem(item)}
+                      className="inline-flex items-center gap-1 whitespace-nowrap px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-blue-600 text-white hover:bg-blue-500"
+                    >
+                      <Send className="w-3 h-3" /> Post
+                    </button>
+                  )}
                   {canCreateAgain(item) && (
-                    <button type="button" onClick={() => createAgain(item)} className={actionButton}>
+                    <button type="button" onClick={() => createAgain(item)} className={`${actionButton} !px-2`}>
                       <RefreshCw className="w-3 h-3" /> Create again
                     </button>
                   )}
@@ -527,15 +549,17 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
                     type="button"
                     onClick={() => void handleDownload(item)}
                     disabled={busyId === item.id}
-                    className={actionButton}
+                    className={`${actionButton} ml-auto !px-2`}
+                    title="Download"
+                    aria-label={`Download ${item.fileName}`}
                   >
-                    <Download className="w-3 h-3" /> Download
+                    <Download className="w-3.5 h-3.5" />
                   </button>
                   {item.canManage && (
                     <button
                       type="button"
                       onClick={() => setConfirmDeleteId(item.id)}
-                      className={`${actionButton} ml-auto !px-2 hover:!text-red-600`}
+                      className={`${actionButton} !px-2 hover:!text-red-600`}
                       title="Delete"
                       aria-label={`Delete ${item.fileName}`}
                     >
@@ -646,6 +670,18 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-500"
                   >
                     <RefreshCw className="w-3.5 h-3.5" /> Create again in {STUDIO_LABEL[studioForType(preview.type)!]}
+                  </button>
+                )}
+                {canPost(preview) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreview(null);
+                      postItem(preview);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-500"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Post
                   </button>
                 )}
                 <button

@@ -132,7 +132,11 @@ export const envValidationSchema = Joi.object({
   LINKEDIN_CLIENT_ID: Joi.string().allow('').default(''),
   LINKEDIN_CLIENT_SECRET: Joi.string().allow('').default(''),
   LINKEDIN_REDIRECT_URI: Joi.string().allow('').default(''),
-  LINKEDIN_API_VERSION: Joi.string().default('202401'),
+  // YYYYMM; leave empty to use the version from three months ago (LinkedIn retires versions after a year).
+  LINKEDIN_API_VERSION: Joi.string()
+    .allow('')
+    .pattern(/^\d{6}$/)
+    .default(''),
 
   // YouTube (video upload publishing - reuses the Google OAuth client)
   YOUTUBE_REDIRECT_URI: Joi.string().allow('').default(''),

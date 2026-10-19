@@ -1,5 +1,7 @@
+import { INDIA_TIME_ZONE } from '@shared/utils/india-time.util';
+
 /** Dates and times in Gallery names are India time: the servers run on UTC, the people using Lumora do not. */
-export const NAME_TIME_ZONE = 'Asia/Kolkata';
+export const NAME_TIME_ZONE = INDIA_TIME_ZONE;
 
 /**
  * A readable gallery file name from what the user asked for, e.g. "Rows of glowing diyas and marigold.mp4",

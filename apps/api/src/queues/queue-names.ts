@@ -18,6 +18,8 @@ export enum EmailJobName {
 
 export enum SocialPublishJobName {
   PUBLISH = 'publish-scheduled-post',
+  /** Daily: remind people whose LinkedIn connection runs out soon. */
+  CHECK_CONNECTIONS = 'check-connection-expiry',
 }
 
 export enum CreditsRenewalJobName {

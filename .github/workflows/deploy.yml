@@ -228,9 +228,10 @@ jobs:
           MANAGED_NAMES: >-
             GEMINI_API_KEY SARVAM_API_KEY OPENAI_API_KEY STABILITY_API_KEY FLUX_API_KEY
             ELEVENLABS_API_KEY SMTP_PASSWORD GOOGLE_CLIENT_SECRET RAZORPAY_KEY_SECRET
-            RAZORPAY_WEBHOOK_SECRET SENTRY_DSN BREVO_API_KEY
+            RAZORPAY_WEBHOOK_SECRET SENTRY_DSN BREVO_API_KEY LINKEDIN_CLIENT_SECRET
             MAIL_TRANSPORT AI_DEFAULT_PROVIDER OPENAI_IMAGE_MODEL SMTP_HOST SMTP_PORT SMTP_USERNAME
             SMTP_FROM GOOGLE_CLIENT_ID RAZORPAY_KEY_ID TRUST_PROXY
+            LINKEDIN_CLIENT_ID LINKEDIN_REDIRECT_URI LINKEDIN_API_VERSION
           # Secrets (sensitive)
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
@@ -244,6 +245,7 @@ jobs:
           RAZORPAY_WEBHOOK_SECRET: ${{ secrets.RAZORPAY_WEBHOOK_SECRET }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          LINKEDIN_CLIENT_SECRET: ${{ secrets.LINKEDIN_CLIENT_SECRET }}
           # Variables (not sensitive)
           MAIL_TRANSPORT: ${{ vars.MAIL_TRANSPORT }}
           AI_DEFAULT_PROVIDER: ${{ vars.AI_DEFAULT_PROVIDER }}
@@ -255,6 +257,9 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
           RAZORPAY_KEY_ID: ${{ vars.RAZORPAY_KEY_ID }}
           TRUST_PROXY: ${{ vars.TRUST_PROXY }}
+          LINKEDIN_CLIENT_ID: ${{ vars.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_REDIRECT_URI: ${{ vars.LINKEDIN_REDIRECT_URI }}
+          LINKEDIN_API_VERSION: ${{ vars.LINKEDIN_API_VERSION }}
 
       - name: Pull, migrate, recreate (with automatic rollback on failure)
         uses: appleboy/ssh-action@v1.2.0

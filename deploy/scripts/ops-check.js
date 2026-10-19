@@ -3,7 +3,7 @@
 // prints facts only - never a secret, token or email body - so the output is
 // safe to read in the GitHub Actions log:
 //   1. SMTP settings present? does the provider accept the login?
-//   2. do the OpenAI and Gemini keys work from this server?
+//   2. do the OpenAI and Gemini keys work from this server? are the LinkedIn keys set?
 //   3. does the owner user exist, and with which role?
 //   4. are queued emails failing, and why?
 const OWNER = (process.env.OWNER_ADMIN_EMAIL || 'puneetmehra24@gmail.com').toLowerCase();
@@ -99,6 +99,17 @@ async function checkGemini() {
   } catch (err) {
     out('gemini api', `FAILED ${short(err.message, 140)}`);
   }
+}
+
+// LinkedIn posting: are the app keys there, and is the redirect address the one registered on the LinkedIn app?
+// Prints the redirect address and version (not secret) and only yes/no for the id and secret.
+function checkLinkedIn() {
+  const id = process.env.LINKEDIN_CLIENT_ID || '';
+  const secret = process.env.LINKEDIN_CLIENT_SECRET || '';
+  const redirect = process.env.LINKEDIN_REDIRECT_URI || '';
+  out('linkedin keys set', `client id ${Boolean(id)}, secret ${Boolean(secret)}`);
+  out('linkedin redirect', redirect || '(not set)');
+  out('linkedin api version', process.env.LINKEDIN_API_VERSION || 'automatic (three months back)');
 }
 
 async function checkUser() {
@@ -216,6 +227,7 @@ async function checkQueue() {
   await checkBrevoApi();
   await checkOpenAi();
   await checkGemini();
+  checkLinkedIn();
   await checkUser();
   await checkAvatars();
   await checkTemplates();

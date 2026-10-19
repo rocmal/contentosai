@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Calendar as CalendarIcon,
@@ -11,13 +11,14 @@ import {
   Loader2,
   Pencil,
   RefreshCw,
-  Video,
+  Send,
   X,
   XCircle,
   Youtube,
 } from 'lucide-react';
 import * as api from '../../lib/api';
 import { ViewType } from '../../types';
+import { openPostComposer, useOnPostCreated } from '../../lib/socialPosts';
 
 interface ContentCalendarViewProps {
   onNavigate: (view: ViewType) => void;
@@ -224,6 +225,11 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // A post made in the composer shows up straight away.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const reloadAfterPost = useCallback(() => void load(true), []);
+  useOnPostCreated(reloadAfterPost);
+
   const monthGrid = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -281,10 +287,10 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
             <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
           </button>
           <button
-            onClick={() => onNavigate('video-studio')}
+            onClick={() => openPostComposer()}
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-sm transition-all"
           >
-            <Video className="w-4 h-4" /> Schedule from Video Studio
+            <Send className="w-4 h-4" /> New post
           </button>
         </div>
       </div>
@@ -315,14 +321,14 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
             Nothing scheduled yet
           </p>
           <p className="text-xs text-slate-400 max-w-xs">
-            Posts you schedule to Facebook, Instagram, LinkedIn, or YouTube from Video Studio will
-            show up here.
+            Write a post for LinkedIn, add an image or video from your Gallery, and post it now or at a
+            time you pick. Scheduled and published posts show up here.
           </p>
           <button
-            onClick={() => onNavigate('video-studio')}
+            onClick={() => openPostComposer()}
             className="mt-2 flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-sm transition-all"
           >
-            <Video className="w-4 h-4" /> Go to Video Studio
+            <Send className="w-4 h-4" /> Create a post
           </button>
         </div>
       )}

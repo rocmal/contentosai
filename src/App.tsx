@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { CommandPalette } from './components/CommandPalette';
+import { PostComposerHost } from './components/PostComposer';
 import { FloatingAIAssistant } from './components/FloatingAIAssistant';
 import { GuidedTourModal } from './components/GuidedTourModal';
 import { Header } from './components/Header';
@@ -421,6 +422,9 @@ export function App() {
         onClose={() => setCommandPaletteOpen(false)}
         onNavigate={(v) => setCurrentView(v)}
       />
+
+      {/* Create post: opened from the Calendar, Gallery, studios and Create menus (openPostComposer). */}
+      <PostComposerHost onNavigate={(v) => setCurrentView(v)} />
 
       <MobileNav
         currentView={currentView}

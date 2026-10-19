@@ -12,7 +12,7 @@ import { Button, Chip, ChipRow, ErrorText, Muted } from '@/ui/kit';
 import { MediaActions } from '@/ui/MediaActions';
 import { useMediaBox } from '@/ui/mediaBox';
 import { ShapeLabel } from '@/ui/VideoShape';
-import { ScheduleSheet } from '@/ui/ScheduleSheet';
+import { PostSheet } from '@/ui/PostSheet';
 import { UploadBar } from '@/ui/UploadBar';
 import { colors, space } from '@/ui/theme';
 
@@ -111,7 +111,8 @@ function AudioPreview({ uri }: { uri: string }) {
 function Detail({ asset, onClose }: { asset: MediaAsset; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const [scheduling, setScheduling] = useState(false);
-  const canSchedule = asset.type === 'video' || asset.type === 'character';
+  // Videos go to any connected account; images to LinkedIn (see PLATFORM_MEDIA_SUPPORT).
+  const canSchedule = asset.type === 'video' || asset.type === 'character' || asset.type === 'image';
   const ext = asset.type === 'video' ? 'mp4' : asset.type === 'audio' ? 'mp3' : 'png';
   return (
     <Modal animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -129,8 +130,13 @@ function Detail({ asset, onClose }: { asset: MediaAsset; onClose: () => void }) 
         {asset.type === 'audio' && <AudioPreview uri={asset.url} />}
         {asset.prompt ? <Muted>{asset.prompt}</Muted> : null}
         <MediaActions source={asset.url} ext={ext} savable={asset.type !== 'audio'} />
-        {canSchedule && <Button title="Schedule to social" onPress={() => setScheduling(true)} />}
-        {scheduling && <ScheduleSheet videoUrl={asset.url} onClose={() => setScheduling(false)} />}
+        {canSchedule && <Button title="Post or schedule" onPress={() => setScheduling(true)} />}
+        {scheduling && (
+          <PostSheet
+            asset={{ id: asset.id, type: asset.type === 'image' ? 'image' : 'video' }}
+            onClose={() => setScheduling(false)}
+          />
+        )}
       </View>
     </Modal>
   );

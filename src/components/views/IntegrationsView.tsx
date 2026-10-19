@@ -550,7 +550,7 @@ const LinkedInYouTubeConnect: React.FC = () => {
         <span className="text-[10px] font-bold text-slate-400 uppercase">Publishing</span>
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">LinkedIn & YouTube</h3>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-          LinkedIn posts as your connected profile; YouTube requires a video.
+          LinkedIn posts text, an image or a video to your personal profile; YouTube needs a video.
         </p>
       </div>
 
@@ -574,6 +574,23 @@ const LinkedInYouTubeConnect: React.FC = () => {
                         {platformStatus.label}
                       </p>
                     )}
+                    {/* LinkedIn sign-ins last 60 days and cannot renew themselves. */}
+                    {connected && platformStatus?.expiresAt && (
+                      <p
+                        className={`text-[10px] ${
+                          platformStatus.expired || new Date(platformStatus.expiresAt).getTime() - Date.now() < 7 * 86_400_000
+                            ? 'text-amber-600 dark:text-amber-400 font-semibold'
+                            : 'text-slate-400'
+                        }`}
+                      >
+                        {platformStatus.expired ? 'Ran out on ' : 'Reconnect by '}
+                        {new Date(platformStatus.expiresAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="shrink-0 flex items-center gap-2">
@@ -589,12 +606,14 @@ const LinkedInYouTubeConnect: React.FC = () => {
                     className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
                       isLoadingStatus
                         ? 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                        : connected
-                          ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                        : connected && platformStatus?.expired
+                          ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                          : connected
+                            ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                     }`}
                   >
-                    {isLoadingStatus ? '...' : connected ? 'Connected' : 'Not connected'}
+                    {isLoadingStatus ? '...' : connected && platformStatus?.expired ? 'Expired' : connected ? 'Connected' : 'Not connected'}
                   </span>
                 </div>
               </div>

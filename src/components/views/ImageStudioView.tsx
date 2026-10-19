@@ -8,6 +8,7 @@ import {
   Image as ImageIcon,
   Loader2,
   RefreshCw,
+  Send,
   Sparkles,
   Wand2,
   X,
@@ -24,6 +25,7 @@ import {
 } from '../../lib/imagePlatforms';
 import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
 import { IMAGE_COMPOSITION_NOTE, IMAGE_NO_TEXT_NOTE, takeReuse } from '../../lib/reuse';
+import { openPostComposer } from '../../lib/socialPosts';
 
 interface ImageStudioViewProps {
   onNavigate: (view: ViewType) => void;
@@ -34,7 +36,11 @@ type RatioResult =
   | { state: 'done'; image: string; model: string }
   | { state: 'error'; message: string };
 
-type SaveState = { state: 'saving' } | { state: 'saved' } | { state: 'error'; message: string };
+/** A saved image keeps its Gallery item, so it can be posted straight away. */
+type SaveState =
+  | { state: 'saving' }
+  | { state: 'saved'; assetId: string; url: string; name: string }
+  | { state: 'error'; message: string };
 
 const COMPOSITION_NOTE = IMAGE_COMPOSITION_NOTE;
 const NO_TEXT_NOTE = IMAGE_NO_TEXT_NOTE;
@@ -206,15 +212,27 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
         type: 'image/jpeg',
       });
       const made = results[target.generateRatio];
-      await api.uploadToGallery(file, {
+      const asset = await api.uploadToGallery(file, {
         prompt: prompt.trim(),
         provider: provider ?? undefined,
         model: made?.state === 'done' ? made.model : undefined,
       });
-      setSaves((prev) => ({ ...prev, [target.id]: { state: 'saved' } }));
+      setSaves((prev) => ({
+        ...prev,
+        [target.id]: { state: 'saved', assetId: asset.id, url: asset.url, name: asset.fileName },
+      }));
     } catch (err) {
       setSaves((prev) => ({ ...prev, [target.id]: { state: 'error', message: describeError(err) } }));
     }
+  };
+
+  /** Opens the post composer with a saved image; the prompt is the topic for Write with AI. */
+  const postSaved = (saved: Extract<SaveState, { state: 'saved' }>) => {
+    setPreviewId(null);
+    openPostComposer({
+      media: { assetId: saved.assetId, type: 'image', url: saved.url, name: saved.name },
+      topic: prompt.trim() || undefined,
+    });
   };
 
   const saveAll = async () => {
@@ -551,6 +569,14 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
                             )}
                             {save?.state === 'saved' ? 'Saved' : save?.state === 'saving' ? 'Saving...' : 'Save to gallery'}
                           </button>
+                          {save?.state === 'saved' && (
+                            <button
+                              onClick={() => postSaved(save)}
+                              className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white"
+                            >
+                              <Send className="w-3 h-3" /> Post
+                            </button>
+                          )}
                         </div>
                       )}
                       {save?.state === 'error' && <p className="text-[11px] text-red-500">{save.message}</p>}
@@ -625,6 +651,17 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
                 <FolderCheck className="w-3.5 h-3.5" />
                 {saves[previewTarget.id]?.state === 'saved' ? 'Saved to gallery' : 'Save to gallery'}
               </button>
+              {(() => {
+                const saved = saves[previewTarget.id];
+                return saved?.state === 'saved' ? (
+                  <button
+                    onClick={() => postSaved(saved)}
+                    className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" /> Post
+                  </button>
+                ) : null;
+              })()}
             </div>
           </div>
         </div>

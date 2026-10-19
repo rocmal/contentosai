@@ -14,6 +14,8 @@ import { UsersModule } from '@modules/users/users.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { QueueName } from './queue-names';
 import { RenewalReminderService } from './renewal-reminder.service';
+import { ConnectionExpiryReminderService } from './connection-expiry-reminder.service';
+import { SocialPublishScheduler } from './social-publish.scheduler';
 import { AiProcessor } from './processors/ai.processor';
 import { VideoProcessor } from './processors/video.processor';
 import { AnalyticsProcessor } from './processors/analytics.processor';
@@ -66,6 +68,8 @@ import { VideoEventsListener } from './listeners/video-events.listener';
   ],
   providers: [
     RenewalReminderService,
+    ConnectionExpiryReminderService,
+    SocialPublishScheduler,
     AiProcessor,
     VideoProcessor,
     AnalyticsProcessor,

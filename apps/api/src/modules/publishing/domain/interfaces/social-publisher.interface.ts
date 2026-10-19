@@ -1,5 +1,7 @@
 export interface SocialPublishRequest {
   videoUrl?: string;
+  /** A Gallery image to post (LinkedIn only for now - see PLATFORM_MEDIA_SUPPORT). */
+  imageUrl?: string;
   text?: string;
   caption: string;
   /** Decrypted integration credentials for this workspace+platform - each

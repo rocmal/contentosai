@@ -3,6 +3,7 @@ import { ViewType } from '../../../types';
 import * as api from '../../../lib/api';
 import { VIDEO_PROMPT_CATEGORIES } from '../../../lib/videoPromptTemplates';
 import { takeNarrationAudio, takeReuse } from '../../../lib/reuse';
+import { openPostComposer } from '../../../lib/socialPosts';
 import { useCreditRates } from '../../../lib/creditCost';
 import { compositeScenes, compositeTextOntoVideo, SceneInput } from '../../../lib/videoCompositor';
 import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG } from '../../../lib/sarvamVoices';
@@ -69,6 +70,10 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
   /** The base clip is already in the Gallery (the server saves every generated clip), so finishing it without text
    * must not upload a second copy. */
   const [sourceInGallery, setSourceInGallery] = useState(false);
+  /** The Gallery item of the generated clip (sourceAssetId) and of the finished video (savedAssetId), so it can be
+   * posted without uploading it again. */
+  const [sourceAssetId, setSourceAssetId] = useState<string | null>(null);
+  const [savedAssetId, setSavedAssetId] = useState<string | null>(null);
   const [compositeProgress, setCompositeProgress] = useState(0);
 
   // The final clip actually shown/downloaded/shared - identical to
@@ -149,6 +154,8 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     resetNarration();
     resetTemplatePanel();
     setSavedToGallery(false);
+    setSourceAssetId(null);
+    setSavedAssetId(null);
   };
 
   /** Returns to Scene Builder from the text-overlay/edit step without
@@ -301,6 +308,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
         setSourceVideoNaturalAspect(null);
         setSourceVideoUrl(final.videoUrl);
         setSourceInGallery(Boolean(final.savedToGallery));
+        setSourceAssetId(final.mediaAssetId ?? null);
         setStep('edit');
       } else {
         setError(`${PROVIDER_LABELS[provider]} could not render this video. Try again or pick a different engine.`);
@@ -360,6 +368,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setFinalMimeType('video/mp4');
     setHasOverlay(false);
     setSavedToGallery(sourceInGallery);
+    setSavedAssetId(sourceInGallery ? sourceAssetId : null);
     setStep('result');
   };
 
@@ -370,30 +379,50 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
    * Media Library. If this result came from a persisted Scene Builder
    * project, this also marks it ready and links the asset
    * (VideoProjectsService.finish); otherwise it's just an upload. */
-  const handleSaveToGallery = async () => {
-    if (!finalVideoUrl) return;
+  /** Saves the finished video to the Gallery; returns its Gallery item id, or null when saving failed. */
+  const handleSaveToGallery = async (): Promise<string | null> => {
+    if (!finalVideoUrl) return null;
     setIsSavingToGallery(true);
     setError(null);
     try {
       const blob = await fetch(finalVideoUrl).then((r) => r.blob());
+      let assetId: string | null;
       if (videoProjectId) {
-        await api.finishVideoProject(videoProjectId, blob);
+        assetId = (await api.finishVideoProject(videoProjectId, blob)).finalAssetId;
       } else {
         // Named after the text on the video when there is some; otherwise the server names it from the prompt
         // (sent along, which also gives it "Create again"), or the date.
         const name = hasOverlay && overlayText.trim() ? overlayText.trim().slice(0, 60) : `lumora-video-${Date.now()}`;
         const extension = finalMimeType.includes('webm') ? 'webm' : 'mp4';
         const file = new File([blob], `${name}.${extension}`, { type: finalMimeType || 'video/mp4' });
-        await api.uploadToGallery(file, source === 'prompt' && prompt.trim() ? { prompt: prompt.trim() } : undefined);
+        const saved = await api.uploadToGallery(
+          file,
+          source === 'prompt' && prompt.trim() ? { prompt: prompt.trim() } : undefined,
+        );
+        assetId = saved.id;
       }
       setSavedToGallery(true);
+      setSavedAssetId(assetId);
+      return assetId;
     } catch (err) {
       setError(
         err instanceof Error ? `Couldn't save to your gallery: ${err.message}` : "Couldn't save to your gallery.",
       );
+      return null;
     } finally {
       setIsSavingToGallery(false);
     }
+  };
+
+  /** Opens the post composer with the finished video, saving it to the Gallery first if it is not there yet. */
+  const handlePostVideo = async () => {
+    if (!finalVideoUrl) return;
+    const assetId = savedAssetId ?? (await handleSaveToGallery());
+    if (!assetId) return;
+    openPostComposer({
+      media: { assetId, type: 'video', url: finalVideoUrl, name: overlayText.trim() || undefined },
+      topic: (source === 'scenes' ? narrationText : prompt).trim() || overlayText.trim() || undefined,
+    });
   };
 
   const applyOverlayAndFinish = async () => {
@@ -425,6 +454,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
       setFinalMimeType(mimeType);
       setHasOverlay(true);
       setSavedToGallery(false); // a new file with the text burned in
+      setSavedAssetId(null);
       setStep('result');
     } catch (err) {
       setError(
@@ -458,6 +488,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     handleImprovePrompt,
     handlePickStockTemplate,
     handlePickVideoTemplate,
+    handlePostVideo,
     handleSaveToGallery,
     hasOverlay,
     improveError,

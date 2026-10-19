@@ -1308,6 +1308,8 @@ export interface VideoGenerationResult {
   cached?: boolean;
   /** True when the server already saved the finished clip to the Gallery - don't upload it again. */
   savedToGallery?: boolean;
+  /** That Gallery item, so the clip can be posted without uploading it again. */
+  mediaAssetId?: string;
 }
 
 export async function generateVideo(input: {
@@ -1615,6 +1617,9 @@ export type SocialPlatform = 'facebook' | 'instagram' | 'linkedin' | 'youtube';
 export interface SocialConnectionStatus {
   connected: boolean;
   label?: string;
+  /** LinkedIn sign-ins last 60 days: when this one stops working (ISO), and whether it already has. */
+  expiresAt?: string;
+  expired?: boolean;
 }
 
 /** Per-platform connection status for the current workspace - the backend

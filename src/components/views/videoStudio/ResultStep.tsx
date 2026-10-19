@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { AlertTriangle, Bookmark, Calendar, Check, Copy, Download, FolderPlus, Loader2, RotateCcw, Share2, X } from 'lucide-react';
-import { SchedulePostPanel } from '../../SchedulePostPanel';
+import React from 'react';
+import { AlertTriangle, Bookmark, Check, Copy, Download, FolderPlus, Loader2, RotateCcw, Send, Share2, X } from 'lucide-react';
 import { previewBoxWidth } from './constants';
 import { VideoShapeLabel } from './VideoShapeLabel';
 import type { VideoStudio } from './useVideoStudio';
@@ -8,7 +7,8 @@ import type { VideoStudio } from './useVideoStudio';
 const secondaryButton =
   'flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition-all disabled:cursor-default';
 
-/** Step 3: the finished video - download and schedule first; save, share, template and start again below. */
+/** Step 3: the finished video - download and post first (the post composer: now or scheduled); save, share,
+ * template and start again below. */
 export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
   const {
     displayAspectRatio,
@@ -16,6 +16,7 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     finalVideoUrl,
     handleDownload,
     handleOpenSaveTemplatePanel,
+    handlePostVideo,
     handleSaveTemplate,
     handleSaveToGallery,
     handleShare,
@@ -24,10 +25,6 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     isDownloading,
     isSavingTemplate,
     isSavingToGallery,
-    narrationText,
-    onNavigate,
-    overlayText,
-    prompt,
     resetAll,
     saveTemplateError,
     saveTemplateStatus,
@@ -37,12 +34,10 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     setTemplateVisibility,
     shareStatus,
     showSaveTemplatePanel,
-    source,
     sourceVideoNaturalAspect,
     templateTitle,
     templateVisibility,
   } = studio;
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   if (!finalVideoUrl) return null;
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -60,7 +55,7 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         </p>
       )}
 
-      {/* The two things people do with a finished video: download it or schedule it. */}
+      {/* The two things people do with a finished video: download it or post it. */}
       <div className="flex flex-wrap items-center justify-center gap-2.5">
         <button
           onClick={handleDownload}
@@ -71,12 +66,13 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
           <span>Download {finalMimeType.includes('webm') ? 'WebM' : 'MP4'}</span>
         </button>
         <button
-          onClick={() => setScheduleOpen((open) => !open)}
-          aria-expanded={scheduleOpen}
-          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition-all"
+          onClick={() => void handlePostVideo()}
+          disabled={isSavingToGallery}
+          title="Post now or schedule it to LinkedIn and your other connected accounts"
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition-all disabled:opacity-60"
         >
-          <Calendar className="w-4 h-4" />
-          <span>Schedule post</span>
+          {isSavingToGallery ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          <span>Post or schedule</span>
         </button>
       </div>
 
@@ -131,13 +127,6 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         </p>
       )}
 
-      <SchedulePostPanel
-        finalVideoUrl={finalVideoUrl}
-        defaultCaption={source === 'scenes' ? narrationText.trim() : overlayText.trim() || prompt.trim()}
-        onNavigate={onNavigate}
-        open={scheduleOpen}
-        onOpenChange={setScheduleOpen}
-      />
 
 
       {showSaveTemplatePanel && (

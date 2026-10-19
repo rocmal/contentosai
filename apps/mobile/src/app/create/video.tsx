@@ -13,7 +13,7 @@ import { MediaActions } from '@/ui/MediaActions';
 import { useMediaBox } from '@/ui/mediaBox';
 import { ShapeLabel, ShapePreview } from '@/ui/VideoShape';
 import { PromptBox } from '@/ui/PromptBox';
-import { ScheduleSheet } from '@/ui/ScheduleSheet';
+import { PostSheet } from '@/ui/PostSheet';
 import { colors, radius, space } from '@/ui/theme';
 
 type Aspect = '9:16' | '16:9';
@@ -104,7 +104,7 @@ export default function VideoStudio() {
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [outOfCredits, setOutOfCredits] = useState(false);
-  const [result, setResult] = useState<{ url: string; aspect: Aspect; cached: boolean } | null>(null);
+  const [result, setResult] = useState<{ url: string; aspect: Aspect; cached: boolean; assetId?: string } | null>(null);
   const [scheduling, setScheduling] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const ticker = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -157,7 +157,7 @@ export default function VideoStudio() {
       if (done.status === 'failed' || !done.videoUrl) {
         throw new ApiError(502, 'The video service could not make this clip. Try again, or change the prompt a little.');
       }
-      setResult({ url: done.videoUrl, aspect, cached: Boolean(job.cached) });
+      setResult({ url: done.videoUrl, aspect, cached: Boolean(job.cached), assetId: done.mediaAssetId ?? job.mediaAssetId });
     } catch (e) {
       if (controller.signal.aborted) return;
       if (e instanceof ApiError && e.status === 402) setOutOfCredits(true);
@@ -264,7 +264,7 @@ export default function VideoStudio() {
               <Muted>You made this exact video before, so here it is again at no cost. Tap Make another version for a new one.</Muted>
             )}
             <MediaActions source={result.url} ext="mp4" />
-            <Button title="Schedule a post" variant="secondary" onPress={() => setScheduling(true)} />
+            <Button title="Post or schedule" variant="secondary" onPress={() => setScheduling(true)} />
             <Button
               title={cost !== undefined ? `Make another version · ${creditLabel(cost)}` : 'Make another version'}
               variant="secondary"
@@ -275,7 +275,9 @@ export default function VideoStudio() {
           </Card>
         )}
       </View>
-      {scheduling && result && <ScheduleSheet videoUrl={result.url} onClose={() => setScheduling(false)} />}
+      {scheduling && result && (
+        <PostSheet asset={result.assetId ? { id: result.assetId, type: 'video' } : null} onClose={() => setScheduling(false)} />
+      )}
     </Screen>
   );
 }

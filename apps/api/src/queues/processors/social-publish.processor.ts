@@ -8,7 +8,8 @@ import { IntegrationsService } from '@modules/integrations/application/services/
 import { PublishingJobsService } from '@modules/publishing/application/services/publishing-jobs.service';
 import { PublishingJobStatus } from '@modules/publishing/domain/entities/publishing-job.entity';
 import { SocialPublisherFactory } from '@modules/publishing/infrastructure/social-publisher.factory';
-import { QueueName } from '../queue-names';
+import { QueueName, SocialPublishJobName } from '../queue-names';
+import { ConnectionExpiryReminderService } from '../connection-expiry-reminder.service';
 
 interface PublishScheduledPostJobData {
   publishingJobId: string;
@@ -16,6 +17,7 @@ interface PublishScheduledPostJobData {
 
 interface PublishableContentMetadata {
   videoUrl?: string;
+  imageUrl?: string;
   caption?: string;
   text?: string;
 }
@@ -48,11 +50,17 @@ export class SocialPublishProcessor extends WorkerHost {
     private readonly contentService: ContentService,
     private readonly socialPublisherFactory: SocialPublisherFactory,
     private readonly notificationsService: NotificationsService,
+    private readonly connectionReminders: ConnectionExpiryReminderService,
   ) {
     super();
   }
 
   async process(job: Job<PublishScheduledPostJobData>): Promise<void> {
+    if (job.name === SocialPublishJobName.CHECK_CONNECTIONS) {
+      const sent = await this.connectionReminders.run();
+      if (sent) this.logger.log(`Sent ${sent} LinkedIn connection expiry reminder(s)`);
+      return;
+    }
     const { publishingJobId } = job.data;
 
     const publishingJob = await this.loadPendingJob(publishingJobId);
@@ -67,11 +75,11 @@ export class SocialPublishProcessor extends WorkerHost {
 
       const content = await this.contentService.findById(publishingJob.contentId);
       const metadata = (content.metadata ?? null) as PublishableContentMetadata | null;
-      // AI Studio's generated text lives in content.body, not metadata - only
-      // video posts (Video Studio's schedulePost) put anything in metadata.
+      // A text-only post keeps its words in content.body; image and video posts carry the media address and the
+      // caption in metadata (the composer and Video Studio's schedulePost).
       const text = metadata?.text ?? (content.type === 'text' ? content.body : undefined);
-      if (!metadata?.videoUrl && !text) {
-        throw new Error('Content has no video or text to publish');
+      if (!metadata?.videoUrl && !metadata?.imageUrl && !text) {
+        throw new Error('Content has no video, image or text to publish');
       }
 
       const credentials = await this.integrationsService.getDecryptedCredentials(
@@ -85,6 +93,7 @@ export class SocialPublishProcessor extends WorkerHost {
       const publisher = this.socialPublisherFactory.getPublisher(publishingJob.platform);
       const result = await publisher.publish({
         videoUrl: metadata?.videoUrl,
+        imageUrl: metadata?.imageUrl,
         text,
         caption: metadata?.caption ?? content.title,
         credentials,
@@ -121,13 +130,20 @@ export class SocialPublishProcessor extends WorkerHost {
   /** Tells the person who scheduled the post (in-app and push). Never fails the job. */
   private async notify(
     userId: string | null,
-    input: { title: string; message: string; type: NotificationType; metadata: Record<string, unknown> },
+    input: {
+      title: string;
+      message: string;
+      type: NotificationType;
+      metadata: Record<string, unknown>;
+    },
   ): Promise<void> {
     if (!userId) return;
     try {
       await this.notificationsService.create({ userId, ...input });
     } catch (error) {
-      this.logger.warn(`Could not create notification: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Could not create notification: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

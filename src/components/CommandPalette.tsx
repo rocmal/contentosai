@@ -10,6 +10,7 @@ import {
   Loader2,
   Mic,
   Search,
+  Send,
   Settings,
   UserPlus,
   User as UserIcon,
@@ -24,6 +25,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { VIDEO_PROMPT_TEMPLATES } from '../lib/videoPromptTemplates';
 import { requestGallerySearch, requestReuse } from '../lib/reuse';
 import { MANAGE_MEMBERS_PERMISSION, requestInviteForm } from '../lib/teamInvite';
+import { openPostComposer } from '../lib/socialPosts';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -107,8 +109,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       { id: 'p-help', group: 'Go to', label: 'Help Center', keywords: 'faq guide tour support how', icon: HelpCircle, run: go('help') },
     ];
 
+    const postAction: Entry = {
+      id: 'a-post',
+      group: 'Do',
+      label: 'Create a social post',
+      hint: 'Post now or schedule to LinkedIn and your other accounts',
+      keywords: 'linkedin post share publish schedule social',
+      icon: Send,
+      run: () => openPostComposer(),
+    };
+
     const actions: Entry[] = canInvite
       ? [
+          postAction,
           {
             id: 'a-invite',
             group: 'Do',
@@ -122,7 +135,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
             },
           },
         ]
-      : [];
+      : [postAction];
 
     const templates: Entry[] = VIDEO_PROMPT_TEMPLATES.map((t) => ({
       id: `t-${t.id}`,

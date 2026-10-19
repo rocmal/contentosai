@@ -260,6 +260,8 @@ export interface VideoResult {
   videoUrl?: string;
   cacheKey?: string;
   cached?: boolean;
+  /** The clip's Gallery item, so it can be posted without uploading it again. */
+  mediaAssetId?: string;
 }
 
 export const generateVideo = (input: {
