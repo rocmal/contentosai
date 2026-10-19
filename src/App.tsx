@@ -10,7 +10,8 @@ import { LoginView } from './components/LoginView';
 import { MobileNav } from './components/MobileNav';
 import { Sidebar } from './components/Sidebar';
 import { useAuth } from './contexts/AuthContext';
-import { getMyBrandProfile, getSetting, setSetting, PurchasablePlan } from './lib/api';
+import { getMyBrandProfile, PurchasablePlan } from './lib/api';
+import { applyDarkMode, initialDarkMode, saveDarkMode } from './lib/theme';
 
 import { AIAgentsView } from './components/views/AIAgentsView';
 import { AIStudioView } from './components/views/AIStudioView';
@@ -102,7 +103,7 @@ export function App() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const [currentView, setCurrentView] = useState<ViewType>(() => getViewFromHash() ?? 'dashboard');
   const [publicRoute, setPublicRoute] = useState<PublicRoute>(() => getPublicRouteFromPath());
-  const [darkMode, setDarkMode] = useState<boolean>(true);
+  const [darkMode, setDarkMode] = useState<boolean>(initialDarkMode);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
 
@@ -145,39 +146,18 @@ export function App() {
     };
   }, [isAuthenticated]);
 
-  // Dark mode defaults to on (matches the previous hardcoded behavior) until
-  // the workspace's persisted preference (if any) loads.
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    let cancelled = false;
-    getSetting<boolean>('darkMode').then((value) => {
-      if (!cancelled && typeof value === 'boolean') setDarkMode(value);
-    }).catch(() => {
-      // No saved preference yet, or a transient fetch error - the default stays.
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
-
+  // Light/dark is each person's own choice, kept in this browser (src/lib/theme.ts). It used to be saved as a
+  // workspace setting, which would have switched the whole team (and members could not save it).
   const toggleDarkMode = () => {
     setDarkMode((prev) => {
       const next = !prev;
-      setSetting('darkMode', next).catch(() => {
-        // Best-effort persistence - the toggle still works locally even if this fails.
-      });
+      saveDarkMode(next);
       return next;
     });
   };
 
-
-  // Sync dark mode class
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    applyDarkMode(darkMode);
   }, [darkMode]);
 
   // Keep the URL hash in sync with the current view - lets a bookmark,

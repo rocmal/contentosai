@@ -132,28 +132,31 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 md:px-8 flex items-center justify-between transition-colors">
-      {/* Title & Subtitle */}
-      <div className="flex items-center gap-3 min-w-0">
-        <div>
+    <header className="sticky top-0 z-30 h-16 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 md:px-8 flex items-center justify-between gap-4 transition-colors">
+      {/* Title & Subtitle - these shrink and truncate; the controls on the right never do. */}
+      <div className="flex-1 flex items-center gap-3 min-w-0">
+        <div className="min-w-0">
           <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white truncate tracking-tight">
             {currentInfo.title}
           </h1>
-          <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 truncate">
+          <p className="hidden sm:block text-xs text-slate-500 dark:text-slate-400 truncate" title={currentInfo.subtitle}>
             {currentInfo.subtitle}
           </p>
         </div>
       </div>
 
       {/* Action Controls */}
-      <div className="flex items-center gap-2 md:gap-3">
+      <div className="shrink-0 flex items-center gap-2 md:gap-3">
         {/* Command Palette Trigger */}
         <button
           onClick={onOpenCommandPalette}
-          className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60 transition-all"
+          title={`Search (${isMac ? '⌘K' : 'Ctrl K'})`}
+          className="hidden md:flex items-center gap-2 whitespace-nowrap px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/60 transition-all"
         >
           <Search className="w-3.5 h-3.5 text-slate-400" />
-          <span>Search or type command...</span>
+          {/* The long label only where there is room for it beside the page title. */}
+          <span className="hidden xl:inline">Search or type command...</span>
+          <span className="xl:hidden">Search</span>
           <kbd className="px-1.5 py-0.5 text-[10px] bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 font-mono shadow-xs">
             {isMac ? '⌘K' : 'Ctrl K'}
           </kbd>

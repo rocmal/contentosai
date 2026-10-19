@@ -4,6 +4,12 @@ import App from './App.tsx';
 import './index.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { MobileApp } from './mobile/MobileApp';
+import { applyDarkMode, initialDarkMode } from './lib/theme';
+
+const isMobileRoute = window.location.pathname === '/m' || window.location.pathname.startsWith('/m/');
+
+// Set light/dark before the first render so the page does not flash the other theme. (/m has no dark styles.)
+if (!isMobileRoute) applyDarkMode(initialDarkMode());
 
 /** /m (and any /m/* sub-path) is the standalone mobile app shell (see
  * src/mobile/MobileApp.tsx) - a self-contained, native-app-style experience
@@ -13,7 +19,6 @@ import { MobileApp } from './mobile/MobileApp';
  * mount at all on this path, instead of mounting and immediately failing/
  * no-oping. */
 function Root() {
-  const isMobileRoute = window.location.pathname === '/m' || window.location.pathname.startsWith('/m/');
   return isMobileRoute ? <MobileApp /> : <App />;
 }
 

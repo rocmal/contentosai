@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* dark: styles follow the app's light/dark toggle (the `dark` class on <html>, set by src/lib/theme.ts), not the
+   computer's setting - Tailwind v4's default, which made the header toggle do nothing. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Browsers default <button> to cursor: default (a plain arrow), and
    Tailwind's Preflight deliberately doesn't override that - so every
    button in the app was missing the pointer/hand hover cursor a user

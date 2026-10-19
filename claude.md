@@ -70,6 +70,12 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 
 ### Header, titles and global search
 
+- Light/dark toggle (header sun/moon, also in Settings): `src/lib/theme.ts` puts the `dark` class on <html>, and index.css makes
+  Tailwind's `dark:` follow that class (`@custom-variant dark`). Tailwind v4 otherwise follows the computer's setting, which is why
+  the toggle did nothing before 2026-10-19. The choice is per person, kept in the browser (`lumora.theme`); with no choice it follows
+  the computer. It is no longer a workspace setting.
+- The title area shrinks and truncates; the header controls never shrink (the search box shows just "Search" below 1280px).
+
 - The header (`src/components/Header.tsx`) is the only place a page title and subtitle appear; screens must not repeat them. When you
   add or rename a screen, update `viewTitles` there. The Create button is a menu (Image / Video / Voiceover).
 - **Ctrl+K (Cmd+K on a Mac)** toggles the global search from anywhere once signed in (listener in `App.tsx`,
