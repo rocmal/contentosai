@@ -108,6 +108,12 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   creator or an admin/super-admin can change an item; `POST /media` ignores body org/workspace ids; `PATCH` only edits name/prompt.
 - History gaps: unsaved images are not recorded (Image Studio keeps an image only on "Save to gallery"); items saved before
   2026-10-07 have no prompt; edited videos exported from the editor are uploads (no prompt).
+- Names (`apps/api/src/modules/media/domain/friendly-name.ts`, `upload-name.ts`): generated items are named from the prompt
+  (six words). A clip saved before its prompt reached the server ("Video 19 Oct 2026.mp4") is renamed when the prompt arrives
+  (`setPromptIfMissing`). Uploads keep the person's own name, but machine names (UUIDs, hex ids, timestamps such as
+  "lumora-video-1760882400000") become the prompt-based name or "<Type> <date> <time>". Dates and times are India time
+  (`NAME_TIME_ZONE`; the servers run on UTC). Migration 20261019000002 renamed the existing ones; names people typed are never touched.
+- Cards: the picture opens the preview, so a card has one row: Create again, Download, and a delete icon that asks first.
 
 ### Studios
 
@@ -123,6 +129,9 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   The server saves every generated clip to the Gallery and says so in the job result (`savedToGallery`); the finished screen
   then shows "Saved to Gallery" instead of uploading a second copy (only text overlays, Scene Builder videos and uploads are
   saved from the browser). Scene Builder's Generate button shows its price: free, or the voice cost when a typed script is voiced.
+  Finished screen: Download and Schedule post are the main buttons (Schedule opens `SchedulePostPanel` through its `open` /
+  `onOpenChange` props); Save to Gallery, Share, Facebook, Save as template and Create another sit below. A saved text version
+  is named after its text and keeps the prompt, so it can be created again.
   Code layout (split 2026-10-19): `VideoStudioView.tsx` is a thin shell; `src/components/views/videoStudio/useVideoStudio.ts`
   holds the step flow and combines the area hooks (`useNarration`, `useSceneBuilder`, `useTextOverlay`, `useVideoTemplates`,
   `useShareActions`); each screen part is a component there (CreateStep, PromptPanel, SceneBuilder, SceneList, NarrationPanel,

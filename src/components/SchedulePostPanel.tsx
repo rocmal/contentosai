@@ -55,6 +55,10 @@ interface SchedulePostPanelProps {
   /** Pre-fills the caption box the first time the panel opens. */
   defaultCaption?: string;
   onNavigate: (view: ViewType) => void;
+  /** Open/close the form from the caller's own button (Video Studio's finished screen); the built-in
+   * "Schedule Post" button is then not shown. Leave unset to use the built-in button. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 /** Drop-in "Schedule Post" button + panel + "Your Scheduled Posts" list,
@@ -65,6 +69,8 @@ export const SchedulePostPanel: React.FC<SchedulePostPanelProps> = ({
   finalVideoUrl,
   defaultCaption,
   onNavigate,
+  open,
+  onOpenChange,
 }) => {
   const { user } = useAuth();
 
@@ -72,7 +78,10 @@ export const SchedulePostPanel: React.FC<SchedulePostPanelProps> = ({
     api.SocialPlatform,
     api.SocialConnectionStatus
   > | null>(null);
-  const [showSchedulePanel, setShowSchedulePanel] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const controlled = open !== undefined;
+  const showSchedulePanel = controlled ? open : panelOpen;
+  const setShowSchedulePanel = (next: boolean) => (controlled ? onOpenChange?.(next) : setPanelOpen(next));
   const [schedulePlatform, setSchedulePlatform] = useState<api.SocialPlatform>('facebook');
   const [scheduleCaption, setScheduleCaption] = useState('');
   const [scheduleHashtags, setScheduleHashtags] = useState('');
@@ -111,17 +120,17 @@ export const SchedulePostPanel: React.FC<SchedulePostPanelProps> = ({
     refreshScheduledPosts();
   }, []);
 
-  const handleOpenSchedulePanel = () => {
-    if (!scheduleCaption.trim() && defaultCaption) {
-      setScheduleCaption(defaultCaption.trim());
-    }
-    if (!scheduleAt) {
-      setScheduleAt(minScheduleInputValue());
-    }
+  // Whenever the form opens (from either button): fill in the caption and the earliest allowed time.
+  useEffect(() => {
+    if (!showSchedulePanel) return;
+    setScheduleCaption((caption) => (caption.trim() || !defaultCaption ? caption : defaultCaption.trim()));
+    setScheduleAt((at) => at || minScheduleInputValue());
     setScheduleState('idle');
     setScheduleError(null);
-    setShowSchedulePanel((v) => !v);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only on opening, not when the caption default changes
+  }, [showSchedulePanel]);
+
+  const handleOpenSchedulePanel = () => setShowSchedulePanel(!showSchedulePanel);
 
   const handleSchedule = async () => {
     if (!finalVideoUrl || !scheduleAt) return;
@@ -164,14 +173,16 @@ export const SchedulePostPanel: React.FC<SchedulePostPanelProps> = ({
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={handleOpenSchedulePanel}
-        disabled={!finalVideoUrl}
-        className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <Calendar className="w-4 h-4" />
-        <span>Schedule Post</span>
-      </button>
+      {!controlled && (
+        <button
+          onClick={handleOpenSchedulePanel}
+          disabled={!finalVideoUrl}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Schedule Post</span>
+        </button>
+      )}
 
       {showSchedulePanel && (
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">

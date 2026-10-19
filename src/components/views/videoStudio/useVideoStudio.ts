@@ -379,10 +379,12 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
       if (videoProjectId) {
         await api.finishVideoProject(videoProjectId, blob);
       } else {
-        const file = new File([blob], `lumora-video-${Date.now()}.mp4`, {
-          type: finalMimeType || 'video/mp4',
-        });
-        await api.uploadToGallery(file);
+        // Named after the text on the video when there is some; otherwise the server names it from the prompt
+        // (sent along, which also gives it "Create again"), or the date.
+        const name = hasOverlay && overlayText.trim() ? overlayText.trim().slice(0, 60) : `lumora-video-${Date.now()}`;
+        const extension = finalMimeType.includes('webm') ? 'webm' : 'mp4';
+        const file = new File([blob], `${name}.${extension}`, { type: finalMimeType || 'video/mp4' });
+        await api.uploadToGallery(file, source === 'prompt' && prompt.trim() ? { prompt: prompt.trim() } : undefined);
       }
       setSavedToGallery(true);
     } catch (err) {

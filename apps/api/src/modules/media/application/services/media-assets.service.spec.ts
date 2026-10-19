@@ -48,6 +48,47 @@ describe('MediaAssetsService', () => {
     service = new MediaAssetsService(repository, eventEmitter);
   });
 
+  describe('setPromptIfMissing', () => {
+    it('names a clip saved before its prompt was known after that prompt', async () => {
+      repository.findById.mockResolvedValue({
+        id: 'asset-1',
+        fileName: 'Video 19 Oct 2026.mp4',
+        prompt: null,
+      } as MediaAsset);
+
+      await service.setPromptIfMissing('asset-1', 'A quiet lake at dawn, cinematic');
+
+      expect(repository.update).toHaveBeenCalledWith('asset-1', {
+        prompt: 'A quiet lake at dawn, cinematic',
+        fileName: 'A quiet lake at dawn cinematic.mp4',
+      });
+    });
+
+    it('keeps a name the person chose', async () => {
+      repository.findById.mockResolvedValue({
+        id: 'asset-1',
+        fileName: 'Diwali offer.mp4',
+        prompt: null,
+      } as MediaAsset);
+
+      await service.setPromptIfMissing('asset-1', 'A quiet lake at dawn');
+
+      expect(repository.update).toHaveBeenCalledWith('asset-1', { prompt: 'A quiet lake at dawn' });
+    });
+
+    it('leaves an item that already has a prompt alone', async () => {
+      repository.findById.mockResolvedValue({
+        id: 'asset-1',
+        fileName: 'Video 19 Oct 2026.mp4',
+        prompt: 'Earlier',
+      } as MediaAsset);
+
+      await service.setPromptIfMissing('asset-1', 'A quiet lake at dawn');
+
+      expect(repository.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('countGalleryMedia', () => {
     it('sums image, video, and character counts for the user', async () => {
       repository.count

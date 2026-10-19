@@ -142,7 +142,7 @@ export class MediaAssetsController {
       {
         organizationId: user.organizationId,
         workspaceId: user.workspaceId,
-        fileName: uploadedFileName(file.originalname, type),
+        fileName: uploadedFileName(file.originalname, type, new Date(), meta.prompt),
         storageKey: stored.key,
         url: stored.url,
         mimeType: file.mimetype,

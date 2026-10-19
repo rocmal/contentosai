@@ -9,6 +9,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PaginatedResult } from '@shared/interfaces/base-repository.interface';
 import { MediaAsset, MediaAssetType } from '../../domain/entities/media-asset.entity';
+import { nameFromLatePrompt } from '../../domain/friendly-name';
 import {
   CreateMediaAssetData,
   IMediaAssetsRepository,
@@ -254,7 +255,9 @@ export class MediaAssetsService {
   async setPromptIfMissing(id: string, prompt: string): Promise<void> {
     const mediaAsset = await this.mediaAssetsRepository.findById(id);
     if (mediaAsset && !mediaAsset.prompt) {
-      await this.mediaAssetsRepository.update(id, { prompt });
+      // Saved before the prompt was known, so it is called "Video 19 Oct 2026.mp4": name it from the prompt now.
+      const fileName = nameFromLatePrompt(mediaAsset.fileName, prompt);
+      await this.mediaAssetsRepository.update(id, fileName ? { prompt, fileName } : { prompt });
     }
   }
 

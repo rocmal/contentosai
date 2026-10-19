@@ -471,15 +471,20 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
               key={item.id}
               className="p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-xs"
             >
+              {/* The picture opens the preview (that is "View"), so the buttons below fit on one row. */}
               <button
                 type="button"
                 onClick={() => setPreview(item)}
-                className="block w-full aspect-video rounded-xl bg-slate-950 overflow-hidden relative"
+                className="group block w-full aspect-video rounded-xl bg-slate-950 overflow-hidden relative"
                 title="View"
+                aria-label={`View ${item.fileName}`}
               >
                 <Thumb item={item} className="w-full h-full" />
                 <span className="absolute top-2 left-2 px-2 py-0.5 rounded-lg bg-black/60 text-white text-[10px] font-semibold">
                   {typeLabel(item.type)}
+                </span>
+                <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+                  <Eye className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                 </span>
               </button>
               <div className="space-y-0.5">
@@ -496,25 +501,49 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
                   {formatDate(item.createdAt)} · {formatSize(item.sizeBytes)}
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <button type="button" onClick={() => setPreview(item)} className={actionButton}>
-                  <Eye className="w-3 h-3" /> View
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleDownload(item)}
-                  disabled={busyId === item.id}
-                  className={actionButton}
-                >
-                  <Download className="w-3 h-3" /> Download
-                </button>
-                {canCreateAgain(item) && (
-                  <button type="button" onClick={() => createAgain(item)} className={actionButton}>
-                    <RefreshCw className="w-3 h-3" /> Create again
+              {confirmDeleteId === item.id ? (
+                <div className="flex items-center gap-1.5">
+                  <span className="mr-auto text-[11px] font-semibold text-slate-600 dark:text-slate-300">Delete for good?</span>
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(item)}
+                    disabled={busyId === item.id}
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold bg-red-600 text-white hover:bg-red-500 disabled:opacity-50"
+                  >
+                    {busyId === item.id ? 'Deleting...' : 'Delete'}
                   </button>
-                )}
-                {renderDelete(item)}
-              </div>
+                  <button type="button" onClick={() => setConfirmDeleteId(null)} className={actionButton}>
+                    Keep
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  {canCreateAgain(item) && (
+                    <button type="button" onClick={() => createAgain(item)} className={actionButton}>
+                      <RefreshCw className="w-3 h-3" /> Create again
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleDownload(item)}
+                    disabled={busyId === item.id}
+                    className={actionButton}
+                  >
+                    <Download className="w-3 h-3" /> Download
+                  </button>
+                  {item.canManage && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(item.id)}
+                      className={`${actionButton} ml-auto !px-2 hover:!text-red-600`}
+                      title="Delete"
+                      aria-label={`Delete ${item.fileName}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -1,11 +1,14 @@
-import React from 'react';
-import { AlertTriangle, Bookmark, Check, Copy, Download, Loader2, RotateCcw, Share2, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { AlertTriangle, Bookmark, Calendar, Check, Copy, Download, FolderPlus, Loader2, RotateCcw, Share2, X } from 'lucide-react';
 import { SchedulePostPanel } from '../../SchedulePostPanel';
 import { previewBoxWidth } from './constants';
 import { VideoShapeLabel } from './VideoShapeLabel';
 import type { VideoStudio } from './useVideoStudio';
 
-/** Step 3: the finished video - save, download, share, schedule, save as template. */
+const secondaryButton =
+  'flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition-all disabled:cursor-default';
+
+/** Step 3: the finished video - download and schedule first; save, share, template and start again below. */
 export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
   const {
     displayAspectRatio,
@@ -39,6 +42,7 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     templateTitle,
     templateVisibility,
   } = studio;
+  const [scheduleOpen, setScheduleOpen] = useState(false);
   if (!finalVideoUrl) return null;
   return (
     <div className="max-w-2xl mx-auto space-y-5">
@@ -56,68 +60,67 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         </p>
       )}
 
+      {/* The two things people do with a finished video: download it or schedule it. */}
       <div className="flex flex-wrap items-center justify-center gap-2.5">
-        <button
-          onClick={handleSaveToGallery}
-          disabled={isSavingToGallery || savedToGallery}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60"
-        >
-          {isSavingToGallery ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Check className="w-4 h-4" />
-          )}
-          <span>{savedToGallery ? 'Saved to Gallery' : 'Save to Gallery'}</span>
-        </button>
-
         <button
           onClick={handleDownload}
           disabled={isDownloading}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all disabled:opacity-50"
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-md transition-all disabled:opacity-50"
         >
           {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           <span>Download {finalMimeType.includes('webm') ? 'WebM' : 'MP4'}</span>
         </button>
-
         <button
-          onClick={handleShare}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-sm transition-all"
+          onClick={() => setScheduleOpen((open) => !open)}
+          aria-expanded={scheduleOpen}
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition-all"
         >
-          {shareStatus === 'sharing' ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : shareStatus === 'shared' ? (
-            <Check className="w-4 h-4" />
-          ) : shareStatus === 'copied' ? (
-            <Copy className="w-4 h-4" />
+          <Calendar className="w-4 h-4" />
+          <span>Schedule post</span>
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <button
+          onClick={handleSaveToGallery}
+          disabled={isSavingToGallery || savedToGallery}
+          className={`${secondaryButton} ${savedToGallery ? '!text-emerald-600 dark:!text-emerald-400' : ''}`}
+        >
+          {isSavingToGallery ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : savedToGallery ? (
+            <Check className="w-3.5 h-3.5" />
           ) : (
-            <Share2 className="w-4 h-4" />
+            <FolderPlus className="w-3.5 h-3.5" />
           )}
-          <span>
-            {shareStatus === 'shared' ? 'Shared' : shareStatus === 'copied' ? 'Link copied' : 'Share'}
-          </span>
+          <span>{savedToGallery ? 'Saved to Gallery' : 'Save to Gallery'}</span>
         </button>
 
-        <button
-          onClick={handleShareToFacebook}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1877F2] hover:opacity-90 text-white font-bold text-xs shadow-sm transition-all"
-        >
-          <Share2 className="w-4 h-4" />
-          <span>Share to Facebook</span>
+        <button onClick={handleShare} className={secondaryButton}>
+          {shareStatus === 'sharing' ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : shareStatus === 'shared' ? (
+            <Check className="w-3.5 h-3.5" />
+          ) : shareStatus === 'copied' ? (
+            <Copy className="w-3.5 h-3.5" />
+          ) : (
+            <Share2 className="w-3.5 h-3.5" />
+          )}
+          <span>{shareStatus === 'shared' ? 'Shared' : shareStatus === 'copied' ? 'Link copied' : 'Share'}</span>
         </button>
 
-        <button
-          onClick={handleOpenSaveTemplatePanel}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm transition-all"
-        >
-          <Bookmark className="w-4 h-4" />
-          <span>Save as Template</span>
+        <button onClick={handleShareToFacebook} className={secondaryButton}>
+          <Share2 className="w-3.5 h-3.5 text-[#1877F2]" />
+          <span>Facebook</span>
         </button>
 
-        <button
-          onClick={resetAll}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition-all"
-        >
-          <RotateCcw className="w-4 h-4" />
+        <button onClick={handleOpenSaveTemplatePanel} className={secondaryButton}>
+          <Bookmark className="w-3.5 h-3.5" />
+          <span>Save as template</span>
+        </button>
+
+        <button onClick={resetAll} className={secondaryButton}>
+          <RotateCcw className="w-3.5 h-3.5" />
           <span>Create another</span>
         </button>
       </div>
@@ -132,6 +135,8 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         finalVideoUrl={finalVideoUrl}
         defaultCaption={source === 'scenes' ? narrationText.trim() : overlayText.trim() || prompt.trim()}
         onNavigate={onNavigate}
+        open={scheduleOpen}
+        onOpenChange={setScheduleOpen}
       />
 
 
@@ -212,14 +217,9 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         </div>
       )}
 
-      <p className="text-center text-[10px] text-slate-400 max-w-md mx-auto">
-        Instagram and Snapchat don't offer a direct "share from the web" link the way Facebook
-        does - on a phone, the <span className="font-semibold">Share</span> button above will
-        list them automatically if the app is installed. On desktop, download the file and
-        upload it from within the app (that's also where you'd add a location tag, e.g.
-        Amritsar - Instagram's own composer has that built in). Use{' '}
-        <span className="font-semibold">Schedule Post</span> above for fully automated
-        Facebook/Instagram publishing at a chosen time, once connected in Integrations.
+      <p className="text-center text-[11px] text-slate-400 max-w-md mx-auto">
+        On a phone, <span className="font-semibold">Share</span> opens Instagram, WhatsApp and your other apps; on a
+        computer, download the video and post it from the app. Scheduling needs the account connected in Integrations.
       </p>
     </div>
   );
