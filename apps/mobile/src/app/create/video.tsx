@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { ApiError, generateVideo, getCreditRates, pollVideoJob, type CreditRates, type VideoProvider } from '@/lib/api';
 import { VIDEO_STYLES, VIDEO_WRITER, type VideoStyleId } from '@/lib/studioPrompts';
-import { formatBalance, useWallet } from '@/lib/useWallet';
+import { creditLabel, formatBalance, useWallet } from '@/lib/useWallet';
 import { useVideoAspect } from '@/lib/videoAspect';
 import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '@/lib/videoTemplates';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, Screen, SwitchRow } from '@/ui/kit';
@@ -249,7 +249,7 @@ export default function VideoStudio() {
         ) : (
           !result && (
             <Button
-              title={cost !== undefined ? `Create video · ${cost} credits` : 'Create video'}
+              title={cost !== undefined ? `Create video · ${creditLabel(cost)}` : 'Create video'}
               onPress={() => create(false)}
               disabled={!prompt.trim() || tooFewCredits}
             />
@@ -266,7 +266,7 @@ export default function VideoStudio() {
             <MediaActions source={result.url} ext="mp4" />
             <Button title="Schedule a post" variant="secondary" onPress={() => setScheduling(true)} />
             <Button
-              title={cost !== undefined ? `Make another version · ${cost} credits` : 'Make another version'}
+              title={cost !== undefined ? `Make another version · ${creditLabel(cost)}` : 'Make another version'}
               variant="secondary"
               onPress={() => create(true)}
               disabled={tooFewCredits}

@@ -31,6 +31,12 @@ export function useCreditRates(): CreditRates | null {
 
 const rateFor = (table: Record<string, number>, provider: string): number => table[provider] ?? table.default;
 
+/** A price for a button: "free", "1 credit" or "180 credits". */
+export function creditLabel(credits: number): string {
+  if (credits === 0) return 'free';
+  return credits === 1 ? '1 credit' : `${credits.toLocaleString()} credits`;
+}
+
 /** Credits for a voiceover: whole minutes of speech at the provider's rate, at least one minute. */
 export function voiceCreditCost(rates: CreditRates, provider: string, text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;

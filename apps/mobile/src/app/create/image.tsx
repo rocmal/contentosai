@@ -5,7 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { ApiError, generateImage, getImageOptions, type ImageAspectRatio, type ImageProviderOption, type ImageQuality } from '@/lib/api';
 import { uploadToGallery } from '@/lib/upload';
 import { IMAGE_COMPOSITION_NOTE, IMAGE_NO_TEXT_NOTE, IMAGE_WRITER, WANTS_TEXT } from '@/lib/studioPrompts';
-import { formatBalance, useWallet } from '@/lib/useWallet';
+import { creditLabel, formatBalance, useWallet } from '@/lib/useWallet';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, Screen, SwitchRow } from '@/ui/kit';
 import { MediaActions } from '@/ui/MediaActions';
 import { useMediaBox } from '@/ui/mediaBox';
@@ -175,7 +175,7 @@ export default function ImageStudio() {
 
         {!result && (
           <Button
-            title={cost !== undefined ? `Create image · ${cost} credits` : 'Create image'}
+            title={cost !== undefined ? `Create image · ${creditLabel(cost)}` : 'Create image'}
             onPress={create}
             loading={busy}
             disabled={!prompt.trim() || !provider || tooFewCredits}
@@ -218,7 +218,7 @@ export default function ImageStudio() {
             <ErrorText message={saveError} />
             <MediaActions source={result.uri} ext="png" />
             <Button
-              title={cost !== undefined ? `Try again · ${cost} credits` : 'Try again'}
+              title={cost !== undefined ? `Try again · ${creditLabel(cost)}` : 'Try again'}
               variant="secondary"
               onPress={create}
               loading={busy}

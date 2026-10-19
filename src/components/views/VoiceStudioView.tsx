@@ -18,7 +18,7 @@ import { SarvamVoiceSelect } from '../SarvamVoiceSelect';
 import RecordVoicePanel from '../RecordVoicePanel';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { takeReuse } from '../../lib/reuse';
-import { useCreditRates, voiceCreditCost } from '../../lib/creditCost';
+import { creditLabel, useCreditRates, voiceCreditCost } from '../../lib/creditCost';
 import { requestGallerySearch, requestNarrationAudio } from '../../lib/reuse';
 import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG, sarvamVoiceSampleUrl } from '../../lib/sarvamVoices';
 
@@ -631,7 +631,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                   {isGenerating
                     ? 'Synthesizing Audio...'
                     : creditRates && text.trim()
-                      ? `Generate Speech · ${voiceCreditCost(creditRates, provider, text)} credits`
+                      ? `Generate Speech · ${creditLabel(voiceCreditCost(creditRates, provider, text))}`
                       : 'Generate Speech'}
                 </span>
               </button>

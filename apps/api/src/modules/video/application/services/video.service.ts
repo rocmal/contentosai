@@ -85,7 +85,9 @@ export class VideoService {
     const cost =
       creditsForDurationSeconds(dto.durationSeconds ?? DEFAULT_DURATION_SECONDS, 10) *
       videoCreditsPer10Seconds(dto.provider);
-    if (canCharge) {
+    // A free engine (cost 0) records no transaction at all.
+    const charges = canCharge && cost > 0;
+    if (charges) {
       await this.creditsService.reserve({
         organizationId: actor.organizationId!,
         workspaceId: actor.workspaceId!,
@@ -106,7 +108,7 @@ export class VideoService {
         aspectRatio: dto.aspectRatio,
       });
     } catch (err) {
-      if (canCharge) {
+      if (charges) {
         await this.creditsService.refund({
           organizationId: actor.organizationId!,
           workspaceId: actor.workspaceId!,

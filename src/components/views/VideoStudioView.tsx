@@ -45,7 +45,7 @@ import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '../../lib/video
 import { takeNarrationAudio, takeReuse, VIDEO_STYLE_SUFFIXES, type NarrationAudio } from '../../lib/reuse';
 import { measureAudioSeconds } from '../../lib/audioDuration';
 import { describeVideoShape } from '../../lib/videoShape';
-import { useCreditRates, videoCreditCost } from '../../lib/creditCost';
+import { creditLabel, useCreditRates, videoCreditCost } from '../../lib/creditCost';
 import {
   compositeScenes,
   compositeTextOntoVideo,
@@ -1750,7 +1750,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                 <Sparkles className="w-4 h-4" />
                 <span>
                   {creditRates
-                    ? `Generate Video · ${videoCreditCost(creditRates, provider, stylePreset.durationSeconds)} credits`
+                    ? `Generate Video · ${creditLabel(videoCreditCost(creditRates, provider, stylePreset.durationSeconds))}`
                     : 'Generate Video'}
                 </span>
               </button>

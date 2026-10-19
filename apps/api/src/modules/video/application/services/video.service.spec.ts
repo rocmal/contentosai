@@ -192,6 +192,16 @@ describe('VideoService', () => {
       expect(event.workspaceId).toBeUndefined();
     });
 
+    it('charges nothing for the free test engine, and the full rate for an engine it does not list', async () => {
+      provider.submitJob.mockResolvedValue({ provider: 'mock', model: 'mock', jobId: 'job-4', status: 'processing' });
+
+      await service.submitJob({ ...dto, provider: 'mock' }, actor);
+      expect(creditsService.reserve).not.toHaveBeenCalled();
+
+      await service.submitJob({ ...dto, provider: 'runway' }, actor);
+      expect(creditsService.reserve).toHaveBeenCalledWith(expect.objectContaining({ amount: 180 }));
+    });
+
     describe('reusing a saved clip', () => {
       const submitted = {
         provider: 'runway',

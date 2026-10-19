@@ -57,9 +57,9 @@ export const VOICE_CREDITS_PER_MINUTE: Record<string, number> = {
 /** Credits per 10 seconds of AI video, by provider. Veo 3.1 Fast (the app's
  * default model) is $0.10 per second on the Gemini API -> Rs 88 per 10 s ->
  * 180 credits. Runway/Kling/Pika/Luma are unverified and use the same
- * conservative rate. The mock provider has no vendor cost. */
+ * conservative rate. The mock provider (development only) has no vendor cost, so it is free. */
 export const VIDEO_CREDITS_PER_10_SECONDS: Record<string, number> = {
-  mock: 1,
+  mock: 0,
   default: 180,
 };
 
@@ -73,8 +73,9 @@ export const CHARACTER_CREDITS_PER_10_SECONDS: Record<string, number> = {
   default: 180,
 };
 
+/** The provider's own rate (0 means free), or the table's default for a provider it does not list. */
 function rateFor(table: Record<string, number>, provider?: string): number {
-  return (provider && table[provider]) || table.default;
+  return provider && Object.prototype.hasOwnProperty.call(table, provider) ? table[provider] : table.default;
 }
 
 /** Typical speaking pace, used to estimate a clip's length from its text. */

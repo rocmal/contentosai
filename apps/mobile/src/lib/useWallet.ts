@@ -18,6 +18,12 @@ export function useWallet(): { balance: number | null | undefined; reload: () =>
   return { balance, reload };
 }
 
+/** A price for a button: "free", "1 credit" or "180 credits" (same wording as the website). */
+export function creditLabel(credits: number): string {
+  if (credits === 0) return 'free';
+  return credits === 1 ? '1 credit' : `${credits.toLocaleString()} credits`;
+}
+
 export function formatBalance(balance: number | null | undefined): string {
   if (balance === undefined) return '…';
   return balance === null ? 'Unlimited' : balance.toLocaleString();
