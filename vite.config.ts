@@ -20,8 +20,9 @@ export default defineConfig(() => {
       // Cloudflare quick tunnels (used so cloud AI providers like D-ID can
       // fetch locally-hosted avatar photos) come from a random *.trycloudflare.com
       // host each run - Vite's host-header check would 403 those otherwise.
-      // lumoraos.local is the XAMPP Apache reverse-proxy alias for local dev.
-      allowedHosts: ['.trycloudflare.com', 'lumoraos.local'],
+      // XAMPP Apache serves the local copy as https://lumoraos.in (deploy/local, hosts file) and passes that
+      // host through, so in dev mode (deploy/local/dev.ps1) Vite must accept it; lumoraos.local is the older alias.
+      allowedHosts: ['.trycloudflare.com', '.lumoraos.in', 'lumoraos.local'],
     },
   };
 });

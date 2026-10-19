@@ -88,6 +88,13 @@ The hosts entry hides the real site on this PC. Switch it (Administrator PowerSh
 
 Phones and other computers are not affected.
 
+If https://lumoraos.in does not open on this PC:
+
+- **Nothing loads** (connection refused): Apache is not running, typically after a restart. Start it in the XAMPP Control Panel
+  (tick "Svc" next to Apache to have Windows start it on every boot).
+- **"Blocked request. This host is not allowed"**: dev mode's Vite server is answering, and `lumoraos.in` must be in
+  `server.allowedHosts` in `vite.config.ts` (it is since 2026-10-19).
+
 ## Everyday commands
 
 ```powershell
