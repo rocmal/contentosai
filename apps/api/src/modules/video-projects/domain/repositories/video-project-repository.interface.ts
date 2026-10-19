@@ -19,6 +19,7 @@ export interface CreateVideoProjectData {
   narrationVoiceId?: string | null;
   narrationGender?: string | null;
   narrationLanguage?: string | null;
+  narrationRecordingId?: string | null;
   finalAssetId?: string | null;
 }
 

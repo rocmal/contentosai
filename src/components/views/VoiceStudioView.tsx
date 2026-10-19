@@ -152,10 +152,15 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
     }
   };
 
-  const handleCustomVoiceSaved = (voice: api.CustomVoice) => {
+  const handleCustomVoiceSaved = (voice: api.CustomVoice, galleryCopySaved: boolean) => {
     setCustomVoices((previous) => [voice, ...previous]);
     setShowRecordPanel(false);
     setSelectedCustomId(voice.id);
+    setCustomVoiceError(
+      galleryCopySaved
+        ? null
+        : `"${voice.name}" is saved and ready to use, but its copy in the Gallery could not be made, so it will not appear there.`,
+    );
     if (voice.cloned && voice.voiceId) {
       setProvider(voice.provider);
       setVoiceId(voice.voiceId);
@@ -413,7 +418,11 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                     type="button"
                     onClick={() => {
                       if (!selectedCustomVoice.sampleUrl) return;
-                      requestNarrationAudio({ name: selectedCustomVoice.name, url: selectedCustomVoice.sampleUrl });
+                      requestNarrationAudio({
+                        name: selectedCustomVoice.name,
+                        url: selectedCustomVoice.sampleUrl,
+                        voiceId: selectedCustomVoice.id,
+                      });
                       onNavigate('video-studio');
                     }}
                     disabled={!selectedCustomVoice.sampleUrl}

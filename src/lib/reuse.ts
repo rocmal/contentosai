@@ -19,10 +19,13 @@ export const IMAGE_NO_TEXT_NOTE = 'Do not include any text, letters, numbers, lo
 export const VIDEO_STYLE_SUFFIXES = {
   cinematic: 'cinematic style, dramatic lighting, shallow depth of field, film grain',
   socialReel: 'vertical format, fast-paced energetic style, vibrant colors',
-  squarePost: 'square format, clean centered composition',
+  squarePost: 'vertical format, clean centered composition',
   explainer: 'clean corporate style, bright even lighting, minimal background',
   productAd: 'commercial product advertisement style, studio lighting',
 } as const;
+
+// Hints older saves may still end with, stripped the same way (Feed Post was a square format until 2026-10-19).
+const RETIRED_VIDEO_STYLE_SUFFIXES = ['square format, clean centered composition'];
 
 export function studioForType(type: MediaAssetType): ReuseStudio | null {
   if (type === 'image') return 'image';
@@ -45,7 +48,7 @@ export function cleanPrompt(studio: ReuseStudio, saved: string): string {
   if (studio === 'image') {
     text = text.replace(IMAGE_COMPOSITION_NOTE, '').replace(IMAGE_NO_TEXT_NOTE, '');
   } else if (studio === 'video') {
-    for (const suffix of Object.values(VIDEO_STYLE_SUFFIXES)) {
+    for (const suffix of [...Object.values(VIDEO_STYLE_SUFFIXES), ...RETIRED_VIDEO_STYLE_SUFFIXES]) {
       if (text.endsWith(`, ${suffix}`)) {
         text = text.slice(0, -(suffix.length + 2));
         break;
@@ -120,6 +123,8 @@ const NARRATION_AUDIO_KEY = 'lumora.narrationAudio';
 export interface NarrationAudio {
   name: string;
   url: string;
+  /** The recording's custom voice id, so a draft can remember it (the url may change). */
+  voiceId?: string;
 }
 
 /** Hand a saved recording to Video Studio to use as the narration. */
@@ -138,6 +143,7 @@ export function takeNarrationAudio(): NarrationAudio | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as NarrationAudio;
     if (typeof parsed.url !== 'string' || typeof parsed.name !== 'string') return null;
+    if (parsed.voiceId !== undefined && typeof parsed.voiceId !== 'string') return null;
     window.setTimeout(() => {
       try {
         window.sessionStorage.removeItem(NARRATION_AUDIO_KEY);

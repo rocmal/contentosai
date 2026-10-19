@@ -28,6 +28,7 @@ describe('VideoProjectsService', () => {
     narrationVoiceId: null,
     narrationGender: null,
     narrationLanguage: null,
+    narrationRecordingId: null,
     finalAssetId: null,
     createdBy: 'user-1',
     updatedBy: null,

@@ -49,6 +49,9 @@ export interface VideoProject extends BaseTenantEntity {
   narrationVoiceId: string | null;
   narrationGender: string | null;
   narrationLanguage: string | null;
+  /** One of the person's own voice recordings (custom voice id) used as the narration instead of a
+   * generated voice. May name a recording that has since been deleted. */
+  narrationRecordingId: string | null;
   /** Set once the person exports and saves the composited result to the
    * gallery (see MediaAssetsController) - null while still a draft. */
   finalAssetId: string | null;

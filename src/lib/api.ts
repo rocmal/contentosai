@@ -2058,6 +2058,8 @@ export interface VideoProject {
   narrationVoiceId: string | null;
   narrationGender: string | null;
   narrationLanguage: string | null;
+  /** One of your own voice recordings (custom voice id) used as the narration; it may since have been deleted. */
+  narrationRecordingId: string | null;
   finalAssetId: string | null;
   createdBy: string | null;
   createdAt: string;
@@ -2105,6 +2107,7 @@ export function updateVideoProject(
       | 'narrationVoiceId'
       | 'narrationGender'
       | 'narrationLanguage'
+      | 'narrationRecordingId'
     >
   >,
 ): Promise<VideoProject> {

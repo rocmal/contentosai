@@ -125,4 +125,13 @@ export class CreateVideoProjectDto {
   @IsString()
   @MaxLength(10)
   narrationLanguage?: string;
+
+  @ApiPropertyOptional({
+    nullable: true,
+    description:
+      'Id of one of your own voice recordings to use as the narration (null to stop using one)',
+  })
+  @IsOptional()
+  @IsUUID('4')
+  narrationRecordingId?: string | null;
 }

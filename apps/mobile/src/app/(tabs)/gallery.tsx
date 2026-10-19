@@ -7,8 +7,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { listMyGallery, type MediaAsset, type MediaAssetType } from '@/lib/api';
+import { useVideoAspect } from '@/lib/videoAspect';
 import { Button, Chip, ChipRow, ErrorText, Muted } from '@/ui/kit';
 import { MediaActions } from '@/ui/MediaActions';
+import { useMediaBox } from '@/ui/mediaBox';
+import { ShapeLabel } from '@/ui/VideoShape';
 import { ScheduleSheet } from '@/ui/ScheduleSheet';
 import { UploadBar } from '@/ui/UploadBar';
 import { colors, space } from '@/ui/theme';
@@ -22,9 +25,36 @@ const FILTERS: { id: MediaAssetType | undefined; label: string }[] = [
 const COLS = 3;
 const GAP = 4;
 
+/** Sheet padding on both sides of the preview. */
+const DETAIL_INSET = space.lg * 2;
+
+/** Videos keep their own shape (wide or tall); until it is known the box is wide, the more common case. */
 function VideoPreview({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri);
-  return <VideoView player={player} style={{ width: '100%', aspectRatio: 9 / 16, maxHeight: 420, backgroundColor: '#000', borderRadius: 12 }} nativeControls contentFit="contain" />;
+  const actual = useVideoAspect(player, uri);
+  const box = useMediaBox(actual ?? 16 / 9, DETAIL_INSET, 420);
+  return (
+    <View style={{ gap: space.sm }}>
+      <VideoView player={player} style={{ ...box, alignSelf: 'center', backgroundColor: '#000', borderRadius: 12 }} nativeControls contentFit="contain" />
+      {actual !== null && <ShapeLabel ratio={actual} />}
+    </View>
+  );
+}
+
+/** Pictures keep their own shape too: square until the file reports its size. */
+function ImagePreview({ uri }: { uri: string }) {
+  const [ratio, setRatio] = useState(1);
+  const box = useMediaBox(ratio, DETAIL_INSET, 420);
+  return (
+    <Image
+      source={{ uri }}
+      style={{ ...box, alignSelf: 'center', borderRadius: 12 }}
+      contentFit="contain"
+      onLoad={({ source }) => {
+        if (source.width > 0 && source.height > 0) setRatio(source.width / source.height);
+      }}
+    />
+  );
 }
 
 function clock(seconds: number): string {
@@ -94,7 +124,7 @@ function Detail({ asset, onClose }: { asset: MediaAsset; onClose: () => void }) 
             <Ionicons name="close" size={26} color={colors.textMuted} />
           </Pressable>
         </View>
-        {asset.type === 'image' && <Image source={{ uri: asset.url }} style={{ width: '100%', aspectRatio: 1 }} contentFit="contain" />}
+        {asset.type === 'image' && <ImagePreview uri={asset.url} />}
         {(asset.type === 'video' || asset.type === 'character') && <VideoPreview uri={asset.url} />}
         {asset.type === 'audio' && <AudioPreview uri={asset.url} />}
         {asset.prompt ? <Muted>{asset.prompt}</Muted> : null}

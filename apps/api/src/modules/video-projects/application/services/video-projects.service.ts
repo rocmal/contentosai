@@ -37,6 +37,7 @@ export class VideoProjectsService {
         narrationVoiceId: dto.narrationVoiceId ?? null,
         narrationGender: dto.narrationGender ?? null,
         narrationLanguage: dto.narrationLanguage ?? null,
+        narrationRecordingId: dto.narrationRecordingId ?? null,
       },
       actorId,
     );

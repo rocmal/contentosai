@@ -26,12 +26,12 @@ import {
   Pause,
   Pencil,
   Play,
+  RectangleVertical,
   RotateCcw,
   Share2,
   ShoppingBag,
   Smartphone,
   Sparkles,
-  Square,
   Trash2,
   Type,
   Upload,
@@ -43,6 +43,8 @@ import * as api from '../../lib/api';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '../../lib/videoPromptTemplates';
 import { takeNarrationAudio, takeReuse, VIDEO_STYLE_SUFFIXES, type NarrationAudio } from '../../lib/reuse';
+import { measureAudioSeconds } from '../../lib/audioDuration';
+import { describeVideoShape } from '../../lib/videoShape';
 import { useCreditRates, videoCreditCost } from '../../lib/creditCost';
 import {
   compositeScenes,
@@ -72,8 +74,8 @@ interface AiStylePreset {
   durationSeconds: number;
   /** Appended to the user's prompt - the underlying providers take a single text
    * prompt, so a "style" is implemented as a hint + duration, not a separate
-   * API parameter. Aspect ratio here only affects the on-screen preview
-   * shape, since none of the wired video providers accept one. */
+   * API parameter. Video formats only use 16:9 or 9:16, the two shapes Veo makes;
+   * 1:1 and 4:5 remain for uploads, templates and the Scene Builder. */
   styleSuffix: string;
 }
 
@@ -98,10 +100,10 @@ const AI_STYLE_PRESETS: AiStylePreset[] = [
   },
   {
     id: 'square-post',
-    label: 'Square Post',
-    description: 'Instagram feed, Facebook post',
-    icon: Square,
-    aspectRatio: '1:1',
+    label: 'Feed Post',
+    description: 'Vertical - Instagram and Facebook feeds',
+    icon: RectangleVertical,
+    aspectRatio: '9:16',
     durationSeconds: 5,
     styleSuffix: VIDEO_STYLE_SUFFIXES.squarePost,
   },
@@ -117,9 +119,9 @@ const AI_STYLE_PRESETS: AiStylePreset[] = [
   {
     id: 'product-ad',
     label: 'Product Ad',
-    description: 'Commerce-focused, portrait',
+    description: 'Commerce-focused, vertical',
     icon: ShoppingBag,
-    aspectRatio: '4:5',
+    aspectRatio: '9:16',
     durationSeconds: 5,
     styleSuffix: VIDEO_STYLE_SUFFIXES.productAd,
   },
@@ -179,6 +181,23 @@ const ASPECT_RATIO_NUMERIC: Record<AiStylePreset['aspectRatio'], number> = {
   '9:16': 9 / 16,
   '1:1': 1,
   '4:5': 4 / 5,
+};
+
+// CSS width for a video box of this shape (width / height) that fits the column
+// (up to maxRem) and 70% of the window height without bending the shape.
+// A full width plus max-height plus aspect-ratio squashes the box instead: a
+// 9:16 clip gets a near-square box, and object-cover then cuts its top and bottom.
+const previewBoxWidth = (ratio: number, maxRem: number): string =>
+  `min(100%, ${maxRem}rem, calc(70vh * ${ratio}))`;
+
+/** "Wide 16:9 · fits YouTube, Facebook and LinkedIn" under a finished clip, from its real shape. */
+const VideoShapeLabel: React.FC<{ ratio: number }> = ({ ratio }) => {
+  const shape = describeVideoShape(ratio);
+  return (
+    <p className="text-center text-[11px] text-slate-500 dark:text-slate-400">
+      <span className="font-semibold text-slate-700 dark:text-slate-200">{shape.name}</span> · fits {shape.fitsOn}
+    </p>
+  );
 };
 
 interface OverlayPoint {
@@ -260,6 +279,9 @@ interface StudioScene {
 type SceneFit = 'cover' | 'contain';
 
 const MAX_SCENE_TOTAL_SECONDS = 30;
+
+// How many recent videos (drafts and finished) are loaded for "Continue a draft".
+const RECENT_PROJECTS_TO_LOAD = 30;
 const DEFAULT_SCENE_SECONDS = 4;
 /** Rough spoken-word rate used only to estimate narration length before any
  * audio is generated (same ballpark the "Generate with AI" narration prompts
@@ -320,6 +342,36 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   useEffect(() => {
     api.listCustomVoices().then(setMyRecordings).catch(() => undefined);
   }, []);
+  // A reopened draft's recording while its current address is looked up; autosave keeps the id meanwhile.
+  const [pendingRecordingId, setPendingRecordingId] = useState<string | null>(null);
+  const [draftRecordingNote, setDraftRecordingNote] = useState<string | null>(null);
+  const resumeCountRef = useRef(0);
+  // The recording's real length, keyed by its address so a result for an earlier recording is never shown.
+  const [recordingLength, setRecordingLength] = useState<{ url: string; seconds: number | null } | null>(null);
+  useEffect(() => {
+    const url = recordedNarration?.url;
+    if (!url) return;
+    let cancelled = false;
+    measureAudioSeconds(url).then((seconds) => {
+      if (!cancelled) setRecordingLength({ url, seconds });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [recordedNarration?.url]);
+  const recordedNarrationSeconds =
+    recordedNarration && recordingLength?.url === recordedNarration.url ? recordingLength.seconds : null;
+  // Which entry of "My recorded voices" is the narration ('sent' = one that is not in the list).
+  const recordedNarrationOptionId = !recordedNarration
+    ? ''
+    : (myRecordings.find((v) => v.id === recordedNarration.voiceId || v.sampleUrl === recordedNarration.url)?.id ??
+      'sent');
+  /** Picks a recording (or none) as the narration, replacing whatever a reopened draft was still looking up. */
+  const chooseRecordedNarration = (audio: NarrationAudio | null) => {
+    setRecordedNarration(audio);
+    setPendingRecordingId(null);
+    setDraftRecordingNote(null);
+  };
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // "Create from prompt" state
@@ -350,14 +402,6 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // canvas compositor does (which always draws the clip's true, uncropped
   // native resolution), making dragged text land in the wrong spot on export.
   const [sourceVideoNaturalAspect, setSourceVideoNaturalAspect] = useState<number | null>(null);
-  // Raw encoded pixel size of the composited clip, shown next to the edit-
-  // step player as a debugging aid - lets a mismatch between the requested
-  // Shape and what MediaRecorder actually produced be spotted directly from
-  // a screenshot, without needing devtools. Purely diagnostic display; only
-  // sourceVideoNaturalAspect (above) drives any actual layout/export math.
-  const [sourceVideoNaturalDims, setSourceVideoNaturalDims] = useState<{ width: number; height: number } | null>(
-    null,
-  );
 
   // "Scene Builder" - multiple uploaded images/clips, narrated by a single
   // voice prompt for the whole video, combined via compositeScenes() in
@@ -408,17 +452,24 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const [pastProjects, setPastProjects] = useState<api.VideoProject[]>([]);
   const [showAllDrafts, setShowAllDrafts] = useState(false);
   const [draftToDelete, setDraftToDelete] = useState<api.VideoProject | null>(null);
+  const [draftDeleteError, setDraftDeleteError] = useState<string | null>(null);
 
   const handleDeleteDraft = async () => {
     if (!draftToDelete) return;
-    const id = draftToDelete.id;
+    const { id, title } = draftToDelete;
     setDraftToDelete(null);
+    setDraftDeleteError(null);
     try {
       await api.deleteVideoProject(id);
       setPastProjects((previous) => previous.filter((project) => project.id !== id));
       if (videoProjectId === id) setVideoProjectId(null);
-    } catch {
-      // Still listed; the person can try again.
+    } catch (err) {
+      // Still listed, so the person can try again.
+      setDraftDeleteError(
+        err instanceof api.ApiError
+          ? `Could not delete "${title}": ${err.message}`
+          : `Could not delete "${title}". Check your connection and try again.`,
+      );
     }
   };
   const [isSavingToGallery, setIsSavingToGallery] = useState(false);
@@ -510,8 +561,13 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   // since the video can never run longer than that regardless of scenes.
   const narrationWordCount = narrationText.trim() ? narrationText.trim().split(/\s+/).length : 0;
   const narrationEstimatedSeconds = Math.ceil(narrationWordCount / NARRATION_WORDS_PER_SECOND);
-  const narrationFitsCap = narrationEstimatedSeconds <= MAX_SCENE_TOTAL_SECONDS;
-  const narrationWillBeTrimmed = narrationWordCount > 0 && narrationEstimatedSeconds > sceneRawEstimatedSeconds;
+  // With a recording, its real length (once measured); otherwise the typed script's estimate.
+  const narrationSeconds = recordedNarration ? Math.ceil(recordedNarrationSeconds ?? 0) : narrationEstimatedSeconds;
+  const narrationFitsCap = narrationSeconds <= MAX_SCENE_TOTAL_SECONDS;
+  const narrationWillBeTrimmed =
+    scenes.length > 0 &&
+    (recordedNarration ? narrationSeconds > 0 : narrationWordCount > 0) &&
+    narrationSeconds > sceneRawEstimatedSeconds;
   const clampedPreviewSceneIndex = Math.min(previewSceneIndex, Math.max(0, scenes.length - 1));
   const previewScene = scenes[clampedPreviewSceneIndex];
 
@@ -543,7 +599,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   useEffect(() => {
     loadVideoTemplates();
     api.getGalleryUsage().then(setGalleryUsage).catch(() => undefined);
-    api.listMyVideoProjects(30).then(setPastProjects).catch(() => undefined);
+    api.listMyVideoProjects(RECENT_PROJECTS_TO_LOAD).then(setPastProjects).catch(() => undefined);
   }, []);
 
   // Lazily creates the persisted draft the moment the Scene Builder
@@ -588,6 +644,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
           narrationVoiceId,
           narrationGender,
           narrationLanguage,
+          narrationRecordingId: recordedNarration?.voiceId ?? pendingRecordingId ?? null,
         })
         .catch(() => undefined);
     }, 1500);
@@ -605,6 +662,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     narrationVoiceId,
     narrationGender,
     narrationLanguage,
+    recordedNarration,
+    pendingRecordingId,
   ]);
 
   /** Loads a past draft's scenes/settings back into the editor, so
@@ -635,6 +694,31 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     }
     if (project.narrationLanguage === 'en' || project.narrationLanguage === 'hi') {
       setNarrationLanguage(project.narrationLanguage);
+    }
+    // The recording (if any) is looked up fresh, since its address can change.
+    const resume = ++resumeCountRef.current;
+    setRecordedNarration(null);
+    setDraftRecordingNote(null);
+    setPendingRecordingId(project.narrationRecordingId);
+    const wanted = project.narrationRecordingId;
+    if (wanted) {
+      api
+        .listCustomVoices()
+        .then((voices) => {
+          if (resume !== resumeCountRef.current) return;
+          setMyRecordings(voices);
+          const found = voices.find((v) => v.id === wanted);
+          if (found?.sampleUrl) {
+            setRecordedNarration({ name: found.name, url: found.sampleUrl, voiceId: found.id });
+          } else {
+            setDraftRecordingNote('The voice recording this draft used has been deleted, so the typed script is used instead.');
+          }
+          setPendingRecordingId(null);
+        })
+        .catch(() => {
+          if (resume !== resumeCountRef.current) return;
+          setDraftRecordingNote('Could not load the voice recording this draft uses. Reload the page to try again.');
+        });
     }
   };
 
@@ -677,7 +761,9 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
     setDraftTitle('');
     setSceneSaveAsTemplate(false);
     setSavedToGallery(false);
-    api.listMyVideoProjects(10).then(setPastProjects).catch(() => undefined);
+    resumeCountRef.current += 1;
+    chooseRecordedNarration(null);
+    api.listMyVideoProjects(RECENT_PROJECTS_TO_LOAD).then(setPastProjects).catch(() => undefined);
   };
 
   /** Returns to Scene Builder from the text-overlay/edit step without
@@ -705,14 +791,14 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
   const handleRemoveScene = (id: string) => setScenes((prev) => prev.filter((s) => s.id !== id));
 
   /** Scales every scene's duration up proportionally so their sum reaches
-   * the estimated narration length (capped at MAX_SCENE_TOTAL_SECONDS,
+   * the narration length (capped at MAX_SCENE_TOTAL_SECONDS,
    * since the video can never exceed that) - fixes the "narration gets cut
    * off" case where the total scene length was left shorter than the
    * script. Never scales down; if scenes already cover the narration,
    * this is a no-op. */
   const handleFitScenesToNarration = () => {
     if (scenes.length === 0 || sceneRawEstimatedSeconds <= 0) return;
-    const target = Math.min(narrationEstimatedSeconds, MAX_SCENE_TOTAL_SECONDS);
+    const target = Math.min(narrationSeconds, MAX_SCENE_TOTAL_SECONDS);
     if (target <= sceneRawEstimatedSeconds) return;
     const scale = target / sceneRawEstimatedSeconds;
     setScenes((prev) => prev.map((s) => ({ ...s, durationSeconds: Math.round(s.durationSeconds * scale * 10) / 10 })));
@@ -1126,7 +1212,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
         prompt: `${prompt.trim()}, ${stylePreset.styleSuffix}`,
         provider,
         durationSeconds: stylePreset.durationSeconds,
-        aspectRatio: stylePreset.aspectRatio === '9:16' ? '9:16' : '16:9',
+        aspectRatio: stylePreset.aspectRatio === '9:16' ? '9:16' : '16:9', // the two shapes Veo makes
         fresh,
       });
 
@@ -1856,8 +1942,9 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                       {showAllDrafts ? 'Show fewer' : 'Show all drafts'}
                     </button>
                   )}
+                  {draftDeleteError && <p className="text-[11px] text-red-600 dark:text-red-400">{draftDeleteError}</p>}
                   <p className="text-[10px] text-slate-400">
-                    Drafts are saved automatically as you work. The most recent 30 are kept in this list, so delete the ones you no longer need.
+                    Drafts are saved automatically as you work. This list shows the drafts among your {RECENT_PROJECTS_TO_LOAD} most recently edited videos, so delete the ones you no longer need.
                   </p>
                 </div>
               )}
@@ -2335,27 +2422,29 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     <Mic className="w-3 h-3" /> Narration (optional)
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleGenerateNarration}
-                    disabled={isGeneratingNarration}
-                    title={narrationText.trim() ? 'Improve this narration with AI' : 'Generate a narration with AI'}
-                    className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
-                  >
-                    {isGeneratingNarration ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Wand2 className="w-3 h-3" />
-                    )}
-                    <span>{narrationText.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
-                  </button>
+                  {!recordedNarration && (
+                    <button
+                      type="button"
+                      onClick={handleGenerateNarration}
+                      disabled={isGeneratingNarration}
+                      title={narrationText.trim() ? 'Improve this narration with AI' : 'Generate a narration with AI'}
+                      className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
+                    >
+                      {isGeneratingNarration ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Wand2 className="w-3 h-3" />
+                      )}
+                      <span>{narrationText.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
+                    </button>
+                  )}
                 </div>
                 <select
-                  value={recordedNarration ? (myRecordings.find((v) => v.sampleUrl === recordedNarration.url)?.id ?? 'sent') : ''}
+                  value={recordedNarrationOptionId}
                   onChange={(e) => {
                     const picked = myRecordings.find((v) => v.id === e.target.value);
-                    if (picked?.sampleUrl) setRecordedNarration({ name: picked.name, url: picked.sampleUrl });
-                    else if (!e.target.value) setRecordedNarration(null);
+                    if (picked?.sampleUrl) chooseRecordedNarration({ name: picked.name, url: picked.sampleUrl, voiceId: picked.id });
+                    else if (!e.target.value) chooseRecordedNarration(null);
                   }}
                   className="w-full text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
                 >
@@ -2364,7 +2453,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                       ? 'My recorded voices: none yet (record one in Voice Studio)'
                       : 'My recorded voices: use a typed script instead'}
                   </option>
-                  {recordedNarration && !myRecordings.some((v) => v.sampleUrl === recordedNarration.url) && (
+                  {recordedNarrationOptionId === 'sent' && recordedNarration && (
                     <option value="sent">{recordedNarration.name}</option>
                   )}
                   {myRecordings
@@ -2375,6 +2464,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                       </option>
                     ))}
                 </select>
+                {draftRecordingNote && <p className="text-[10px] text-amber-600 dark:text-amber-400">{draftRecordingNote}</p>}
                 {recordedNarration && (
                   <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800/60 space-y-1.5">
                     <div className="flex items-center justify-between gap-2 text-[11px]">
@@ -2383,7 +2473,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                       </span>
                       <button
                         type="button"
-                        onClick={() => setRecordedNarration(null)}
+                        onClick={() => chooseRecordedNarration(null)}
                         className="font-semibold text-slate-500 hover:text-red-600 shrink-0"
                       >
                         Remove
@@ -2391,82 +2481,89 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                     </div>
                     <audio controls src={recordedNarration.url} className="w-full h-9" />
                     <p className="text-[10px] text-slate-500">
-                      It plays as the narration of this video, as recorded. No narration credits are used.
+                      It plays as the narration of this video, as recorded
+                      {recordedNarrationSeconds !== null ? ` (${Math.round(recordedNarrationSeconds)} seconds)` : ''}. No narration
+                      credits are used.
+                      {narrationText.trim() && ' Your typed script is kept and used again if you remove the recording.'}
                     </p>
                   </div>
                 )}
-                <textarea
-                  rows={3}
-                  value={narrationText}
-                  onChange={(e) => setNarrationText(e.target.value)}
-                  placeholder="What should the narrator say across this whole video?"
-                  className="w-full text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
-                />
-                <div className="flex justify-end">
-                  <VoiceInputButton
-                    language={narrationLanguage === 'hi' ? 'hi-IN' : 'en-IN'}
-                    onText={(spoken) => setNarrationText((prev) => appendSpoken(prev, spoken))}
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80">
-                    {(Object.keys(NARRATION_LANGUAGE_LABELS) as NarrationLanguage[]).map((lang) => (
-                      <button
-                        key={lang}
-                        type="button"
-                        onClick={() => setNarrationLanguage(lang)}
-                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                          narrationLanguage === lang
-                            ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xs'
-                            : 'text-slate-500 dark:text-slate-400'
-                        }`}
-                      >
-                        {NARRATION_LANGUAGE_LABELS[lang]}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80">
-                    {(Object.keys(NARRATION_GENDER_LABELS) as NarrationGender[]).map((g) => (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => setNarrationGender(g)}
-                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
-                          narrationGender === g
-                            ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xs'
-                            : 'text-slate-500 dark:text-slate-400'
-                        }`}
-                      >
-                        {NARRATION_GENDER_LABELS[g]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex gap-1.5">
-                  <div className="flex-1 min-w-0">
-                    <SarvamVoiceSelect
-                      value={narrationVoiceId}
-                      onChange={setNarrationVoiceId}
-                      previewingVoiceId={previewingVoiceId}
-                      onPreview={handlePreviewVoice}
-                      genderFilter={narrationGender}
+                {!recordedNarration && (
+                  <>
+                    <textarea
+                      rows={3}
+                      value={narrationText}
+                      onChange={(e) => setNarrationText(e.target.value)}
+                      placeholder="What should the narrator say across this whole video?"
+                      className="w-full text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
                     />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handlePreviewVoice(narrationVoiceId || SARVAM_VOICE_BY_GENDER[narrationGender].voiceId)
-                    }
-                    title="Preview the current selection (plays a local sample, no API call)"
-                    className="shrink-0 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-colors"
-                  >
-                    {previewingVoiceId === (narrationVoiceId || SARVAM_VOICE_BY_GENDER[narrationGender].voiceId) ? (
-                      <Pause className="w-3.5 h-3.5" />
-                    ) : (
-                      <Play className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
+                    <div className="flex justify-end">
+                      <VoiceInputButton
+                        language={narrationLanguage === 'hi' ? 'hi-IN' : 'en-IN'}
+                        onText={(spoken) => setNarrationText((prev) => appendSpoken(prev, spoken))}
+                      />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80">
+                        {(Object.keys(NARRATION_LANGUAGE_LABELS) as NarrationLanguage[]).map((lang) => (
+                          <button
+                            key={lang}
+                            type="button"
+                            onClick={() => setNarrationLanguage(lang)}
+                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                              narrationLanguage === lang
+                                ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xs'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                          >
+                            {NARRATION_LANGUAGE_LABELS[lang]}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-slate-800/80">
+                        {(Object.keys(NARRATION_GENDER_LABELS) as NarrationGender[]).map((g) => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setNarrationGender(g)}
+                            className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all ${
+                              narrationGender === g
+                                ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-xs'
+                                : 'text-slate-500 dark:text-slate-400'
+                            }`}
+                          >
+                            {NARRATION_GENDER_LABELS[g]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <div className="flex-1 min-w-0">
+                        <SarvamVoiceSelect
+                          value={narrationVoiceId}
+                          onChange={setNarrationVoiceId}
+                          previewingVoiceId={previewingVoiceId}
+                          onPreview={handlePreviewVoice}
+                          genderFilter={narrationGender}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handlePreviewVoice(narrationVoiceId || SARVAM_VOICE_BY_GENDER[narrationGender].voiceId)
+                        }
+                        title="Preview the current selection (plays a local sample, no API call)"
+                        className="shrink-0 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-colors"
+                      >
+                        {previewingVoiceId === (narrationVoiceId || SARVAM_VOICE_BY_GENDER[narrationGender].voiceId) ? (
+                          <Pause className="w-3.5 h-3.5" />
+                        ) : (
+                          <Play className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
 
                 {scenes.length > 0 && (
                   <p className={`text-[10px] ${sceneEstimateExceedsMax ? 'text-red-500 dark:text-red-400' : 'text-slate-400'}`}>
@@ -2481,23 +2578,20 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                     <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <div className="space-y-1.5">
                       <p className="text-[11px] leading-snug">
-                        Narration is ~{narrationEstimatedSeconds}s (~{narrationWordCount} words) but your scenes only
-                        total {sceneRawEstimatedSeconds}s - the audio will be cut off partway through.
-                        {!narrationFitsCap && (
-                          <>
-                            {' '}
-                            Even at the full {MAX_SCENE_TOTAL_SECONDS}s video limit, this script won't fully fit -
-                            trim it to roughly {MAX_SCENE_TOTAL_SECONDS * NARRATION_WORDS_PER_SECOND} words or fewer
-                            to avoid clipping.
-                          </>
-                        )}
+                        {recordedNarration
+                          ? `Your recording is ${narrationSeconds}s but your scenes only total ${sceneRawEstimatedSeconds}s - it will be cut off partway through.`
+                          : `Narration is ~${narrationSeconds}s (~${narrationWordCount} words) but your scenes only total ${sceneRawEstimatedSeconds}s - the audio will be cut off partway through.`}
+                        {!narrationFitsCap &&
+                          (recordedNarration
+                            ? ` Even at the full ${MAX_SCENE_TOTAL_SECONDS}s video limit, the end of the recording will be cut - record a shorter one to keep all of it.`
+                            : ` Even at the full ${MAX_SCENE_TOTAL_SECONDS}s video limit, this script won't fully fit - trim it to roughly ${MAX_SCENE_TOTAL_SECONDS * NARRATION_WORDS_PER_SECOND} words or fewer to avoid clipping.`)}
                       </p>
                       <button
                         type="button"
                         onClick={handleFitScenesToNarration}
                         className="text-[11px] font-bold text-amber-700 dark:text-amber-400 underline underline-offset-2 hover:no-underline"
                       >
-                        Extend scenes to {Math.min(narrationEstimatedSeconds, MAX_SCENE_TOTAL_SECONDS)}s
+                        Extend scenes to {Math.min(narrationSeconds, MAX_SCENE_TOTAL_SECONDS)}s
                       </button>
                     </div>
                   </div>
@@ -2522,8 +2616,8 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                     </button>
                   </div>
                   <div
-                    className="relative mx-auto w-full max-w-sm max-h-[70vh] rounded-xl overflow-hidden bg-slate-950"
-                    style={{ aspectRatio: displayAspectRatio }}
+                    className="relative mx-auto rounded-xl overflow-hidden bg-slate-950"
+                    style={{ width: previewBoxWidth(displayAspectRatio, 24), aspectRatio: displayAspectRatio }}
                   >
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                     <video
@@ -2787,18 +2881,11 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
             )}
           </div>
 
-          {sourceVideoNaturalDims && (
-            <p className="text-center text-[10px] text-slate-400">
-              Encoded at {sourceVideoNaturalDims.width}×{sourceVideoNaturalDims.height}px
-              {source === 'scenes' && ` (requested Shape: ${sceneAspectRatio})`}
-            </p>
-          )}
-
-          <div className="relative mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950">
+          <div>
             <div
               ref={overlayPreviewRef}
-              className="relative mx-auto w-full max-w-2xl max-h-[70vh]"
-              style={{ aspectRatio: displayAspectRatio }}
+              className="relative mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950"
+              style={{ width: previewBoxWidth(displayAspectRatio, 42), aspectRatio: displayAspectRatio }}
             >
               <video
                 src={sourceVideoUrl}
@@ -2807,7 +2894,6 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
                   const el = e.currentTarget;
                   if (el.videoWidth && el.videoHeight) {
                     setSourceVideoNaturalAspect(el.videoWidth / el.videoHeight);
-                    setSourceVideoNaturalDims({ width: el.videoWidth, height: el.videoHeight });
                   }
                 }}
                 className="w-full h-full object-cover"
@@ -2873,6 +2959,7 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
               )}
             </div>
           </div>
+          {sourceVideoNaturalAspect && <VideoShapeLabel ratio={sourceVideoNaturalAspect} />}
           {overlayText.trim() && (
             <p className="text-center text-[10px] text-slate-400 -mt-2">
               Click the text to edit it, drag to move it, or drag the blue dot to resize it
@@ -3045,11 +3132,12 @@ export const VideoStudioView: React.FC<VideoStudioViewProps> = ({ onNavigate }) 
       {step === 'result' && finalVideoUrl && (
         <div className="max-w-2xl mx-auto space-y-5">
           <div
-            className="mx-auto w-full max-w-2xl max-h-[70vh] rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950"
-            style={{ aspectRatio: displayAspectRatio }}
+            className="mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950"
+            style={{ width: previewBoxWidth(displayAspectRatio, 42), aspectRatio: displayAspectRatio }}
           >
             <video src={finalVideoUrl} controls autoPlay className="w-full h-full object-cover" />
           </div>
+          {sourceVideoNaturalAspect && <VideoShapeLabel ratio={sourceVideoNaturalAspect} />}
 
           {hasOverlay && (
             <p className="text-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">

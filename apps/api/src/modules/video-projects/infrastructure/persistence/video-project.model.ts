@@ -57,6 +57,9 @@ export class VideoProjectModel extends BaseModel {
   @Column({ type: DataType.STRING(10), allowNull: true })
   declare narrationLanguage: string | null;
 
+  @Column({ type: DataType.UUID, allowNull: true })
+  declare narrationRecordingId: string | null;
+
   @ForeignKey(() => MediaAssetModel)
   @Column({ type: DataType.UUID, allowNull: true })
   declare finalAssetId: string | null;

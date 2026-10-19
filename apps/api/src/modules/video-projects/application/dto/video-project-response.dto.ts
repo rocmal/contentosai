@@ -20,6 +20,7 @@ export class VideoProjectResponseDto {
   @ApiProperty({ nullable: true }) narrationVoiceId: string | null;
   @ApiProperty({ nullable: true }) narrationGender: string | null;
   @ApiProperty({ nullable: true }) narrationLanguage: string | null;
+  @ApiProperty({ nullable: true }) narrationRecordingId: string | null;
   @ApiProperty({ nullable: true }) finalAssetId: string | null;
   @ApiProperty({ nullable: true }) createdBy: string | null;
   @ApiProperty() createdAt: Date;
@@ -39,6 +40,7 @@ export class VideoProjectResponseDto {
     this.narrationVoiceId = project.narrationVoiceId;
     this.narrationGender = project.narrationGender;
     this.narrationLanguage = project.narrationLanguage;
+    this.narrationRecordingId = project.narrationRecordingId;
     this.finalAssetId = project.finalAssetId;
     this.createdBy = project.createdBy;
     this.createdAt = project.createdAt;

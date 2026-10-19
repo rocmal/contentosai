@@ -3,8 +3,9 @@ import { Check, Loader2, Mic, RotateCcw, Square } from 'lucide-react';
 import * as api from '../lib/api';
 
 interface RecordVoicePanelProps {
-  /** Called with the saved voice so the screen can add it to its dropdown and select it. */
-  onSaved: (voice: api.CustomVoice) => void;
+  /** Called with the saved voice so the screen can add it to its dropdown and select it. galleryCopySaved is false
+   * when the voice was saved but its copy in the Gallery could not be made. */
+  onSaved: (voice: api.CustomVoice, galleryCopySaved: boolean) => void;
 }
 
 const MIN_SECONDS = 10;
@@ -114,10 +115,11 @@ export default function RecordVoicePanel({ onSaved }: RecordVoicePanelProps) {
       const voice = await api.createCustomVoice(name.trim(), recording, consent);
       // A copy in the Gallery, so the recording itself can be played, downloaded and reused.
       const extension = /mp4/i.test(recording.type) ? 'mp4' : /ogg/i.test(recording.type) ? 'ogg' : 'webm';
-      void api
+      const galleryCopySaved = await api
         .uploadToGallery(new File([recording], name.trim() + ' (recording).' + extension, { type: recording.type }))
-        .catch(() => undefined);
-      onSaved(voice);
+        .then(() => true)
+        .catch(() => false);
+      onSaved(voice, galleryCopySaved);
       setName('');
       setConsent(false);
       reset();

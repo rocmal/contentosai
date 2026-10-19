@@ -2,13 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { ApiError, generateVideo, getCreditRates, pollVideoJob, type CreditRates, type VideoProvider } from '@/lib/api';
 import { VIDEO_STYLES, VIDEO_WRITER, type VideoStyleId } from '@/lib/studioPrompts';
 import { formatBalance, useWallet } from '@/lib/useWallet';
+import { useVideoAspect } from '@/lib/videoAspect';
 import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '@/lib/videoTemplates';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, Screen, SwitchRow } from '@/ui/kit';
 import { MediaActions } from '@/ui/MediaActions';
+import { useMediaBox } from '@/ui/mediaBox';
+import { ShapeLabel, ShapePreview } from '@/ui/VideoShape';
 import { PromptBox } from '@/ui/PromptBox';
 import { ScheduleSheet } from '@/ui/ScheduleSheet';
 import { colors, radius, space } from '@/ui/theme';
@@ -32,17 +35,22 @@ function clock(seconds: number): string {
 }
 
 function Player({ uri, ratio }: { uri: string; ratio: number }) {
-  const { width } = useWindowDimensions();
   // Plays once (no loop), like the website's result preview.
   const player = useVideoPlayer(uri);
-  const w = width - space.lg * 2 - space.md * 2 - 2;
+  // The requested shape until the clip reports its own, then the clip's (they should match).
+  const actual = useVideoAspect(player, uri);
+  // Screen padding + card padding + card border on both sides.
+  const box = useMediaBox(actual ?? ratio, space.lg * 2 + space.md * 2 + 2);
   return (
-    <VideoView
-      player={player}
-      style={{ width: w, aspectRatio: ratio, maxHeight: 560, borderRadius: 12, backgroundColor: '#000' }}
-      nativeControls
-      contentFit="contain"
-    />
+    <View style={{ gap: space.sm }}>
+      <VideoView
+        player={player}
+        style={{ ...box, alignSelf: 'center', borderRadius: 12, backgroundColor: '#000' }}
+        nativeControls
+        contentFit="contain"
+      />
+      {actual !== null && <ShapeLabel ratio={actual} />}
+    </View>
   );
 }
 
@@ -198,6 +206,7 @@ export default function VideoStudio() {
             <Chip label="Vertical · Reels, Shorts, Status" selected={aspect === '9:16'} disabled={busy} onPress={() => setAspect('9:16')} />
             <Chip label="Wide · YouTube, Facebook" selected={aspect === '16:9'} disabled={busy} onPress={() => setAspect('16:9')} />
           </ChipRow>
+          <ShapePreview ratio={aspect === '9:16' ? 9 / 16 : 16 / 9} />
         </Field>
 
         <Field label="Style">

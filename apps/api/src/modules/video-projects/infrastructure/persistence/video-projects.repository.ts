@@ -39,6 +39,7 @@ export class VideoProjectsRepository
       narrationVoiceId: plain.narrationVoiceId,
       narrationGender: plain.narrationGender,
       narrationLanguage: plain.narrationLanguage,
+      narrationRecordingId: plain.narrationRecordingId ?? null,
       finalAssetId: plain.finalAssetId,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,

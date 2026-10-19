@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { ApiError, generateImage, getImageOptions, type ImageAspectRatio, type ImageProviderOption, type ImageQuality } from '@/lib/api';
 import { uploadToGallery } from '@/lib/upload';
 import { IMAGE_COMPOSITION_NOTE, IMAGE_NO_TEXT_NOTE, IMAGE_WRITER, WANTS_TEXT } from '@/lib/studioPrompts';
 import { formatBalance, useWallet } from '@/lib/useWallet';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, Screen, SwitchRow } from '@/ui/kit';
 import { MediaActions } from '@/ui/MediaActions';
+import { useMediaBox } from '@/ui/mediaBox';
 import { PromptBox } from '@/ui/PromptBox';
 import { colors, space } from '@/ui/theme';
 
@@ -33,7 +34,6 @@ interface Result {
 
 export default function ImageStudio() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
   const { balance, reload } = useWallet();
   const { prompt: initialPrompt } = useLocalSearchParams<{ prompt?: string }>();
   const [prompt, setPrompt] = useState(initialPrompt ?? '');
@@ -101,7 +101,10 @@ export default function ImageStudio() {
     }
   }
 
-  const imageWidth = width - space.lg * 2 - space.md * 2 - 2;
+  // Screen padding + card padding + card border on both sides.
+  const inset = space.lg * 2 + space.md * 2 + 2;
+  const placeholderBox = useMediaBox(ratioValue(place.ratio), inset, 420);
+  const resultBox = useMediaBox(ratioValue(result?.ratio ?? place.ratio), inset);
   const notSetUp = options !== null && !provider;
 
   return (
@@ -184,9 +187,7 @@ export default function ImageStudio() {
           <Card style={{ alignItems: 'center', justifyContent: 'center', gap: space.md, padding: space.md }}>
             <View
               style={{
-                width: imageWidth,
-                aspectRatio: ratioValue(place.ratio),
-                maxHeight: 420,
+                ...placeholderBox,
                 borderRadius: 12,
                 backgroundColor: colors.surface,
                 alignItems: 'center',
@@ -204,7 +205,7 @@ export default function ImageStudio() {
           <Card style={{ gap: space.md, padding: space.md }}>
             <Image
               source={{ uri: result.uri }}
-              style={{ width: imageWidth, aspectRatio: ratioValue(result.ratio), borderRadius: 12 }}
+              style={{ ...resultBox, alignSelf: 'center', borderRadius: 12 }}
               contentFit="cover"
               accessibilityLabel="Your new image"
             />
