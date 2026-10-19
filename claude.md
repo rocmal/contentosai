@@ -129,9 +129,10 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   The server saves every generated clip to the Gallery and says so in the job result (`savedToGallery`); the finished screen
   then shows "Saved to Gallery" instead of uploading a second copy (only text overlays, Scene Builder videos and uploads are
   saved from the browser). Scene Builder's Generate button shows its price: free, or the voice cost when a typed script is voiced.
-  Finished screen: Download and Schedule post are the main buttons (Schedule opens `SchedulePostPanel` through its `open` /
-  `onOpenChange` props); Save to Gallery, Share, Facebook, Save as template and Create another sit below. A saved text version
-  is named after its text and keeps the prompt, so it can be created again.
+  Finished screen: Download and "Post or schedule" are the main buttons ("Post or schedule" saves the video to the Gallery
+  first if needed, then opens the post composer); Save to Gallery, Share, Facebook, Save as template and Create another sit
+  below. A saved text version is named after its text and keeps the prompt, so it can be created again. Video job results
+  carry `mediaAssetId` (the clip's Gallery item).
   Code layout (split 2026-10-19): `VideoStudioView.tsx` is a thin shell; `src/components/views/videoStudio/useVideoStudio.ts`
   holds the step flow and combines the area hooks (`useNarration`, `useSceneBuilder`, `useTextOverlay`, `useVideoTemplates`,
   `useShareActions`); each screen part is a component there (CreateStep, PromptPanel, SceneBuilder, SceneList, NarrationPanel,
@@ -143,6 +144,37 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   from the same tables. Voice is charged per whole minute (150 words each), video per 10 seconds.
 - Credit prices target 50% margin: see `apps/api/src/modules/credits/credits.constants.ts` (image 2/13/50, voice 7 per minute with
   Sarvam, video 180 per 10 s).
+
+### Social posting (LinkedIn personal profile first; added 2026-10-19)
+
+Full guide (setup, use, internals, troubleshooting): `docs/LINKEDIN-INTEGRATION.md` - keep it in step with the code.
+
+Posting is not a studio: one **post composer** (`src/components/PostComposer.tsx`, rendered once by App) opens with
+`openPostComposer()` (`src/lib/socialPosts.ts`) from the Calendar ("New post"), Gallery cards and preview ("Post"), Image Studio
+after saving, Video Studio's finished screen, the header and phone-width Create menus ("Social post") and Ctrl+K. It takes text
+(Speak, Write/Improve with AI - free, uses `/ai/generate`), one Gallery image or video, one or more connected accounts, and
+Post now or Schedule. The Calendar refreshes itself after a post (`useOnPostCreated`).
+- API: `POST /publishing/posts` (`SocialPostsService`) checks every account (media it takes, text length, connected, LinkedIn
+  sign-in still valid at the post time), takes media only as a workspace Gallery item id (never a URL), saves one Content and one
+  publishing job per account; "Post now" = scheduledAt now. Same queue/worker as before (`SocialPublishProcessor`).
+- What each account can post: `PLATFORM_MEDIA_SUPPORT` in `apps/api/src/modules/publishing/domain/post-media.ts`, mirrored in
+  `src/lib/socialPosts.ts` and `apps/mobile/src/lib/api-social.ts` - change all three. LinkedIn: text, image or video; Facebook,
+  Instagram, YouTube: video only (their image posts are the next step).
+- LinkedIn publisher (`linkedin-publisher.provider.ts`): Posts API; images via the Images API; videos via the Videos API (upload
+  in parts with ETags, finalize, wait until AVAILABLE - the old code skipped this and could not have worked). Post text is escaped
+  for LinkedIn's "little text" format (`linkedin-commentary.ts`; hashtags become hashtag templates, Indian scripts included).
+  API version: `LINKEDIN_API_VERSION` (YYYYMM) or, when empty, the month three months back (LinkedIn retires versions after a year).
+- LinkedIn sign-ins last 60 days and cannot renew: connection status carries `expiresAt`/`expired`; Integrations shows "Reconnect
+  by ..."; the composer warns within 7 days and refuses a time after expiry; a daily job (09:00 India time,
+  `ConnectionExpiryReminderService` on the social-publish queue) notifies whoever connected it 7 days before, the day before and on
+  the day.
+- Phone app: `apps/mobile/src/ui/PostSheet.tsx` (was ScheduleSheet) posts Gallery images and videos through the same endpoint.
+- Only personal profiles (`w_member_social`). Company Pages need LinkedIn's Community Management API approval (a separate LinkedIn
+  app and review). Deploy keys: secret `LINKEDIN_CLIENT_SECRET`, variables `LINKEDIN_CLIENT_ID`, `LINKEDIN_REDIRECT_URI`
+  (`https://lumoraos.in/api/v1/integrations/linkedin/callback`) and optional `LINKEDIN_API_VERSION`; the deploy log's ops-check
+  prints whether they are set.
+- Local testing without a LinkedIn app: a fake connection in the local database makes the whole flow run; LinkedIn then refuses
+  the post with "Invalid access token", which the failed job and its notification show.
 
 ### Help (src/components/views/HelpGuideView.tsx, GuidedTourModal.tsx)
 
@@ -181,6 +213,10 @@ deleted 2026-10-19).
 ## Pending (as of 2026-10-07)
 
 Needs the owner:
+- LinkedIn posting (2026-10-19): create a LinkedIn developer app (needs a LinkedIn Company Page to create it), add the products
+  "Sign In with LinkedIn using OpenID Connect" and "Share on LinkedIn", set the redirect URL
+  `https://lumoraos.in/api/v1/integrations/linkedin/callback`, then add GitHub secret `LINKEDIN_CLIENT_SECRET` and variables
+  `LINKEDIN_CLIENT_ID` and `LINKEDIN_REDIRECT_URI`, redeploy, connect LinkedIn in Integrations and post once.
 - Video Studio "save as template" has never worked on production (`video_templates` is empty). Retry in Scene Builder and read the red
   error on the finished-video screen (the real reason is now shown), then fix the cause.
 - Character Studio avatar pictures showed as broken images although the files and database values are correct; hard refresh and

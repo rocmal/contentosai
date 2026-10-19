@@ -56,7 +56,7 @@ them in git or chat.
 | Needed | Razorpay live keys | See section 1. |
 | Optional | `ELEVENLABS_API_KEY` on a plan with instant voice cloning | Without it "Record your own voice" says it is not set up. Prices for ElevenLabs/Cartesia/Azure are placeholders. |
 | Optional | `SENTRY_DSN` | Read from config but Sentry is not wired in; errors only reach container logs. |
-| Needed to publish | Meta app (App Review), LinkedIn app, Google OAuth client (YouTube) | Until Meta approves the app, only tester accounts can connect Instagram/Facebook. |
+| Needed to publish | Meta app (App Review), LinkedIn app, Google OAuth client (YouTube) | Until Meta approves the app, only tester accounts can connect Instagram/Facebook. LinkedIn app setup: [LINKEDIN-INTEGRATION.md](LINKEDIN-INTEGRATION.md). |
 
 ### How billing works (what you can promise customers)
 
