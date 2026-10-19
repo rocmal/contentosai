@@ -1,0 +1,38 @@
+# EAS Build uploads only the phone app (apps/mobile). The rest of this repository is the website, the API, the AI
+# services and design files - over 300 MB that the phone build never reads.
+# EAS reads this file INSTEAD of .gitignore, so the phone app's own ignore rules are repeated below.
+# (No trailing slash on the two "!" lines: EAS checks folder paths without one.)
+/*
+!/apps
+/apps/*
+!/apps/mobile
+
+# From apps/mobile/.gitignore
+/apps/mobile/node_modules/
+/apps/mobile/.expo/
+/apps/mobile/dist/
+/apps/mobile/web-build/
+/apps/mobile/expo-env.d.ts
+/apps/mobile/.kotlin/
+/apps/mobile/ios/
+/apps/mobile/android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+.env
+.env*.local
+*.tsbuildinfo
+example
+
+# Editor and assistant settings, not needed to build
+/apps/mobile/.vscode/
+/apps/mobile/.claude/

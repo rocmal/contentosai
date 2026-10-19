@@ -108,8 +108,9 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   phone `src/ui/mediaBox.ts` + `src/lib/videoAspect.ts`. Never size a preview with full width + max-height + aspect-ratio (it bends).
   A Scene Builder draft remembers its voice recording (`video_projects.narrationRecordingId`, a custom voice id).
   Code layout (split 2026-10-19): `VideoStudioView.tsx` is a thin shell; `src/components/views/videoStudio/useVideoStudio.ts`
-  holds all state and actions, and each screen part is a component there (CreateStep, PromptPanel, SceneBuilder, SceneList,
-  NarrationPanel, EditStep, ResultStep, ...) that reads what it needs from the hook result passed as `studio`.
+  holds the step flow and combines the area hooks (`useNarration`, `useSceneBuilder`, `useTextOverlay`, `useVideoTemplates`,
+  `useShareActions`); each screen part is a component there (CreateStep, PromptPanel, SceneBuilder, SceneList, NarrationPanel,
+  EditStep, ResultStep, ...) that reads what it needs from the combined result passed as `studio`.
 - **Voice Studio:** Sarvam for Indian languages; record-your-own-voice (custom voices, ElevenLabs instant clone, needs
   ELEVENLABS_API_KEY). Without the key a recording is still saved (voices list as "recording only" + a copy in the Gallery); "Make it speak new scripts" (`POST /custom-voices/:id/activate`) clones it once the key exists. Sarvam bulbul:v2 was retired; v3 only. Mic dictation on script boxes.
 - Voice and video buttons show the credit cost before generating (`GET /credits/rates`, `src/lib/creditCost.ts`); the server charges
@@ -140,6 +141,8 @@ Rewritten 2026-10-07 for the current product. The old walkthrough video file (`p
   image preview then Save to gallery, Veo-only 8 s video with the 17 templates, Sarvam-only voices with samples. Video templates, Sarvam
   voices and writing instructions are copied from the website (`apps/mobile/src/lib/videoTemplates.ts`, `sarvamVoices.ts`,
   `studioPrompts.ts`) - change both when one changes. Phone recordings are .m4a; the API maps the type for Sarvam (`speechUpload`).
+- EAS builds upload only `apps/mobile` because of the root `.easignore` (the whole repo was 331 MB, mostly `ai-services`). EAS reads
+  it INSTEAD of `.gitignore`, so it repeats the phone app's ignore rules; check with `npx eas-cli build:inspect --stage archive`.
 - Mobile uploads: always add files to FormData with `appendFile` (`apps/mobile/src/lib/filePart.ts`). The app's fetch is Expo's
   (SDK 54+) and refuses React Native's `{ uri, name, type }` parts ("Unsupported FormDataPart implementation"); the browser preview
   hides this, so test uploads on a phone.
