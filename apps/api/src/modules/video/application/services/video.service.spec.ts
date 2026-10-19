@@ -124,6 +124,8 @@ describe('VideoService', () => {
       );
       // Our own storage URL replaces the vendor's (possibly expiring) one.
       expect(result.videoUrl).toBe('https://cdn.example.com/gallery/videos/job-1.mp4');
+      // The app reads this and does not save a second copy.
+      expect(result.savedToGallery).toBe(true);
     });
 
     it('serves the cached asset on a repeat poll instead of re-downloading', async () => {
@@ -138,6 +140,7 @@ describe('VideoService', () => {
       expect(storageService.uploadFile).not.toHaveBeenCalled();
       expect(mediaAssetsService.saveGenerated).not.toHaveBeenCalled();
       expect(result.videoUrl).toBe('https://cdn.example.com/already-saved.mp4');
+      expect(result.savedToGallery).toBe(true);
     });
 
     it('returns the original result instead of throwing when persistence fails', async () => {
@@ -147,6 +150,8 @@ describe('VideoService', () => {
       const result = await service.getJobStatus('runway', 'job-1', actor);
 
       expect(result).toEqual(completedResult);
+      // Not in the Gallery, so the app still offers to save it.
+      expect(result.savedToGallery).toBeUndefined();
     });
   });
 
@@ -193,7 +198,12 @@ describe('VideoService', () => {
     });
 
     it('charges nothing for the free test engine, and the full rate for an engine it does not list', async () => {
-      provider.submitJob.mockResolvedValue({ provider: 'mock', model: 'mock', jobId: 'job-4', status: 'processing' });
+      provider.submitJob.mockResolvedValue({
+        provider: 'mock',
+        model: 'mock',
+        jobId: 'job-4',
+        status: 'processing',
+      });
 
       await service.submitJob({ ...dto, provider: 'mock' }, actor);
       expect(creditsService.reserve).not.toHaveBeenCalled();
@@ -221,6 +231,7 @@ describe('VideoService', () => {
         expect(result).toMatchObject({
           status: 'completed',
           cached: true,
+          savedToGallery: true,
           videoUrl: 'https://cdn.example.com/old.mp4',
         });
         expect(creditsService.reserve).not.toHaveBeenCalled();

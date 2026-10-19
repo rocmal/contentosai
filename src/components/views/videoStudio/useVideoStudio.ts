@@ -66,6 +66,9 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
   const [sourceVideoNaturalAspect, setSourceVideoNaturalAspect] = useState<number | null>(null);
   const [isSavingToGallery, setIsSavingToGallery] = useState(false);
   const [savedToGallery, setSavedToGallery] = useState(false);
+  /** The base clip is already in the Gallery (the server saves every generated clip), so finishing it without text
+   * must not upload a second copy. */
+  const [sourceInGallery, setSourceInGallery] = useState(false);
   const [compositeProgress, setCompositeProgress] = useState(0);
 
   // The final clip actually shown/downloaded/shared - identical to
@@ -136,6 +139,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setStep('create');
     setError(null);
     setSourceVideoUrl(null);
+    setSourceInGallery(false);
     setSourceVideoNaturalAspect(null);
     resetOverlay();
     setFinalVideoUrl(null);
@@ -157,6 +161,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setStep('create');
     setError(null);
     setSourceVideoUrl(null);
+    setSourceInGallery(false);
     setSourceVideoNaturalAspect(null);
     clearOverlayText();
     setHasOverlay(false);
@@ -224,6 +229,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
       setSceneWarning(describeSkippedScenes(skippedSceneNumbers ?? []));
       setSourceVideoNaturalAspect(null);
       setSourceVideoUrl(URL.createObjectURL(blob));
+      setSourceInGallery(false);
       setStep('edit');
     } catch (err) {
       setError(
@@ -294,6 +300,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
         setAspectRatio(stylePreset.aspectRatio);
         setSourceVideoNaturalAspect(null);
         setSourceVideoUrl(final.videoUrl);
+        setSourceInGallery(Boolean(final.savedToGallery));
         setStep('edit');
       } else {
         setError(`${PROVIDER_LABELS[provider]} could not render this video. Try again or pick a different engine.`);
@@ -322,6 +329,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setAspectRatio('16:9');
     setSourceVideoNaturalAspect(null);
     setSourceVideoUrl(URL.createObjectURL(file));
+    setSourceInGallery(false);
     setStep('edit');
   };
 
@@ -330,6 +338,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setAspectRatio(t.aspectRatio);
     setSourceVideoNaturalAspect(null);
     setSourceVideoUrl(t.url);
+    setSourceInGallery(false);
     setStep('edit');
   };
 
@@ -341,6 +350,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setAspectRatio(knownRatio ? (t.aspectRatio as AiStylePreset['aspectRatio']) : '16:9');
     setSourceVideoNaturalAspect(null);
     setSourceVideoUrl(t.videoUrl);
+    setSourceInGallery(false);
     setStep('edit');
   };
 
@@ -349,6 +359,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setFinalVideoUrl(sourceVideoUrl);
     setFinalMimeType('video/mp4');
     setHasOverlay(false);
+    setSavedToGallery(sourceInGallery);
     setStep('result');
   };
 
@@ -411,6 +422,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
       setFinalVideoUrl(URL.createObjectURL(blob));
       setFinalMimeType(mimeType);
       setHasOverlay(true);
+      setSavedToGallery(false); // a new file with the text burned in
       setStep('result');
     } catch (err) {
       setError(

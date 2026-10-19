@@ -22,6 +22,7 @@
 @keyframes lumora-rise { 0% { transform: translateY(12px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 @keyframes lumora-halo { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.15); } }
 @keyframes lumora-load { 0% { width: 0; } 100% { width: 100%; } }
+@keyframes lumora-caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
 
 .lumora-float { animation: lumora-float 7s ease-in-out infinite; }
 .lumora-float-delay { animation-delay: -2.5s; }
@@ -35,9 +36,10 @@
 .lumora-rise-delay { animation-delay: 0.45s; }
 .lumora-halo { animation: lumora-halo 2.4s ease-in-out infinite; }
 .lumora-load { animation: lumora-load 1.6s ease-in-out both; }
+.lumora-caret { animation: lumora-caret 1.1s step-end infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .lumora-float, .lumora-aurora, .lumora-wave, .lumora-progress, .lumora-pop,
-  .lumora-rise, .lumora-halo, .lumora-load { animation: none; }
+  .lumora-rise, .lumora-halo, .lumora-load, .lumora-caret { animation: none; }
   .lumora-progress { width: 60%; }
 }

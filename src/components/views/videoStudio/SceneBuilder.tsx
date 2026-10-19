@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bookmark, FolderOpen, Layers, Loader2, Pencil, Play, Upload, X } from 'lucide-react';
+import { creditLabel, voiceCreditCost } from '../../../lib/creditCost';
 import { SCENE_ASPECT_RATIO_OPTIONS, SCENE_TRANSITION_OPTIONS, previewBoxWidth } from './constants';
 import { DeleteDraftDialog } from './DeleteDraftDialog';
 import { DraftPicker } from './DraftPicker';
@@ -11,6 +12,7 @@ import type { VideoStudio } from './useVideoStudio';
 /** Scene Builder tab: images and clips in order, one narration, one combined video. */
 export const SceneBuilder: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
   const {
+    creditRates,
     displayAspectRatio,
     draftTitle,
     draftToDelete,
@@ -22,8 +24,10 @@ export const SceneBuilder: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     isGalleryPickerOpen,
     isPreviewingVideo,
     isUploadingScenes,
+    narrationText,
     pastProjects,
     previewVideoUrl,
+    recordedNarration,
     sceneAspectRatio,
     sceneSaveAsTemplate,
     sceneTransition,
@@ -39,6 +43,9 @@ export const SceneBuilder: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     templateVisibility,
     videoProjectId,
   } = studio;
+  // Combining scenes happens in the browser and is free; only a typed script costs (it is voiced like Voice Studio).
+  const voicesScript = !recordedNarration && narrationText.trim().length > 0;
+  const generateCost = creditRates ? (voicesScript ? voiceCreditCost(creditRates, 'sarvam', narrationText) : 0) : null;
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -283,7 +290,7 @@ export const SceneBuilder: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
           className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 active:scale-[0.99] transition-all disabled:opacity-50"
         >
           <Layers className="w-4 h-4" />
-          <span>Generate Video</span>
+          <span>Generate Video{generateCost !== null && ` · ${creditLabel(generateCost)}`}</span>
         </button>
       </div>
     </div>

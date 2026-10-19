@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Logo, Wordmark } from './Logo';
 import { ContactSalesModal } from './ContactSalesModal';
+import { LandingShowcase } from './landing/LandingShowcase';
 import { PRICING_PLANS, formatPlanPrice, BillingCycle, LocalizedRate } from '../lib/pricingPlans';
 import { detectLikelyCurrency } from '../lib/currency';
 import { fetchExchangeRate, PurchasablePlan } from '../lib/api';
@@ -172,14 +173,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
         </div>
 
         <div className="max-w-[1000px] mx-auto mt-14 relative">
-          <video
-            src="/videos/lumora-brand-ad.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="w-full aspect-video object-cover block rounded-[20px] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)] bg-black"
-          />
+          <LandingShowcase />
         </div>
       </section>
 
@@ -241,21 +235,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
               </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* DEMO VIDEO */}
-      <section className="py-20 px-6">
-        <div className="max-w-[900px] mx-auto text-center">
-          <div className="text-xs font-bold tracking-[0.06em] text-[#818CF8] mb-3">DEMO</div>
-          <h2 className="text-[clamp(28px,3.4vw,40px)] font-extrabold tracking-[-0.01em] mb-8 text-[#F8FAFC]">
-            See LumoraOS in action.
-          </h2>
-          <video
-            src="/videos/lumora-tutorial.mp4"
-            controls
-            className="w-full block rounded-[20px] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,0.45)] bg-black"
-          />
         </div>
       </section>
 

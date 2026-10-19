@@ -32,7 +32,7 @@ const PROVIDER_INFO: Record<api.VoiceProvider, { name: string; description: stri
   cartesia: { name: 'Cartesia', description: 'Low-latency, deep narration' },
   azure: { name: 'Azure Speech', description: 'Enterprise-grade neural TTS' },
   piper: { name: 'Piper (offline)', description: 'Fully offline fallback - no internet or account needed' },
-  sarvam: { name: 'Sarvam AI', description: '44 voices across 11 Indian languages' },
+  sarvam: { name: 'Sarvam AI', description: 'Natural Indian voices in Hindi, Punjabi and English' },
 };
 
 // TEMPORARY: keeping pure Indian-accent voices only for now - Sarvam is the
@@ -42,25 +42,38 @@ const PROVIDER_INFO: Record<api.VoiceProvider, { name: string; description: stri
 // `api.VOICE_PROVIDERS`.
 const VISIBLE_VOICE_PROVIDERS: readonly api.VoiceProvider[] = ['sarvam'];
 
-type Language = 'en' | 'hi';
+type Language = 'hi' | 'pa' | 'en';
 
-const LANGUAGE_LABELS: Record<Language, string> = { en: 'English', hi: 'हिंदी Hindi' };
+const LANGUAGE_LABELS: Record<Language, string> = { hi: 'हिंदी Hindi', pa: 'ਪੰਜਾਬੀ Punjabi', en: 'English' };
+
+/** An example script in each language, shown in the empty script box (same wording as the phone app). */
+const SCRIPT_PLACEHOLDER: Record<Language, string> = {
+  hi: 'उदाहरण: नमस्ते! अपने परिवार के भविष्य को सुरक्षित करें…',
+  pa: 'ਉਦਾਹਰਨ: ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਆਪਣੇ ਪਰਿਵਾਰ ਦੇ ਭਵਿੱਖ ਨੂੰ ਸੁਰੱਖਿਅਤ ਕਰੋ…',
+  en: 'For example: Hello! Plan today for your family’s tomorrow…',
+};
+
+const DICTATION_LANGUAGE: Record<Language, api.TranscribeLanguage> = { hi: 'hi-IN', pa: 'pa-IN', en: 'en-IN' };
+
+/** Voice samples exist in English and Hindi; Punjabi plays the Hindi one (as in the phone app). */
+const sampleLanguage = (language: Language) => (language === 'en' ? 'en' : 'hi');
 
 // Piper is the one provider with confirmed, installed voices per language -
 // picking a language here swaps its voiceId directly. Other providers keep
 // manual voiceId entry (see the input below) since we haven't verified a
 // Hindi voice id for each of them; `language` is still saved with the
 // template either way so it stays a meaningful filter later.
-const PIPER_VOICE_BY_LANGUAGE: Record<Language, string> = {
+const PIPER_VOICE_BY_LANGUAGE: Partial<Record<Language, string>> = {
   en: 'en_US-lessac-medium',
   hi: 'hi_IN-priyamvada-medium',
 };
 
 // Sarvam takes a BCP-47 language_code rather than swapping voiceId per
-// language - both en-IN and hi-IN are covered by every bulbul:v3 speaker.
+// language - every bulbul:v3 speaker covers en-IN, hi-IN and pa-IN.
 const SARVAM_LANGUAGE_CODE: Record<Language, string> = {
-  en: 'en-IN',
   hi: 'hi-IN',
+  pa: 'pa-IN',
+  en: 'en-IN',
 };
 
 type Gender = 'female' | 'male';
@@ -69,10 +82,7 @@ const GENDER_LABELS: Record<Gender, string> = { female: 'Female', male: 'Male' }
 
 export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) => {
   const { user } = useAuth();
-  const [text, setText] = useState(() =>
-    takeReuse('voice')?.prompt ??
-    "Welcome to Lumora — the AI Content Operating System designed for high-growth tech teams. Scale your multi-channel marketing with a unified Brand Memory."
-  );
+  const [text, setText] = useState(() => takeReuse('voice')?.prompt ?? '');
   // Sarvam is the only provider actually built for Indian accents - the
   // rest (Edge/ElevenLabs/Cartesia/Azure/Piper) are generic/Western TTS.
   const [provider, setProvider] = useState<api.VoiceProvider>('sarvam');
@@ -184,7 +194,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
   const handleSelectLanguage = (lang: Language) => {
     setLanguage(lang);
     if (provider === 'piper') {
-      setVoiceId(PIPER_VOICE_BY_LANGUAGE[lang]);
+      setVoiceId(PIPER_VOICE_BY_LANGUAGE[lang] ?? '');
     }
   };
 
@@ -197,7 +207,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
       previewAudioRef.current = null;
       return;
     }
-    const audio = new Audio(sarvamVoiceSampleUrl(id, language));
+    const audio = new Audio(sarvamVoiceSampleUrl(id, sampleLanguage(language)));
     audio.addEventListener('ended', () => setPreviewingVoiceId(null));
     audio.play().catch(() => setPreviewingVoiceId(null));
     previewAudioRef.current = audio;
@@ -208,7 +218,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
     setSelectedCustomId('');
     setProvider(p);
     if (p === 'piper') {
-      setVoiceId(PIPER_VOICE_BY_LANGUAGE[language]);
+      setVoiceId(PIPER_VOICE_BY_LANGUAGE[language] ?? '');
     } else if (p === 'sarvam') {
       // Reset rather than carry over another provider's voiceId (e.g.
       // "en-US-AriaNeural" typed for Azure) - Sarvam's dropdown defaults to
@@ -252,7 +262,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
         setError(
           err instanceof api.ApiError
             ? err.message
-            : 'Could not reach the Lumora API. Is the backend running?',
+            : 'Could not reach Lumora. Check your internet connection and try again.',
         );
       }
     } finally {
@@ -300,8 +310,8 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
     if (api.VOICE_PROVIDERS.includes(template.provider as api.VoiceProvider)) {
       setProvider(template.provider as api.VoiceProvider);
     }
-    if (template.language === 'en' || template.language === 'hi') {
-      setLanguage(template.language);
+    if (template.language in LANGUAGE_LABELS) {
+      setLanguage(template.language as Language);
     }
     setVoiceId(template.voiceId);
   };
@@ -338,7 +348,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
             <label className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
               Language
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {(Object.keys(LANGUAGE_LABELS) as Language[]).map((lang) => (
                 <button
                   key={lang}
@@ -489,8 +499,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                   ))}
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  Used when Voice below is left on "Auto" - {SARVAM_VOICE_BY_GENDER[gender].voiceId} (bulbul:v3),
-                  Sarvam's only model with a documented gender per voice.
+                  Used when Voice below is on "Auto".
                 </p>
               </div>
 
@@ -511,7 +520,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                   <button
                     type="button"
                     onClick={() => handlePreviewVoice(voiceId.trim() || SARVAM_VOICE_BY_GENDER[gender].voiceId)}
-                    title="Preview the current selection (plays a local sample, no API call)"
+                    title="Listen to a short sample of this voice (free)"
                     className="shrink-0 w-9 rounded-xl bg-slate-800 hover:bg-slate-700 text-white flex items-center justify-center transition-colors"
                   >
                     {previewingVoiceId === (voiceId.trim() || SARVAM_VOICE_BY_GENDER[gender].voiceId) ? (
@@ -522,8 +531,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                   </button>
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">
-                  {SARVAM_VOICE_CATALOG.length} voices, all confirmed working live in both English and Hindi. Preview
-                  plays a pre-generated local sample - no API call.
+                  {SARVAM_VOICE_CATALOG.length} voices. Press play to hear a short sample for free.
                 </p>
               </div>
             </>
@@ -583,21 +591,21 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
         {/* Text Area & Audio Synthesizer */}
         <div className="lg:col-span-2 space-y-4">
           <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Script & Voice Synthesis
-            </h3>
-
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="block text-xs font-bold text-slate-900 dark:text-white">Script Content</label>
+                <label htmlFor="voice-script" className="block text-xs font-bold text-slate-900 dark:text-white">
+                  What should the voice say?
+                </label>
                 <VoiceInputButton
-                  language={language === 'hi' ? 'hi-IN' : 'en-IN'}
+                  language={DICTATION_LANGUAGE[language]}
                   onText={(spoken) => setText((previous) => appendSpoken(previous, spoken))}
                 />
               </div>
               <textarea
+                id="voice-script"
                 rows={5}
                 value={text}
+                placeholder={SCRIPT_PLACEHOLDER[language]}
                 onChange={(e) => setText(e.target.value)}
                 className="w-full text-xs p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
               />
@@ -629,10 +637,10 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                 <Sparkles className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
                 <span>
                   {isGenerating
-                    ? 'Synthesizing Audio...'
+                    ? 'Making your voiceover...'
                     : creditRates && text.trim()
-                      ? `Generate Speech · ${creditLabel(voiceCreditCost(creditRates, provider, text))}`
-                      : 'Generate Speech'}
+                      ? `Create voiceover · ${creditLabel(voiceCreditCost(creditRates, provider, text))}`
+                      : 'Create voiceover'}
                 </span>
               </button>
               <button
@@ -662,7 +670,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
                   maxLength={150}
-                  placeholder="e.g. Hindi narrator - Priyamvada"
+                  placeholder="e.g. Hindi narrator - Priya"
                   className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
                 />
                 <div className="grid grid-cols-2 gap-2">
@@ -705,48 +713,42 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
               </div>
             )}
 
-            {/* Audio Player */}
-            <div className="p-4 rounded-xl bg-slate-950 text-white flex items-center justify-between gap-4">
-              <button
-                onClick={handleTogglePlay}
-                disabled={!audioUrl}
-                className="p-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-transform active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {isPlaying ? (
-                  <Pause className="w-5 h-5 fill-current" />
-                ) : (
-                  <Play className="w-5 h-5 fill-current ml-0.5" />
-                )}
-              </button>
+            {/* Audio player - shown once a voiceover exists */}
+            {audioUrl && (
+              <div className="p-4 rounded-xl bg-slate-950 text-white flex items-center justify-between gap-4">
+                <button
+                  onClick={handleTogglePlay}
+                  title={isPlaying ? 'Pause' : 'Play'}
+                  className="p-3 rounded-full bg-blue-600 hover:bg-blue-500 text-white transition-transform active:scale-95"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-5 h-5 fill-current" />
+                  ) : (
+                    <Play className="w-5 h-5 fill-current ml-0.5" />
+                  )}
+                </button>
 
-              <div className="flex-1 flex items-center gap-1 h-8">
-                {Array.from({ length: 32 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`flex-1 rounded-full bg-blue-500/80 transition-all ${
-                      isPlaying ? 'animate-pulse' : ''
-                    }`}
-                    style={{ height: `${Math.max(20, Math.sin(i) * 100)}%` }}
-                  />
-                ))}
-              </div>
+                <div className="flex-1 flex items-center gap-1 h-8">
+                  {Array.from({ length: 32 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`flex-1 rounded-full bg-blue-500/80 transition-all ${
+                        isPlaying ? 'animate-pulse' : ''
+                      }`}
+                      style={{ height: `${Math.max(20, Math.sin(i) * 100)}%` }}
+                    />
+                  ))}
+                </div>
 
-              <a
-                href={audioUrl ?? undefined}
-                download={audioUrl ? 'lumora-voiceover' : undefined}
-                onClick={(e) => {
-                  if (!audioUrl) e.preventDefault();
-                }}
-                className={`p-2 rounded-lg ${
-                  audioUrl
-                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer'
-                    : 'bg-slate-900 text-slate-600 cursor-not-allowed'
-                }`}
-              >
-                <Download className="w-4 h-4" />
-              </a>
+                <a
+                  href={audioUrl}
+                  download="lumora-voiceover"
+                  title="Download"
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
 
-              {audioUrl && (
                 <audio
                   ref={audioRef}
                   src={audioUrl}
@@ -755,8 +757,8 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                   onEnded={() => setIsPlaying(false)}
                   className="hidden"
                 />
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

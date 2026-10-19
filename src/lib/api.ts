@@ -1306,6 +1306,8 @@ export interface VideoGenerationResult {
   cacheKey?: string;
   /** True when an earlier clip for the same prompt was reused (nothing charged). */
   cached?: boolean;
+  /** True when the server already saved the finished clip to the Gallery - don't upload it again. */
+  savedToGallery?: boolean;
 }
 
 export async function generateVideo(input: {

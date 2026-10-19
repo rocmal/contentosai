@@ -14,7 +14,8 @@ export const CreateStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
   return (
     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6 items-start">
       <div className="space-y-6 min-w-0">
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 w-fit mx-auto lg:mx-0">
+        {/* On a phone the four tabs share the width, icon above label, so the row never runs off the screen. */}
+        <div className="grid grid-cols-4 gap-1 sm:flex sm:items-center sm:gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 sm:w-fit mx-auto lg:mx-0">
           {(
             [
               { id: 'prompt', label: 'Prompt', icon: Sparkles },
@@ -30,7 +31,7 @@ export const CreateStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
                 key={tab.id}
                 type="button"
                 onClick={() => setSource(tab.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                className={`flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-4 py-2 rounded-lg text-[11px] sm:text-xs font-bold whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-sm'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'

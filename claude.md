@@ -58,8 +58,15 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 - **Hidden on purpose, code and routes kept** (still reachable by typing the hash, e.g. `#ai-studio`): AI Studio, Brand Brain,
   Projects, Campaigns, Character Studio (also removed from the mobile Studio chip row and Profile menu). To bring one back, add
   its one-line entry to `mainNav` / `creationNav` in Sidebar.tsx.
+- Below 1024px the website has a bottom tab bar (`src/components/MobileNav.tsx`): Home, Create (Image/Video/Voice Studio),
+  Calendar, Gallery, Menu, like the phone app. Until 2026-10-19 it still linked the hidden AI Studio ("Wizard") and Automation;
+  never link a hidden screen from it.
 - Landing page, pricing plans, footer and FAQ were reworded to the real product (Image, Video, Voice, Gallery, Team, Calendar,
   Dashboard). Keep them in step with this list when navigation changes.
+- The landing hero picture is drawn in code (`src/components/landing/LandingShowcase.tsx`, built from the sign-in page's
+  artwork). The old hero and "See LumoraOS in action" videos (`public/videos/`) advertised AI agents, a zero-prompt wizard,
+  Brand Brain and Twitter/WordPress posting, and were deleted 2026-10-19. Keep the showcase to features that exist; add a demo
+  section back only with a new recording of the current product.
 
 ### Header, titles and global search
 
@@ -107,11 +114,15 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   Previews keep the clip's real shape and are labelled ("Wide 16:9 · fits ..."): website `previewBoxWidth` + `src/lib/videoShape.ts`,
   phone `src/ui/mediaBox.ts` + `src/lib/videoAspect.ts`. Never size a preview with full width + max-height + aspect-ratio (it bends).
   A Scene Builder draft remembers its voice recording (`video_projects.narrationRecordingId`, a custom voice id).
+  The server saves every generated clip to the Gallery and says so in the job result (`savedToGallery`); the finished screen
+  then shows "Saved to Gallery" instead of uploading a second copy (only text overlays, Scene Builder videos and uploads are
+  saved from the browser). Scene Builder's Generate button shows its price: free, or the voice cost when a typed script is voiced.
   Code layout (split 2026-10-19): `VideoStudioView.tsx` is a thin shell; `src/components/views/videoStudio/useVideoStudio.ts`
   holds the step flow and combines the area hooks (`useNarration`, `useSceneBuilder`, `useTextOverlay`, `useVideoTemplates`,
   `useShareActions`); each screen part is a component there (CreateStep, PromptPanel, SceneBuilder, SceneList, NarrationPanel,
   EditStep, ResultStep, ...) that reads what it needs from the combined result passed as `studio`.
-- **Voice Studio:** Sarvam for Indian languages; record-your-own-voice (custom voices, ElevenLabs instant clone, needs
+- **Voice Studio:** Sarvam in Hindi, Punjabi (pa-IN) and English, like the phone app; the script starts empty with an example in
+  the chosen language (voice samples exist in Hindi and English; Punjabi plays the Hindi one); record-your-own-voice (custom voices, ElevenLabs instant clone, needs
   ELEVENLABS_API_KEY). Without the key a recording is still saved (voices list as "recording only" + a copy in the Gallery); "Make it speak new scripts" (`POST /custom-voices/:id/activate`) clones it once the key exists. Sarvam bulbul:v2 was retired; v3 only. Mic dictation on script boxes.
 - Voice and video buttons show the credit cost before generating (`GET /credits/rates`, `src/lib/creditCost.ts`); the server charges
   from the same tables. Voice is charged per whole minute (150 words each), video per 10 seconds.
@@ -120,7 +131,8 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
 
 ### Help (src/components/views/HelpGuideView.tsx, GuidedTourModal.tsx)
 
-Rewritten 2026-10-07 for the current product. The old walkthrough video file (`public/videos/lumora-tutorial.mp4`) is unused.
+Rewritten 2026-10-07 for the current product. There is no walkthrough video (the old one showed the retired product and was
+deleted 2026-10-19).
 
 ### Deploy and operations
 
@@ -167,6 +179,6 @@ Needs the owner:
 
 Code still to do:
 - Real invite-by-email (pending invitations). Today the Team page can only add someone who already has an account.
-- Show the credit cost on the Video Studio narration step (it reserves voice credits) and on avatars when Character Studio returns.
+- Show the credit cost on avatars when Character Studio returns (the Scene Builder narration price is done).
 - Record unsaved Image Studio generations so history is complete.
 - Other modules that take ids without checking workspace ownership have not been audited (only media and publishing were fixed).

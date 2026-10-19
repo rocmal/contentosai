@@ -78,6 +78,7 @@ export class VideoService {
           videoUrl: cached.url,
           cacheKey,
           cached: true,
+          savedToGallery: true,
         };
       }
     }
@@ -204,7 +205,7 @@ export class VideoService {
         if (!cached.prompt && actor.prompt) {
           await this.mediaAssetsService.setPromptIfMissing(cached.id, actor.prompt);
         }
-        return { ...result, videoUrl: cached.url };
+        return { ...result, videoUrl: cached.url, savedToGallery: true };
       }
 
       const provider = this.providerFactory.getProvider(result.provider);
@@ -238,7 +239,7 @@ export class VideoService {
         actor.userId,
       );
 
-      return { ...result, videoUrl: stored.url };
+      return { ...result, videoUrl: stored.url, savedToGallery: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`Failed to persist completed video for job ${result.jobId}: ${message}`);

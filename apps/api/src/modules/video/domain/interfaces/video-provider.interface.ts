@@ -19,6 +19,8 @@ export interface VideoGenerationResult {
   cacheKey?: string;
   /** True when an earlier clip was reused - nothing was charged. */
   cached?: boolean;
+  /** True when the finished clip is already in the user's Gallery (saved by the server), so the app must not save it again. */
+  savedToGallery?: boolean;
 }
 
 /**
