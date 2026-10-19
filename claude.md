@@ -107,6 +107,9 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   Previews keep the clip's real shape and are labelled ("Wide 16:9 · fits ..."): website `previewBoxWidth` + `src/lib/videoShape.ts`,
   phone `src/ui/mediaBox.ts` + `src/lib/videoAspect.ts`. Never size a preview with full width + max-height + aspect-ratio (it bends).
   A Scene Builder draft remembers its voice recording (`video_projects.narrationRecordingId`, a custom voice id).
+  Code layout (split 2026-10-19): `VideoStudioView.tsx` is a thin shell; `src/components/views/videoStudio/useVideoStudio.ts`
+  holds all state and actions, and each screen part is a component there (CreateStep, PromptPanel, SceneBuilder, SceneList,
+  NarrationPanel, EditStep, ResultStep, ...) that reads what it needs from the hook result passed as `studio`.
 - **Voice Studio:** Sarvam for Indian languages; record-your-own-voice (custom voices, ElevenLabs instant clone, needs
   ELEVENLABS_API_KEY). Without the key a recording is still saved (voices list as "recording only" + a copy in the Gallery); "Make it speak new scripts" (`POST /custom-voices/:id/activate`) clones it once the key exists. Sarvam bulbul:v2 was retired; v3 only. Mic dictation on script boxes.
 - Voice and video buttons show the credit cost before generating (`GET /credits/rates`, `src/lib/creditCost.ts`); the server charges
@@ -160,7 +163,6 @@ Needs the owner:
 - Lawyer review of the landing page "Who owns the content" answer.
 
 Code still to do:
-- Split `src/components/views/VideoStudioView.tsx` (over 3,000 lines) into Create / Scene Builder / Edit / Result parts.
 - Real invite-by-email (pending invitations). Today the Team page can only add someone who already has an account.
 - Show the credit cost on the Video Studio narration step (it reserves voice credits) and on avatars when Character Studio returns.
 - Record unsaved Image Studio generations so history is complete.

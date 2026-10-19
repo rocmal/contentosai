@@ -1,0 +1,226 @@
+import React from 'react';
+import { AlertTriangle, Bookmark, Check, Copy, Download, Loader2, RotateCcw, Share2, X } from 'lucide-react';
+import { SchedulePostPanel } from '../../SchedulePostPanel';
+import { previewBoxWidth } from './constants';
+import { VideoShapeLabel } from './VideoShapeLabel';
+import type { VideoStudio } from './useVideoStudio';
+
+/** Step 3: the finished video - save, download, share, schedule, save as template. */
+export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
+  const {
+    displayAspectRatio,
+    finalMimeType,
+    finalVideoUrl,
+    handleDownload,
+    handleOpenSaveTemplatePanel,
+    handleSaveTemplate,
+    handleSaveToGallery,
+    handleShare,
+    handleShareToFacebook,
+    hasOverlay,
+    isDownloading,
+    isSavingTemplate,
+    isSavingToGallery,
+    narrationText,
+    onNavigate,
+    overlayText,
+    prompt,
+    resetAll,
+    saveTemplateError,
+    saveTemplateStatus,
+    savedToGallery,
+    setShowSaveTemplatePanel,
+    setTemplateTitle,
+    setTemplateVisibility,
+    shareStatus,
+    showSaveTemplatePanel,
+    source,
+    sourceVideoNaturalAspect,
+    templateTitle,
+    templateVisibility,
+  } = studio;
+  if (!finalVideoUrl) return null;
+  return (
+    <div className="max-w-2xl mx-auto space-y-5">
+      <div
+        className="mx-auto rounded-2xl overflow-hidden border border-slate-800 shadow-xl bg-slate-950"
+        style={{ width: previewBoxWidth(displayAspectRatio, 42), aspectRatio: displayAspectRatio }}
+      >
+        <video src={finalVideoUrl} controls autoPlay className="w-full h-full object-cover" />
+      </div>
+      {sourceVideoNaturalAspect && <VideoShapeLabel ratio={sourceVideoNaturalAspect} />}
+
+      {hasOverlay && (
+        <p className="text-center text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
+          <Check className="w-3.5 h-3.5" /> Text overlay applied - it's part of the exported file
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center justify-center gap-2.5">
+        <button
+          onClick={handleSaveToGallery}
+          disabled={isSavingToGallery || savedToGallery}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60"
+        >
+          {isSavingToGallery ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Check className="w-4 h-4" />
+          )}
+          <span>{savedToGallery ? 'Saved to Gallery' : 'Save to Gallery'}</span>
+        </button>
+
+        <button
+          onClick={handleDownload}
+          disabled={isDownloading}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition-all disabled:opacity-50"
+        >
+          {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          <span>Download {finalMimeType.includes('webm') ? 'WebM' : 'MP4'}</span>
+        </button>
+
+        <button
+          onClick={handleShare}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs shadow-sm transition-all"
+        >
+          {shareStatus === 'sharing' ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : shareStatus === 'shared' ? (
+            <Check className="w-4 h-4" />
+          ) : shareStatus === 'copied' ? (
+            <Copy className="w-4 h-4" />
+          ) : (
+            <Share2 className="w-4 h-4" />
+          )}
+          <span>
+            {shareStatus === 'shared' ? 'Shared' : shareStatus === 'copied' ? 'Link copied' : 'Share'}
+          </span>
+        </button>
+
+        <button
+          onClick={handleShareToFacebook}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#1877F2] hover:opacity-90 text-white font-bold text-xs shadow-sm transition-all"
+        >
+          <Share2 className="w-4 h-4" />
+          <span>Share to Facebook</span>
+        </button>
+
+        <button
+          onClick={handleOpenSaveTemplatePanel}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm transition-all"
+        >
+          <Bookmark className="w-4 h-4" />
+          <span>Save as Template</span>
+        </button>
+
+        <button
+          onClick={resetAll}
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition-all"
+        >
+          <RotateCcw className="w-4 h-4" />
+          <span>Create another</span>
+        </button>
+      </div>
+
+      {shareStatus === 'unsupported' && (
+        <p className="text-center text-[11px] text-slate-400">
+          Sharing/copying isn't supported in this browser - use Download instead.
+        </p>
+      )}
+
+      <SchedulePostPanel
+        finalVideoUrl={finalVideoUrl}
+        defaultCaption={source === 'scenes' ? narrationText.trim() : overlayText.trim() || prompt.trim()}
+        onNavigate={onNavigate}
+      />
+
+
+      {showSaveTemplatePanel && (
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
+              <Bookmark className="w-3.5 h-3.5" /> Save as template
+            </div>
+            <button
+              onClick={() => setShowSaveTemplatePanel(false)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {saveTemplateStatus === 'saved' ? (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+              <Check className="w-4 h-4 shrink-0" />
+              Saved - it'll show up under Templates next time.
+            </div>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={templateTitle}
+                onChange={(e) => setTemplateTitle(e.target.value)}
+                placeholder="Template name..."
+                maxLength={150}
+                className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTemplateVisibility('private')}
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold border transition-all ${
+                    templateVisibility === 'private'
+                      ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  Just me
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTemplateVisibility('team')}
+                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold border transition-all ${
+                    templateVisibility === 'team'
+                      ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  My whole team
+                </button>
+              </div>
+
+              {saveTemplateStatus === 'error' && (
+                <div className="flex items-start gap-2 p-2.5 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <p className="text-[11px] leading-snug break-words">
+                    Could not save this template. {saveTemplateError ?? 'Please try again.'}
+                  </p>
+                </div>
+              )}
+
+              <button
+                onClick={handleSaveTemplate}
+                disabled={isSavingTemplate || !templateTitle.trim()}
+                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all disabled:opacity-50"
+              >
+                {isSavingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bookmark className="w-4 h-4" />}
+                <span>Save Template</span>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      <p className="text-center text-[10px] text-slate-400 max-w-md mx-auto">
+        Instagram and Snapchat don't offer a direct "share from the web" link the way Facebook
+        does - on a phone, the <span className="font-semibold">Share</span> button above will
+        list them automatically if the app is installed. On desktop, download the file and
+        upload it from within the app (that's also where you'd add a location tag, e.g.
+        Amritsar - Instagram's own composer has that built in). Use{' '}
+        <span className="font-semibold">Schedule Post</span> above for fully automated
+        Facebook/Instagram publishing at a chosen time, once connected in Integrations.
+      </p>
+    </div>
+  );
+};
