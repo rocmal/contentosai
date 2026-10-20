@@ -216,10 +216,11 @@ deleted 2026-10-19).
 ## Pending (as of 2026-10-07)
 
 Needs the owner:
-- LinkedIn posting (2026-10-19): create a LinkedIn developer app (needs a LinkedIn Company Page to create it), add the products
-  "Sign In with LinkedIn using OpenID Connect" and "Share on LinkedIn", set the redirect URL
-  `https://lumoraos.in/api/v1/integrations/linkedin/callback`, then add GitHub secret `LINKEDIN_CLIENT_SECRET` and variables
-  `LINKEDIN_CLIENT_ID` and `LINKEDIN_REDIRECT_URI`, redeploy, connect LinkedIn in Integrations and post once.
+- LinkedIn posting: the LinkedIn side is set up (2026-10-20). Company Page "LumoraOS"
+  (https://www.linkedin.com/company/144013705/), developer app "LumoraOS" (https://www.linkedin.com/developers/apps/264160220,
+  products Share on LinkedIn + Sign In with LinkedIn using OpenID Connect, redirect URL set), GitHub secret
+  `LINKEDIN_CLIENT_SECRET` and variables `LINKEDIN_CLIENT_ID` / `LINKEDIN_REDIRECT_URI` added. Left: connect LinkedIn in
+  Integrations on the live site (not from this PC while the hosts entry points lumoraos.in at the local copy) and post once.
 - Video Studio "save as template" has never worked on production (`video_templates` is empty). Retry in Scene Builder and read the red
   error on the finished-video screen (the real reason is now shown), then fix the cause.
 - Character Studio avatar pictures showed as broken images although the files and database values are correct; hard refresh and
