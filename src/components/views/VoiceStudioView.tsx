@@ -19,6 +19,7 @@ import RecordVoicePanel from '../RecordVoicePanel';
 import VoiceInputButton, { appendSpoken } from '../VoiceInputButton';
 import { takeReuse } from '../../lib/reuse';
 import { creditLabel, useCreditRates, voiceCreditCost } from '../../lib/creditCost';
+import { useTextHistory } from '../../lib/useTextHistory';
 import { requestGallerySearch, requestNarrationAudio } from '../../lib/reuse';
 import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG, sarvamVoiceSampleUrl } from '../../lib/sarvamVoices';
 
@@ -83,6 +84,8 @@ const GENDER_LABELS: Record<Gender, string> = { female: 'Female', male: 'Male' }
 export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [text, setText] = useState(() => takeReuse('voice')?.prompt ?? '');
+  // Ctrl+Z / Ctrl+Y over every change, including Speak.
+  const textHistory = useTextHistory(text, setText);
   // Sarvam is the only provider actually built for Indian accents - the
   // rest (Edge/ElevenLabs/Cartesia/Azure/Piper) are generic/Western TTS.
   const [provider, setProvider] = useState<api.VoiceProvider>('sarvam');
@@ -599,6 +602,8 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                 <VoiceInputButton
                   language={DICTATION_LANGUAGE[language]}
                   onText={(spoken) => setText((previous) => appendSpoken(previous, spoken))}
+                  currentText={text}
+                  onReplace={(spoken) => setText(spoken)}
                 />
               </div>
               <textarea
@@ -607,6 +612,7 @@ export const VoiceStudioView: React.FC<VoiceStudioViewProps> = ({ onNavigate }) 
                 value={text}
                 placeholder={SCRIPT_PLACEHOLDER[language]}
                 onChange={(e) => setText(e.target.value)}
+                onKeyDown={textHistory.onKeyDown}
                 className="w-full text-xs p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
               />
             </div>

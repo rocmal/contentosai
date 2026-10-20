@@ -12,6 +12,7 @@ import {
   NarrationLanguage,
 } from './constants';
 import type { VideoStudio } from './useVideoStudio';
+import { useTextHistory } from '../../../lib/useTextHistory';
 
 /** Scene Builder: a recorded voice or a typed script read by a Sarvam voice. */
 export const NarrationPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
@@ -44,6 +45,8 @@ export const NarrationPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) =>
     setNarrationText,
     setNarrationVoiceId,
   } = studio;
+  // Ctrl+Z / Ctrl+Y over every change, including Speak and Improve with AI.
+  const narrationHistory = useTextHistory(narrationText, setNarrationText);
   return (
     <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-2">
       <div className="flex items-center justify-between">
@@ -122,6 +125,7 @@ export const NarrationPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) =>
             rows={3}
             value={narrationText}
             onChange={(e) => setNarrationText(e.target.value)}
+            onKeyDown={narrationHistory.onKeyDown}
             placeholder="What should the narrator say across this whole video?"
             className="w-full text-xs p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
           />
@@ -129,6 +133,8 @@ export const NarrationPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) =>
             <VoiceInputButton
               language={narrationLanguage === 'hi' ? 'hi-IN' : 'en-IN'}
               onText={(spoken) => setNarrationText((prev) => appendSpoken(prev, spoken))}
+              currentText={narrationText}
+              onReplace={(spoken) => setNarrationText(spoken)}
             />
           </div>
           <div className="flex items-center gap-3">

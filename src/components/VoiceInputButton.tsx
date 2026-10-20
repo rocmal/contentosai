@@ -10,6 +10,10 @@ interface VoiceInputButtonProps {
   className?: string;
   /** Icon-only (for tight spaces such as the Co-pilot box). */
   compact?: boolean;
+  /** What the box holds now. With onReplace, a box that already has text asks whether to add what was said or
+   * replace it, instead of always adding to the end. */
+  currentText?: string;
+  onReplace?: (text: string) => void;
 }
 
 const MAX_SECONDS = 60;
@@ -44,8 +48,17 @@ export default function VoiceInputButton({
   language = 'auto',
   className = '',
   compact = false,
+  currentText,
+  onReplace,
 }: VoiceInputButtonProps) {
   const [phase, setPhase] = useState<Phase>('idle');
+  /** What was said, waiting for "Add to the end" or "Replace" (the box already had text). */
+  const [pending, setPending] = useState<string | null>(null);
+  // The recorder's stop handler outlives the render that started it, so it reads the latest text from a ref.
+  const currentTextRef = useRef(currentText);
+  useEffect(() => {
+    currentTextRef.current = currentText;
+  }, [currentText]);
   const [seconds, setSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -69,6 +82,7 @@ export default function VoiceInputButton({
 
   const start = async () => {
     setError(null);
+    setPending(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -87,7 +101,10 @@ export default function VoiceInputButton({
         setPhase('processing');
         try {
           const result = await api.transcribeAudio(blob, language);
-          onText(result.text);
+          const spoken = result.text.trim();
+          if (!spoken) return;
+          if (onReplace && currentTextRef.current?.trim()) setPending(spoken);
+          else onText(spoken);
         } catch (err) {
           setError(err instanceof api.ApiError ? err.message : 'Could not reach the server. Please try again.');
         } finally {
@@ -118,7 +135,7 @@ export default function VoiceInputButton({
   if (!supported) return null;
 
   return (
-    <span className={`inline-flex flex-col items-end gap-1 ${className}`}>
+    <span className={`relative inline-flex flex-col items-end gap-1 ${className}`}>
       <button
         type="button"
         onClick={phase === 'recording' ? stop : start}
@@ -141,6 +158,45 @@ export default function VoiceInputButton({
         {compact ? (phase === 'recording' ? `${seconds}s` : null) : phase === 'recording' ? `Stop ${seconds}s` : phase === 'processing' ? 'Writing…' : 'Speak'}
       </button>
       {error && <span className="max-w-[220px] text-right text-[10px] text-red-600 dark:text-red-400">{error}</span>}
+      {pending !== null && (
+        <span
+          role="dialog"
+          aria-label="Add what you said"
+          className="absolute right-0 top-full mt-1.5 z-30 w-72 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl text-left space-y-2"
+        >
+          <span className="block text-[11px] font-bold text-slate-900 dark:text-white">The box already has text. You said:</span>
+          <span className="block text-[11px] text-slate-600 dark:text-slate-300 italic line-clamp-3 break-words">“{pending}”</span>
+          <span className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                onText(pending);
+                setPending(null);
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold"
+            >
+              Add to the end
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onReplace?.(pending);
+                setPending(null);
+              }}
+              className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-bold hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Replace
+            </button>
+            <button
+              type="button"
+              onClick={() => setPending(null)}
+              className="px-2.5 py-1.5 rounded-lg text-slate-500 text-[11px] font-semibold hover:text-slate-800 dark:hover:text-slate-200"
+            >
+              Discard
+            </button>
+          </span>
+        </span>
+      )}
     </span>
   );
 }

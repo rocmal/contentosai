@@ -9,9 +9,21 @@ export async function improveText(input: {
   systemPrompt: string;
   /** 'hindi' | 'punjabi' | 'english' - Indian languages are written by Sarvam on the server. */
   language?: string;
+  /** 0-2; lower keeps a rewrite closer to the original (the server default is 0.7). */
+  temperature?: number;
 }): Promise<string> {
   const result = await request<{ text: string }>('/ai/generate', { method: 'POST', body: JSON.stringify(input) });
-  return result.text.trim();
+  return cleanAiText(result.text);
+}
+
+/** Strips what models sometimes wrap their answer in: quotes, triple quotes or an "Improved prompt:" label. */
+export function cleanAiText(text: string): string {
+  return text
+    .trim()
+    .replace(/^(improved|revised|final)?\s*prompt\s*:\s*/i, '')
+    .replace(/^"""\s*|\s*"""$/g, '')
+    .replace(/^"([^"]*)"$/s, '$1')
+    .trim();
 }
 
 export type DictationLanguage = 'auto' | 'hi-IN' | 'pa-IN' | 'en-IN';

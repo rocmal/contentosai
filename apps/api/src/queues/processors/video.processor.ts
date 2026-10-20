@@ -23,7 +23,9 @@ export interface PollVideoJobData {
   prompt?: string;
 }
 
-const MAX_POLL_ATTEMPTS = 30;
+/** 20 minutes at 10 s. Veo usually needs 1-3 minutes but can take well over 5 when Google is busy, and a clip is
+ * paid for once accepted, so keep collecting it (the browser stops waiting after 10). Was 30 (5 minutes). */
+export const MAX_POLL_ATTEMPTS = 120;
 const POLL_DELAY_MS = 10_000;
 const RETRY_OPTIONS = { attempts: 3, backoff: { type: 'exponential' as const, delay: 5_000 } };
 
@@ -116,7 +118,9 @@ export class VideoProcessor extends WorkerHost {
             },
       );
     } catch (error) {
-      this.logger.warn(`Could not create notification: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.warn(
+        `Could not create notification: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 }

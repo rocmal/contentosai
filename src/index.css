@@ -27,6 +27,8 @@
 @keyframes lumora-halo { 0%, 100% { opacity: 0.5; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1.15); } }
 @keyframes lumora-load { 0% { width: 0; } 100% { width: 100%; } }
 @keyframes lumora-caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+/* A progress bar for waits of unknown length (Video Studio while a clip renders). */
+@keyframes lumora-indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 
 .lumora-float { animation: lumora-float 7s ease-in-out infinite; }
 .lumora-float-delay { animation-delay: -2.5s; }

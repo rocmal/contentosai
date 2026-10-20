@@ -26,6 +26,8 @@ import {
 import { OutOfCreditsNotice } from '../OutOfCreditsNotice';
 import { IMAGE_COMPOSITION_NOTE, IMAGE_NO_TEXT_NOTE, takeReuse } from '../../lib/reuse';
 import { openPostComposer } from '../../lib/socialPosts';
+import { cleanImprovedPrompt, improvePromptRequest } from '../../lib/improvePrompt';
+import { useTextHistory } from '../../lib/useTextHistory';
 
 interface ImageStudioViewProps {
   onNavigate: (view: ViewType) => void;
@@ -45,13 +47,6 @@ type SaveState =
 const COMPOSITION_NOTE = IMAGE_COMPOSITION_NOTE;
 const NO_TEXT_NOTE = IMAGE_NO_TEXT_NOTE;
 
-const IMPROVE_SYSTEM_PROMPT =
-  'You write prompts for an AI image generator used by Indian small businesses and insurance advisors for social media. ' +
-  "Rewrite the user's idea as one detailed English image prompt (60-120 words): subject, setting, clothing, lighting, " +
-  'colour palette, composition and style (e.g. clean professional photo or flat illustration). Keep every name, phone ' +
-  'number and wording the user asked to appear exactly as written, inside double quotes, and say where it should sit. ' +
-  'Do not invent claims, rates or guarantees. Reply with only the prompt - no preamble, no explanation.';
-
 // Words that mean the picture itself must carry lettering (cards, posters, banners ...).
 const WANTS_TEXT = /\b(card|poster|banner|flyer|brochure|logo|text|quote|caption|headline|contact|number)\b|\d{6,}/i;
 
@@ -65,6 +60,10 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
   const [noText, setNoText] = useState(true);
   const [isImproving, setIsImproving] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
+  /** What the prompt said before the last Improve with AI, so it can be undone. */
+  const [promptBeforeImprove, setPromptBeforeImprove] = useState<string | null>(null);
+  // Ctrl+Z / Ctrl+Y over every change, including Speak and Improve with AI.
+  const promptHistory = useTextHistory(prompt, setPrompt);
   const [selected, setSelected] = useState<string[]>(['ig-post', 'fb-post']);
 
   const [options, setOptions] = useState<api.ImageProviderOption[] | null>(null);
@@ -125,11 +124,14 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
     setIsImproving(true);
     setImproveError(null);
     try {
-      const result = await api.generateText({
-        prompt: prompt.trim() || 'A professional, friendly image for a financial advisor to post on social media.',
-        systemPrompt: IMPROVE_SYSTEM_PROMPT,
-      });
-      const improved = result.text.trim();
+      // Keeps the person's prompt as the brief and adds only what is missing (src/lib/improvePrompt.ts).
+      const result = await api.generateText(improvePromptRequest('image', prompt));
+      const improved = cleanImprovedPrompt(result.text);
+      if (!improved) {
+        setImproveError('The AI did not return a prompt. Please try again.');
+        return;
+      }
+      setPromptBeforeImprove(prompt);
       setPrompt(improved);
       if (WANTS_TEXT.test(improved)) setNoText(false);
     } catch (err) {
@@ -284,23 +286,45 @@ export const ImageStudioView: React.FC<ImageStudioViewProps> = ({ onNavigate }) 
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-bold text-slate-900 dark:text-white">What should the image show?</label>
                 <div className="flex items-center gap-3">
-                  <VoiceInputButton onText={(spoken) => setPrompt((prev) => appendSpoken(prev, spoken))} />
+                  <VoiceInputButton
+                    onText={(spoken) => setPrompt((prev) => appendSpoken(prev, spoken))}
+                    currentText={prompt}
+                    onReplace={(spoken) => setPrompt(spoken)}
+                  />
                   <button
                     type="button"
                     onClick={handleImprovePrompt}
                     disabled={isImproving}
-                    title={prompt.trim() ? 'Rewrite this as a detailed image prompt' : 'Suggest an image prompt'}
+                    title={
+                      prompt.trim()
+                        ? 'Keeps your idea and adds the composition, lighting, colours and style'
+                        : 'Suggest an image prompt'
+                    }
                     className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
                   >
                     {isImproving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
                     <span>{prompt.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
                   </button>
+                  {promptBeforeImprove !== null && !isImproving && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPrompt(promptBeforeImprove);
+                        setPromptBeforeImprove(null);
+                      }}
+                      title="Put back what you wrote before Improve with AI"
+                      className="text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:underline"
+                    >
+                      Undo
+                    </button>
+                  )}
                 </div>
               </div>
               <textarea
                 rows={4}
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={promptHistory.onKeyDown}
                 maxLength={1500}
                 placeholder="e.g. A happy Indian family planning their child's future at home, warm morning light, natural photo style"
                 className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"

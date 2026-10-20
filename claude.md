@@ -117,6 +117,20 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
 
 ### Studios
 
+- **Improve with AI** (Image and Video Studio, website and phone): `src/lib/improvePrompt.ts` and the phone's
+  `apps/mobile/src/lib/studioPrompts.ts` (same wording). The prompt is sent marked as the brief to keep - same people,
+  action, place, product, names and numbers; add only camera/light/mood/sound (video) or composition/light/colour/style
+  (image); a detailed prompt comes back almost unchanged - at temperature 0.3, with an Undo. Until 2026-10-20 it was a plain
+  "rewrite the idea" at 0.7, which swapped in generic stock scenes.
+- **Text boxes** (Image/Video prompt, Voice script, Scene Builder narration, post composer): Ctrl+Z / Ctrl+Y (Cmd+Z /
+  Cmd+Shift+Z) through `src/lib/useTextHistory.ts`, which also steps back over templates, Speak and Improve with AI (the
+  browser's own undo cannot). Speak into a box that has text asks Add to the end / Replace / Discard (`VoiceInputButton`
+  `currentText` + `onReplace`; phone `PromptBox`). Video templates ask before replacing words the person wrote.
+- **Prompt videos take time:** the waiting screen (`videoStudio/GeneratingStatus.tsx`, phone video screen) cycles messages
+  every 4 s with a timer and, after 3 minutes, says it is fine to leave. The browser waits 10 minutes, then shows a calm "still
+  rendering, it will be in your Gallery" note; the server keeps collecting the clip for 20 minutes
+  (`MAX_POLL_ATTEMPTS` in `video.processor.ts`; it was 5 minutes, so slow paid clips were lost). Veo makes 4, 6 or 8 s, so
+  the formats use those lengths (5 was rendered as 6 anyway).
 - **Image Studio:** OpenAI gpt-image-2 only (picker hidden); platform sizes FB/IG/YouTube/LinkedIn/WhatsApp (X and Pinterest removed);
   Improve with AI; mic dictation; "No text" default with a warning when the prompt asks for text.
 - **Video Studio:** Google Veo 3.1 Fast through the Gemini key (VEO_API_KEY optional override); only Veo offered in production;

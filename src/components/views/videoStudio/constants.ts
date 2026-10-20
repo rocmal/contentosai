@@ -27,6 +27,7 @@ export interface AiStylePreset {
   styleSuffix: string;
 }
 
+// Veo makes 4, 6 or 8-second clips (a 5 was rendered as 6 anyway), so every length here is one of those.
 export const AI_STYLE_PRESETS: AiStylePreset[] = [
   {
     id: 'cinematic',
@@ -43,7 +44,7 @@ export const AI_STYLE_PRESETS: AiStylePreset[] = [
     description: 'Vertical - Reels, TikTok, Snapchat Stories',
     icon: Smartphone,
     aspectRatio: '9:16',
-    durationSeconds: 5,
+    durationSeconds: 6,
     styleSuffix: VIDEO_STYLE_SUFFIXES.socialReel,
   },
   {
@@ -52,7 +53,7 @@ export const AI_STYLE_PRESETS: AiStylePreset[] = [
     description: 'Vertical - Instagram and Facebook feeds',
     icon: RectangleVertical,
     aspectRatio: '9:16',
-    durationSeconds: 5,
+    durationSeconds: 6,
     styleSuffix: VIDEO_STYLE_SUFFIXES.squarePost,
   },
   {
@@ -70,7 +71,7 @@ export const AI_STYLE_PRESETS: AiStylePreset[] = [
     description: 'Commerce-focused, vertical',
     icon: ShoppingBag,
     aspectRatio: '9:16',
-    durationSeconds: 5,
+    durationSeconds: 6,
     styleSuffix: VIDEO_STYLE_SUFFIXES.productAd,
   },
 ];

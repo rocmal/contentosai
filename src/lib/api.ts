@@ -1176,6 +1176,8 @@ export async function generateText(input: {
   systemPrompt?: string;
   /** e.g. 'hindi' | 'punjabi' | 'english' - Indian languages are written by Sarvam. */
   language?: string;
+  /** 0-2; lower keeps a rewrite closer to the original (the server default is 0.7). */
+  temperature?: number;
 }): Promise<TextGenerationResult> {
   return apiRequest<TextGenerationResult>('/ai/generate', {
     method: 'POST',

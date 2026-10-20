@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Loader2, Sparkles, Wand2 } from 'lucide-react';
 import * as api from '../../../lib/api';
 import VoiceInputButton, { appendSpoken } from '../../VoiceInputButton';
-import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '../../../lib/videoPromptTemplates';
+import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES, VideoPromptTemplate } from '../../../lib/videoPromptTemplates';
+import { useTextHistory } from '../../../lib/useTextHistory';
 import { creditLabel, videoCreditCost } from '../../../lib/creditCost';
 import { AI_STYLE_PRESETS, PROVIDER_LABELS, SELECTABLE_VIDEO_PROVIDERS } from './constants';
 import type { VideoStudio } from './useVideoStudio';
@@ -13,9 +14,11 @@ export const PromptPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     creditRates,
     handleGenerateFromPrompt,
     handleImprovePrompt,
+    handleUndoImprove,
     improveError,
     isImprovingPrompt,
     prompt,
+    promptBeforeImprove,
     provider,
     setImproveError,
     setPrompt,
@@ -28,6 +31,24 @@ export const PromptPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     stylePresetId,
     templateCategory,
   } = studio;
+  // Ctrl+Z / Ctrl+Y over every change, including templates, Speak and Improve with AI.
+  const history = useTextHistory(prompt, setPrompt);
+  /** A template picked while the box has the person's own words: asks before replacing them. */
+  const [pendingTemplate, setPendingTemplate] = useState<VideoPromptTemplate | null>(null);
+
+  const applyTemplate = (t: VideoPromptTemplate) => {
+    setPrompt(t.prompt);
+    setStylePresetId(t.presetId);
+    setImproveError(null);
+    setPendingTemplate(null);
+  };
+
+  const pickTemplate = (t: VideoPromptTemplate) => {
+    const current = prompt.trim();
+    if (current && current !== t.prompt.trim()) setPendingTemplate(t);
+    else applyTemplate(t);
+  };
+
   return (
     <div className="space-y-6">
       <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
@@ -36,29 +57,49 @@ export const PromptPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
             What's the video about?
           </label>
           <div className="flex items-center gap-3">
-            <VoiceInputButton onText={(spoken) => setPrompt((prev) => appendSpoken(prev, spoken))} />
+            <VoiceInputButton
+              onText={(spoken) => setPrompt((prev) => appendSpoken(prev, spoken))}
+              currentText={prompt}
+              onReplace={(spoken) => setPrompt(spoken)}
+            />
             <button
               type="button"
               onClick={handleImprovePrompt}
               disabled={isImprovingPrompt}
-              title={prompt.trim() ? 'Rewrite this as a detailed video prompt' : 'Suggest a video prompt'}
+              title={
+                prompt.trim()
+                  ? 'Keeps your idea and adds the camera move, lighting, mood and sound'
+                  : 'Suggest a video prompt'
+              }
               className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:no-underline"
             >
               {isImprovingPrompt ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
               <span>{prompt.trim() ? 'Improve with AI' : 'Generate with AI'}</span>
             </button>
+            {promptBeforeImprove !== null && !isImprovingPrompt && (
+              <button
+                type="button"
+                onClick={handleUndoImprove}
+                title="Put back what you wrote before Improve with AI"
+                className="text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:underline"
+              >
+                Undo
+              </button>
+            )}
           </div>
         </div>
         <textarea
           rows={4}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
+          onKeyDown={history.onKeyDown}
           placeholder="e.g. A drone shot flying over a futuristic city at sunset, glowing blue skyscrapers"
           className="w-full text-xs p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
         />
         {improveError && <p className="text-[11px] text-red-500">{improveError}</p>}
         <p className="text-[10px] text-slate-400">
-          Repeating the same prompt, length and format reuses your saved clip for free.
+          Ctrl+Z undoes a change and Ctrl+Y brings it back. Repeating the same prompt, length and format reuses your
+          saved clip for free.
         </p>
       </div>
 
@@ -80,16 +121,40 @@ export const PromptPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
             </button>
           ))}
         </div>
+        {pendingTemplate && (
+          <div
+            role="alertdialog"
+            aria-label="Replace your prompt?"
+            className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/60 space-y-2"
+          >
+            <p className="text-[11px] text-amber-900 dark:text-amber-200 leading-snug">
+              Replace what you wrote with the <span className="font-bold">{pendingTemplate.title}</span> template? Your
+              text will be replaced (Ctrl+Z brings it back).
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => applyTemplate(pendingTemplate)}
+                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-bold"
+              >
+                Replace my prompt
+              </button>
+              <button
+                type="button"
+                onClick={() => setPendingTemplate(null)}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 text-[11px] font-bold"
+              >
+                Keep my prompt
+              </button>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {VIDEO_PROMPT_TEMPLATES.filter((t) => t.category === templateCategory).map((t) => (
             <button
               key={t.id}
               type="button"
-              onClick={() => {
-                setPrompt(t.prompt);
-                setStylePresetId(t.presetId);
-                setImproveError(null);
-              }}
+              onClick={() => pickTemplate(t)}
               className="text-left p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-all"
             >
               <p className="text-xs font-bold text-slate-900 dark:text-white">{t.title}</p>

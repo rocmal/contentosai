@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, Text, View } from 'react-native';
 import { ApiError, generateVideo, getCreditRates, pollVideoJob, type CreditRates, type VideoProvider } from '@/lib/api';
 import { VIDEO_STYLES, VIDEO_WRITER, type VideoStyleId } from '@/lib/studioPrompts';
 import { creditLabel, formatBalance, useWallet } from '@/lib/useWallet';
@@ -91,6 +91,43 @@ function Ideas({ onPick }: { onPick: (prompt: string, presetId: string) => void 
   );
 }
 
+const STILL_RENDERING =
+  "Your video is still rendering. It will appear in your Gallery when it is ready, and you'll get a notification. Please don't create it again, or you'll be charged twice.";
+
+/** What the waiting card cycles through, so a 1-3 minute wait does not look stuck. */
+const WAITING_MESSAGES = [
+  'Reading your prompt',
+  'Setting up the scene',
+  'Placing the people and props',
+  'Finding the right light',
+  'Planning the camera move',
+  'Rolling the camera',
+  'Rendering the frames',
+  'Adding natural sounds',
+  'Smoothing the motion',
+  'Polishing the final cut',
+];
+
+/** A new message every 4 seconds; after the list, keep cycling the rendering stages. */
+function waitingMessage(seconds: number): string {
+  const step = Math.floor(seconds / 4);
+  const n = WAITING_MESSAGES.length;
+  return WAITING_MESSAGES[step < n ? step : 4 + ((step - n) % (n - 4))];
+}
+
+/** "Replace your prompt?" before a template overwrites it (Alert does nothing in the browser build). */
+function confirmReplace(apply: () => void) {
+  const message = 'The template replaces what you wrote. Use it anyway?';
+  if (Platform.OS === 'web') {
+    if (window.confirm(message)) apply();
+    return;
+  }
+  Alert.alert('Replace your prompt?', message, [
+    { text: 'Keep mine', style: 'cancel' },
+    { text: 'Replace', onPress: apply },
+  ]);
+}
+
 export default function VideoStudio() {
   const router = useRouter();
   const { balance, reload } = useWallet();
@@ -103,6 +140,8 @@ export default function VideoStudio() {
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  /** Stopped waiting while the clip is still rendering: not an error, it lands in the Gallery. */
+  const [notice, setNotice] = useState<string | null>(null);
   const [outOfCredits, setOutOfCredits] = useState(false);
   const [result, setResult] = useState<{ url: string; aspect: Aspect; cached: boolean; assetId?: string } | null>(null);
   const [scheduling, setScheduling] = useState(false);
@@ -136,6 +175,7 @@ export default function VideoStudio() {
     abort.current = controller;
     setBusy(true);
     setError(null);
+    setNotice(null);
     setOutOfCredits(false);
     setResult(null);
     setElapsed(0);
@@ -161,6 +201,7 @@ export default function VideoStudio() {
     } catch (e) {
       if (controller.signal.aborted) return;
       if (e instanceof ApiError && e.status === 402) setOutOfCredits(true);
+      else if (e instanceof ApiError && e.status === 408) setNotice(STILL_RENDERING);
       else setError(e instanceof Error ? e.message : 'Could not create the video.');
     } finally {
       if (!controller.signal.aborted) {
@@ -175,7 +216,7 @@ export default function VideoStudio() {
     abort.current?.abort();
     stopTicker();
     setBusy(false);
-    setError('Stopped waiting. The video is still being made: it will appear in your Gallery, and you will get a notification.');
+    setNotice(STILL_RENDERING);
   }
 
   return (
@@ -183,12 +224,17 @@ export default function VideoStudio() {
       <View style={{ gap: space.xl, paddingTop: space.md }}>
         <Ideas
           onPick={(text, presetId) => {
-            setPrompt(text);
-            const preset = PRESET[presetId];
-            if (preset) {
-              setAspect(preset.aspect);
-              setStyle(preset.style);
-            }
+            const apply = () => {
+              setPrompt(text);
+              const preset = PRESET[presetId];
+              if (preset) {
+                setAspect(preset.aspect);
+                setStyle(preset.style);
+              }
+            };
+            // Ask before a template replaces words the person wrote.
+            if (prompt.trim() && prompt.trim() !== text.trim()) confirmReplace(apply);
+            else apply();
           }}
         />
 
@@ -228,6 +274,12 @@ export default function VideoStudio() {
         )}
 
         <ErrorText message={error} />
+        {notice && (
+          <Card style={{ gap: space.sm }}>
+            <Muted style={{ color: colors.text }}>{notice}</Muted>
+            <Button title="Open Gallery" variant="secondary" onPress={() => router.push('/gallery')} />
+          </Card>
+        )}
         {outOfCredits && (
           <Card style={{ gap: space.sm }}>
             <Muted style={{ color: colors.text, fontWeight: '600' }}>Not enough credits for a video.</Muted>
@@ -239,10 +291,12 @@ export default function VideoStudio() {
         {busy ? (
           <Card style={{ alignItems: 'center', gap: space.md, paddingVertical: space.xl }}>
             <ActivityIndicator color={colors.primary} size="large" />
-            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>Making your video… {clock(elapsed)}</Text>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{waitingMessage(elapsed)}…</Text>
+            <Muted style={{ fontVariant: ['tabular-nums'] }}>{clock(elapsed)} · usually 1-3 minutes</Muted>
             <Muted style={{ textAlign: 'center' }}>
-              This usually takes 1 to 2 minutes. You can leave this screen: the video is saved to your Gallery and you get a
-              notification when it is ready.
+              {elapsed >= 180
+                ? "Google is busy, so this is taking longer than usual. You can leave this screen: the video keeps rendering, appears in your Gallery and you get a notification. Please don't create it again, or you'll be charged twice."
+                : 'You can leave this screen: the video is saved to your Gallery and you get a notification when it is ready.'}
             </Muted>
             <Button title="Stop waiting" variant="secondary" onPress={stopWaiting} />
           </Card>

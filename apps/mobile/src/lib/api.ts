@@ -289,7 +289,8 @@ export async function pollVideoJob(
   let current = first;
   while (current.status !== 'completed' && current.status !== 'failed') {
     if (opts.signal?.aborted) throw new ApiError(0, 'Cancelled');
-    if (Date.now() - started > (opts.timeoutMs ?? 300_000)) {
+    // Veo can take well over 5 minutes when Google is busy; the server keeps collecting the clip for 20.
+    if (Date.now() - started > (opts.timeoutMs ?? 600_000)) {
       throw new ApiError(408, 'The video is taking longer than expected. Check Gallery in a few minutes.');
     }
     await new Promise((r) => setTimeout(r, 3000));

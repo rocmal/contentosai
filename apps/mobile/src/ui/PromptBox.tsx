@@ -12,6 +12,10 @@ export interface AiWriter {
   emptyIdea: string;
   /** 'hindi' | 'punjabi' | 'english' for scripts written in that language. */
   language?: string;
+  /** Builds the request from what is typed (empty = generate), when the writer needs more than the bare text. */
+  frame?: (idea: string) => string;
+  /** Lower = stays closer to what was typed. */
+  temperature?: number;
 }
 
 /** Adds spoken text after whatever is already typed. */
@@ -50,7 +54,12 @@ export function PromptBox({
   editable?: boolean;
   footer?: string;
 }) {
-  const dictation = useDictation((spoken) => onChangeText(appendSpoken(value, spoken)), dictationLanguage);
+  /** What was said while the box already had text, waiting for "Add to the end" or "Replace". */
+  const [pendingSpoken, setPendingSpoken] = useState<string | null>(null);
+  const dictation = useDictation((spoken) => {
+    if (value.trim()) setPendingSpoken(spoken);
+    else onChangeText(spoken);
+  }, dictationLanguage);
   const [improving, setImproving] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [before, setBefore] = useState<string | null>(null);
@@ -61,7 +70,13 @@ export function PromptBox({
     setImproving(true);
     setAiError(null);
     try {
-      const text = await improveText({ prompt: value.trim() || ai.emptyIdea, systemPrompt: ai.systemPrompt, language: ai.language });
+      const idea = value.trim();
+      const text = await improveText({
+        prompt: ai.frame ? ai.frame(idea) : idea || ai.emptyIdea,
+        systemPrompt: ai.systemPrompt,
+        language: ai.language,
+        temperature: ai.temperature,
+      });
       if (!text) throw new Error('The AI returned nothing. Please try again.');
       setBefore(value);
       onChangeText(text.slice(0, maxLength));
@@ -128,6 +143,36 @@ export function PromptBox({
           </Pressable>
         )}
       </View>
+      {pendingSpoken !== null && (
+        <View style={{ gap: space.sm, padding: space.md, borderRadius: 14, backgroundColor: colors.surface }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>The box already has text. You said:</Text>
+          <Text numberOfLines={3} style={{ fontSize: 14, fontStyle: 'italic', color: colors.textMuted }}>
+            “{pendingSpoken}”
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+            <PillButton
+              icon="add"
+              label="Add to the end"
+              tone="primary"
+              onPress={() => {
+                setBefore(value);
+                onChangeText(appendSpoken(value, pendingSpoken).slice(0, maxLength));
+                setPendingSpoken(null);
+              }}
+            />
+            <PillButton
+              icon="swap-horizontal"
+              label="Replace"
+              onPress={() => {
+                setBefore(value);
+                onChangeText(pendingSpoken.slice(0, maxLength));
+                setPendingSpoken(null);
+              }}
+            />
+            <PillButton icon="close" label="Discard" onPress={() => setPendingSpoken(null)} />
+          </View>
+        </View>
+      )}
       {dictation.phase === 'recording' && (
         <Muted>Listening… speak in Hindi, Punjabi or English. Tap Stop when you finish (up to {dictation.maxSeconds / 60} minute).</Muted>
       )}

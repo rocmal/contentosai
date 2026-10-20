@@ -2,7 +2,7 @@ import { Job, Queue } from 'bullmq';
 import { VideoService } from '@modules/video/application/services/video.service';
 import { NotificationsService } from '@modules/notifications/application/services/notifications.service';
 import { VideoJobName } from '../queue-names';
-import { PollVideoJobData, VideoProcessor } from './video.processor';
+import { MAX_POLL_ATTEMPTS, PollVideoJobData, VideoProcessor } from './video.processor';
 
 describe('VideoProcessor', () => {
   let processor: VideoProcessor;
@@ -59,10 +59,26 @@ describe('VideoProcessor', () => {
     );
   });
 
+  it('keeps collecting a slow clip well past five minutes', async () => {
+    videoService.getJobStatus.mockResolvedValue({
+      provider: 'veo',
+      model: 'veo-3.1',
+      jobId: 'job-1',
+      status: 'processing',
+    });
+
+    await processor.process(makeJob({ provider: 'veo', jobId: 'job-1', attempt: 30, ...actor }));
+
+    // 10 s apart: at least 20 minutes before giving up.
+    expect(MAX_POLL_ATTEMPTS * 10).toBeGreaterThanOrEqual(20 * 60);
+    expect(videoQueue.add).toHaveBeenCalled();
+    expect(notificationsService.create).not.toHaveBeenCalled();
+  });
+
   it('gives up once the attempt budget is exhausted, marking the result failed instead of re-queuing forever', async () => {
     videoService.getJobStatus.mockResolvedValue({ provider: 'runway', model: 'gen-3', jobId: 'job-1', status: 'processing' });
 
-    const result = await processor.process(makeJob({ provider: 'runway', jobId: 'job-1', attempt: 30, ...actor }));
+    const result = await processor.process(makeJob({ provider: 'runway', jobId: 'job-1', attempt: MAX_POLL_ATTEMPTS, ...actor }));
 
     expect(result.status).toBe('failed');
     expect(videoQueue.add).not.toHaveBeenCalled();
@@ -89,7 +105,7 @@ describe('VideoProcessor', () => {
   it('notifies on failure and when the attempt budget runs out', async () => {
     videoService.getJobStatus.mockResolvedValue({ provider: 'veo', model: 'veo-3.1', jobId: 'job-1', status: 'processing' });
 
-    await processor.process(makeJob({ provider: 'veo', jobId: 'job-1', attempt: 30, ...actor }));
+    await processor.process(makeJob({ provider: 'veo', jobId: 'job-1', attempt: MAX_POLL_ATTEMPTS, ...actor }));
 
     expect(notificationsService.create).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
   });

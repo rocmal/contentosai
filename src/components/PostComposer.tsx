@@ -17,6 +17,7 @@ import {
 import * as api from '../lib/api';
 import { ViewType } from '../types';
 import VoiceInputButton, { appendSpoken } from './VoiceInputButton';
+import { useTextHistory } from '../lib/useTextHistory';
 import {
   COMPOSER_PLATFORMS,
   ComposerMedia,
@@ -86,6 +87,8 @@ interface PostComposerProps {
  */
 export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, onNavigate }) => {
   const [text, setText] = useState(request.text ?? '');
+  // Ctrl+Z / Ctrl+Y over every change, including Speak and Write with AI.
+  const textHistory = useTextHistory(text, setText);
   const [media, setMedia] = useState<ComposerMedia | null>(request.media ?? null);
   const [connections, setConnections] = useState<Record<api.SocialPlatform, api.SocialConnectionStatus> | null>(null);
   const [selected, setSelected] = useState<api.SocialPlatform[]>([]);
@@ -370,7 +373,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                     What do you want to say?
                   </label>
                   <div className="flex items-center gap-1.5">
-                    <VoiceInputButton onText={(spoken) => setText((previous) => appendSpoken(previous, spoken))} />
+                    <VoiceInputButton
+                      onText={(spoken) => setText((previous) => appendSpoken(previous, spoken))}
+                      currentText={text}
+                      onReplace={(spoken) => setText(spoken)}
+                    />
                     <button
                       type="button"
                       onClick={writeWithAi}
@@ -387,6 +394,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                   rows={8}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
+                  onKeyDown={textHistory.onKeyDown}
                   placeholder={
                     request.topic
                       ? 'Write your post, or press Write with AI to draft one from what you made.'

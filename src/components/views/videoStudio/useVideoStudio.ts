@@ -4,6 +4,7 @@ import * as api from '../../../lib/api';
 import { VIDEO_PROMPT_CATEGORIES } from '../../../lib/videoPromptTemplates';
 import { takeNarrationAudio, takeReuse } from '../../../lib/reuse';
 import { openPostComposer } from '../../../lib/socialPosts';
+import { cleanImprovedPrompt, improvePromptRequest } from '../../../lib/improvePrompt';
 import { useCreditRates } from '../../../lib/creditCost';
 import { compositeScenes, compositeTextOntoVideo, SceneInput } from '../../../lib/videoCompositor';
 import { SARVAM_VOICE_BY_GENDER, SARVAM_VOICE_CATALOG } from '../../../lib/sarvamVoices';
@@ -31,6 +32,9 @@ import { useVideoTemplates } from './useVideoTemplates';
  * generating, the edit step and the finished video) and combines the area hooks: narration, Scene Builder, text
  * overlay, templates and sharing. VideoStudioView renders the steps; each step component reads what it needs from
  * the result (passed down as `studio`). */
+/** How long the browser waits for a prompt video before saying it is still rendering. */
+const GENERATION_WAIT_MS = 10 * 60_000;
+
 export function useVideoStudio(onNavigate: (view: ViewType) => void) {
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('create');
@@ -43,12 +47,18 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
   const [templateCategory, setTemplateCategory] = useState<string>(VIDEO_PROMPT_CATEGORIES[0]);
   const [isImprovingPrompt, setIsImprovingPrompt] = useState(false);
   const [improveError, setImproveError] = useState<string | null>(null);
+  /** What the prompt said before the last Improve with AI, so it can be undone. */
+  const [promptBeforeImprove, setPromptBeforeImprove] = useState<string | null>(null);
   /** The clip came from this user's earlier identical prompt - nothing was charged. */
   const [reusedClip, setReusedClip] = useState(false);
   const [stylePresetId, setStylePresetId] = useState(AI_STYLE_PRESETS[0].id);
   const [provider, setProvider] = useState<api.VideoProvider>(SELECTABLE_VIDEO_PROVIDERS[0]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [progressLabel, setProgressLabel] = useState('');
+  /** When the current prompt video was submitted, for the waiting screen's timer. */
+  const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(null);
+  /** The browser stopped waiting but the clip is still rendering (it lands in the Gallery). */
+  const [stillRendering, setStillRendering] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
   const [outOfCredits, setOutOfCredits] = useState(false);
@@ -143,6 +153,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
   const resetAll = () => {
     setStep('create');
     setError(null);
+    setStillRendering(false);
     setSourceVideoUrl(null);
     setSourceInGallery(false);
     setSourceVideoNaturalAspect(null);
@@ -258,28 +269,35 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setIsImprovingPrompt(true);
     setImproveError(null);
     try {
-      const result = await api.generateText({
-        prompt: prompt.trim() || 'A short, friendly promotional video for a small Indian business.',
-        systemPrompt:
-          'You write prompts for an AI video generator (Google Veo). Rewrite the idea as ONE English prompt of 50-90 words: ' +
-          'the subject and action, the setting, the camera move (e.g. slow push-in, tracking shot), the lighting, the mood, ' +
-          'and the natural sounds you would hear. Describe a single continuous shot of 4-8 seconds. Do not ask for any ' +
-          'on-screen text, logos or captions. Do not invent claims, rates, returns or guarantees. ' +
-          'Reply with only the prompt - no preamble, no explanation.',
-      });
-      setPrompt(result.text.trim());
+      // Keeps the person's prompt as the brief and adds only what is missing (src/lib/improvePrompt.ts).
+      const result = await api.generateText(improvePromptRequest('video', prompt));
+      const improved = cleanImprovedPrompt(result.text);
+      if (!improved) {
+        setImproveError('The AI did not return a prompt. Please try again.');
+        return;
+      }
+      setPromptBeforeImprove(prompt);
+      setPrompt(improved);
     } catch (err) {
-      setImproveError(err instanceof api.ApiError ? err.message : 'Could not reach the Lumora API. Please try again.');
+      setImproveError(err instanceof api.ApiError ? err.message : 'Could not reach Lumora. Please try again.');
     } finally {
       setIsImprovingPrompt(false);
     }
   };
 
+  const handleUndoImprove = () => {
+    if (promptBeforeImprove === null) return;
+    setPrompt(promptBeforeImprove);
+    setPromptBeforeImprove(null);
+  };
+
   const handleGenerateFromPrompt = async (fresh = false) => {
     if (!prompt.trim()) return;
     setError(null);
+    setStillRendering(false);
     setOutOfCredits(false);
     setReusedClip(false);
+    setGenerationStartedAt(Date.now());
     setStep('generating');
     setProgressLabel('Submitting your prompt...');
 
@@ -299,6 +317,8 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
           ? job
           : await api.pollVideoJob(provider, job.jobId, {
               cacheKey: job.cacheKey,
+              // Veo can take well over 3 minutes when Google is busy; the server keeps collecting it for 20.
+              timeoutMs: GENERATION_WAIT_MS,
               onUpdate: () => setProgressLabel('Rendering your video...'),
             });
 
@@ -317,6 +337,9 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     } catch (err) {
       if (err instanceof api.ApiError && err.status === 402) {
         setOutOfCredits(true);
+      } else if (err instanceof api.ApiError && err.status === 408) {
+        // Stopped waiting, but the clip is still rendering and the server keeps collecting it.
+        setStillRendering(true);
       } else {
         setError(
           err instanceof api.ApiError
@@ -325,6 +348,8 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
         );
       }
       setStep('create');
+    } finally {
+      setGenerationStartedAt(null);
     }
   };
 
@@ -481,11 +506,13 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     finalMimeType,
     finalVideoUrl,
     finishWithoutOverlay,
+    generationStartedAt,
     handleBackToScenes,
     handleFileSelected,
     handleGenerateFromPrompt,
     handleGenerateSceneVideo,
     handleImprovePrompt,
+    handleUndoImprove,
     handlePickStockTemplate,
     handlePickVideoTemplate,
     handlePostVideo,
@@ -499,6 +526,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     previewAspectClass,
     progressLabel,
     prompt,
+    promptBeforeImprove,
     provider,
     resetAll,
     reusedClip,
@@ -516,6 +544,8 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     sourceVideoNaturalAspect,
     sourceVideoUrl,
     step,
+    stillRendering,
+    setStillRendering,
     stylePreset,
     stylePresetId,
     templateCategory,
