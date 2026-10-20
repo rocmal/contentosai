@@ -262,6 +262,7 @@ real post needs a real connection (section 2).
 | Message | Cause | What to do |
 | --- | --- | --- |
 | "LinkedIn publishing is not configured - set LINKEDIN_CLIENT_ID/..." | The server has no LinkedIn keys | Section 1.5; check the ops-check lines in the deploy log |
+| The same, although all three names are in GitHub | `LINKEDIN_CLIENT_SECRET` was saved under **Variables** (the deploy reads it only from **Secrets**), or it was saved after the deploy job had started (a job gets the secrets it starts with) | Move it to Secrets (generate a new one on LinkedIn if it sat in Variables), delete the variable, then deploy again |
 | LinkedIn's page says the redirect address does not match | The address in `LINKEDIN_REDIRECT_URI` is not listed on the app's Auth tab | Make both exactly `https://lumoraos.in/api/v1/integrations/linkedin/callback` |
 | "Invalid OAuth state" / "OAuth state expired - please reconnect" | The sign-in took longer than 10 minutes, or the page was reused | Press Connect LinkedIn again |
 | "Connect LinkedIn in Integrations first." | No LinkedIn connection in this workspace | Section 2 |
