@@ -20,20 +20,47 @@ Contents:
 Lumora needs its own LinkedIn developer app. Nothing about LinkedIn works on a server until this is done: pressing
 **Connect LinkedIn** in Integrations says "LinkedIn publishing is not configured".
 
-### 1.1 Create the LinkedIn app
+### 1.0 What the app needs from the website (already there)
 
-1. Go to <https://developer.linkedin.com> and choose **My apps → Create app**.
+- **Privacy policy:** <https://lumoraos.in/privacy> covers LinkedIn: what is stored (member ID, name, a 60-day posting
+  token), what is posted and when, and how to disconnect or revoke access. Disconnecting deletes the stored token.
+- **Terms:** <https://lumoraos.in/terms> says posts go to the connecting member's profile, one per workspace.
+- **Logo:** download <https://lumoraos.in/lumora-logo.png> (1024×1024) for the app and the Company Page.
+
+### 1.1 Create a LinkedIn Company Page (skip if you have one)
+
+LinkedIn only lets a Company Page own a developer app. Create one at <https://www.linkedin.com/company/setup/new>
+(**Company**), signed in as yourself:
+
+| Field | Suggested value |
+| --- | --- |
+| Name | LumoraOS |
+| LinkedIn public URL | `linkedin.com/company/lumoraos` (take the next free one if it is taken) |
+| Website | `https://lumoraos.in` |
+| Industry | Software Development |
+| Organization size | 0-1 employees (or your real size) |
+| Organization type | Privately held (or your real type) |
+| Logo | <https://lumoraos.in/lumora-logo.png> |
+| Tagline | Images, videos and voiceovers for your business, then scheduled and published from one place |
+
+You become the page's admin, which also lets you approve the app in 1.2 step 4.
+
+### 1.2 Create the LinkedIn app
+
+1. Sign in to LinkedIn as usual, then open <https://www.linkedin.com/developers/apps/new> (**Create app**; your apps are
+   listed later at <https://www.linkedin.com/developers/apps>). There is no `/developers/login` page: that address shows
+   "The page you are looking for could not be found".
 2. Fill in:
    - **App name:** `Lumora`
    - **LinkedIn Page:** your business's LinkedIn Company Page. LinkedIn will not create an app without one; create a
      page first if you have none. The app is only associated with the page; posts still go to personal profiles.
    - **Privacy policy URL:** `https://lumoraos.in/privacy`
-   - **App logo:** the Lumora spark (any square PNG of it).
+   - **App logo:** <https://lumoraos.in/lumora-logo.png> (download it, then upload it here).
 3. Accept the legal agreement and create the app.
 4. On the app's **Settings** tab, choose **Verify** and send the link to an admin of the Company Page (or open it
    yourself if you are one). The app works only after the page admin approves it.
 
-### 1.2 Add the two products
+### 1.3 Add the two products
 
 On the **Products** tab, request both. They are self-serve and approved straight away:
 
@@ -45,7 +72,7 @@ On the **Products** tab, request both. They are self-serve and approved straight
 Do not request the Community Management API here: it is only needed for Company Page posting (see
 [section 7](#7-limits-and-next-steps)) and LinkedIn will not combine it with other products on one app.
 
-### 1.3 Add the redirect address
+### 1.4 Add the redirect address
 
 On the **Auth** tab, under **Authorized redirect URLs for your app**, add:
 
@@ -57,7 +84,7 @@ For local development also add `http://localhost:3000/api/v1/integrations/linked
 
 The same tab shows the **Client ID** and the **Primary Client Secret** you need next.
 
-### 1.4 Give the keys to the server
+### 1.5 Give the keys to the server
 
 In GitHub: **Settings → Secrets and variables → Actions**. Never paste the secret into chat, email or a ticket.
 
@@ -80,9 +107,9 @@ Check the deploy log's ops-check lines:
 `FRONTEND_URL` on the server must be `https://lumoraos.in`: after LinkedIn approves the connection, Lumora sends the
 browser back there.
 
-### 1.5 Local development
+### 1.6 Local development
 
-Put the same three values in `apps/api/.env.development`, with the localhost redirect address from 1.3, then restart
+Put the same three values in `apps/api/.env.development`, with the localhost redirect address from 1.4, then restart
 the API (`deploy/local/dev.ps1`). `FRONTEND_URL` there should be the web address you use locally
 (`http://localhost:3100` in dev mode).
 
@@ -234,7 +261,7 @@ real post needs a real connection (section 2).
 
 | Message | Cause | What to do |
 | --- | --- | --- |
-| "LinkedIn publishing is not configured - set LINKEDIN_CLIENT_ID/..." | The server has no LinkedIn keys | Section 1.4; check the ops-check lines in the deploy log |
+| "LinkedIn publishing is not configured - set LINKEDIN_CLIENT_ID/..." | The server has no LinkedIn keys | Section 1.5; check the ops-check lines in the deploy log |
 | LinkedIn's page says the redirect address does not match | The address in `LINKEDIN_REDIRECT_URI` is not listed on the app's Auth tab | Make both exactly `https://lumoraos.in/api/v1/integrations/linkedin/callback` |
 | "Invalid OAuth state" / "OAuth state expired - please reconnect" | The sign-in took longer than 10 minutes, or the page was reused | Press Connect LinkedIn again |
 | "Connect LinkedIn in Integrations first." | No LinkedIn connection in this workspace | Section 2 |

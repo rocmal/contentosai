@@ -1,7 +1,7 @@
 import React from 'react';
 import { Logo, Wordmark } from './Logo';
 
-const EFFECTIVE_DATE = 'August 16, 2026';
+const EFFECTIVE_DATE = 'October 20, 2026';
 const CONTACT_EMAIL = 'sales@lumoraos.in';
 const SITE = 'lumoraos.in';
 
@@ -79,19 +79,24 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
       <p><strong>Content you create.</strong> Text, images, video, voice, and other assets you generate,
         upload, or schedule through the Service, along with the brand and campaign settings you configure.</p>
       <p><strong>Connected platform data.</strong> When you connect a social account (for example, via
-        "Connect Facebook/Instagram"), we receive and store only what is required to publish on your
-        behalf:</p>
+        "Connect Facebook/Instagram" or "Connect LinkedIn"), we receive and store only what is required to
+        publish on your behalf:</p>
       <ul>
         <li>The Facebook Page ID and Page name you selected, and the Instagram Business Account ID and
           username linked to that Page (if any).</li>
         <li>A Page access token issued by Meta, scoped to the permissions you granted
           (<code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>pages_manage_posts</code>,
           <code>instagram_basic</code>, <code>instagram_content_publish</code>, <code>business_management</code>).</li>
+        <li>For LinkedIn: your LinkedIn member ID and name (from LinkedIn's sign-in, with the{' '}
+          <code>openid</code> and <code>profile</code> permissions), and an access token that lets the Service
+          post to your profile (<code>w_member_social</code>). LinkedIn issues these tokens for 60 days; we
+          keep the expiry date so we can remind you to reconnect.</li>
         <li>Publishing status and metadata for posts you schedule or publish through the Service (for
           example, the resulting post ID and timestamp).</li>
       </ul>
-      <p>We do not request or store your Facebook/Instagram password, and we do not read your personal
-        feed, direct messages, or content unrelated to the Pages you explicitly connect.</p>
+      <p>We do not request or store your Facebook, Instagram or LinkedIn password, and we do not read your
+        personal feed, connections, direct messages, or content unrelated to the Pages and profile you
+        explicitly connect. From LinkedIn we read nothing beyond your member ID and name.</p>
       <p><strong>Usage data.</strong> Log data, device/browser information, and product analytics used to
         operate and improve the Service.</p>
     </section>
@@ -105,14 +110,17 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
         <li>To communicate with you about your account, billing, and Service updates.</li>
         <li>To comply with legal obligations and enforce our Terms of Service.</li>
       </ul>
-      <p>We do not sell your data, and we do not use your connected Facebook/Instagram data for
+      <p>We publish to a connected account only the text, image or video that you (or a member of your
+        workspace) write or choose, at the time chosen in the Service ("Post now" or a scheduled time). We
+        do not sell your data, and we do not use your connected Facebook, Instagram or LinkedIn data for
         advertising or share it with data brokers.</p>
     </section>
 
     <section>
       <h2>3. Third-party services</h2>
       <p>Publishing features rely on the official APIs of the platforms you connect (Meta Graph API for
-        Facebook/Instagram, and equivalent APIs for YouTube and LinkedIn). Content you choose to publish
+        Facebook/Instagram, the LinkedIn API for LinkedIn, and the YouTube Data API for YouTube). Content you
+        choose to publish
         is sent to those platforms and is then also governed by their own privacy policies. We also use
         infrastructure and AI providers (such as hosting, storage, and generative AI/voice providers) to
         deliver the Service; those providers process data solely on our behalf under contractual
@@ -129,16 +137,19 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
     <section>
       <h2>5. Data retention and deletion</h2>
       <p>We retain account and content data for as long as your account is active, or as needed to
-        provide the Service. Connected-platform credentials (such as a Facebook Page access token) are
-        retained only until you disconnect the integration or delete your account, whichever is sooner.</p>
+        provide the Service. Connected-platform credentials (such as a Facebook Page access token or a
+        LinkedIn access token) are retained only until you disconnect the integration or delete your
+        account, whichever is sooner; a LinkedIn token also stops working when it expires and is replaced
+        when you reconnect.</p>
       <p id="data-deletion"><strong>How to request deletion.</strong> You can disconnect a connected
-        Facebook/Instagram Page at any time from Settings → Integrations, which immediately revokes and
-        deletes the stored access token on our side. To delete your entire account and all associated
+        Facebook/Instagram Page or LinkedIn profile at any time from the Integrations page, which
+        immediately deletes the stored access token on our side. To delete your entire account and all associated
         data (including any stored integration credentials and generated content), email{' '}
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> from your account's registered email
         address with the subject "Data Deletion Request". We will confirm and complete deletion within 30
-        days. You can also revoke Lumora's access directly from your Facebook Settings → Business
-        Integrations at any time, independent of any action on our end.</p>
+        days. You can also revoke Lumora's access directly at any time, independent of any action on our
+        end: from your Facebook Settings → Business Integrations, or on LinkedIn from Settings → Data
+        privacy → Other applications → Permitted services.</p>
     </section>
 
     <section>
@@ -190,8 +201,13 @@ export const TermsOfServicePage: React.FC<LegalPageProps> = ({ onBack }) => (
         Lumora to publish content to that account only when you initiate or schedule a post through the
         Service. You must have the authority to manage the Page or account you connect, and you remain
         responsible for complying with that platform's own terms, community standards, and advertising
-        policies (including Meta's Platform Terms and Community Standards) for anything you publish. You
-        may disconnect a connected account at any time from Settings → Integrations.</p>
+        policies (including Meta's Platform Terms and Community Standards, and LinkedIn's User Agreement
+        and Professional Community Policies) for anything you publish. You may disconnect a connected
+        account at any time from the Integrations page.</p>
+      <p><strong>LinkedIn.</strong> Lumora posts to the personal LinkedIn profile of the member who connected
+        it. A workspace has one LinkedIn connection, so posts created by any member of that workspace are
+        published to that profile: connect only a profile you are happy for your workspace to post to.
+        LinkedIn connections last 60 days and must then be reconnected.</p>
     </section>
 
     <section>

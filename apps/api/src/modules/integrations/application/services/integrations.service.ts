@@ -146,6 +146,13 @@ export class IntegrationsService {
   async disconnect(workspaceId: string, provider: string, actorId?: string): Promise<boolean> {
     const existing = await this.integrationsRepository.findOne({ workspaceId, provider });
     if (!existing) return false;
+    // Deleting is a soft delete (the row stays, marked deleted), so wipe the stored token first: the Privacy Policy
+    // promises that disconnecting deletes it.
+    await this.integrationsRepository.update(
+      existing.id,
+      { status: IntegrationStatus.DISCONNECTED, encryptedCredentials: null },
+      actorId,
+    );
     await this.integrationsRepository.delete(existing.id, actorId);
     return true;
   }
