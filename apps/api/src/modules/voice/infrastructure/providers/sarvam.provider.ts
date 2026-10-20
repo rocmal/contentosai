@@ -1,4 +1,4 @@
-﻿import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+﻿import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   IVoiceProvider,
@@ -81,6 +81,7 @@ const SARVAM_VOICES: VoiceInfo[] = [
 @Injectable()
 export class SarvamVoiceProvider implements IVoiceProvider {
   readonly name = 'sarvam';
+  private readonly logger = new Logger(SarvamVoiceProvider.name);
   private readonly defaultModel = 'bulbul:v3';
   private readonly defaultVoiceId = 'shubh';
   private readonly defaultLanguageCode = 'hi-IN';
@@ -116,10 +117,10 @@ export class SarvamVoiceProvider implements IVoiceProvider {
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new ServiceUnavailableException(
-        `Sarvam TTS request failed (${response.status}): ${errorBody}`,
-      );
+      // Log Sarvam's detail for us; the customer gets a plain message without vendor text.
+      const detail = (await response.text().catch(() => '')).slice(0, 500);
+      this.logger.error(`Sarvam TTS request failed (${response.status}): ${detail}`);
+      throw new ServiceUnavailableException(sarvamFailureMessage(response.status));
     }
 
     const body = (await response.json()) as SarvamTTSResponse;
@@ -145,4 +146,15 @@ export class SarvamVoiceProvider implements IVoiceProvider {
   async healthCheck(): Promise<boolean> {
     return !!this.apiKey;
   }
+}
+
+/** What a customer reads when Sarvam refuses to voice a script. */
+export function sarvamFailureMessage(status: number): string {
+  if (status === 400 || status === 422) {
+    return 'This script could not be voiced. Check that it is written in the chosen language, then try again.';
+  }
+  if (status === 429) {
+    return 'Voice generation is busy right now. Please try again in a few minutes.';
+  }
+  return 'Voice generation is temporarily unavailable on our side. Please try again later.';
 }

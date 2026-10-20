@@ -1,11 +1,16 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
 
 /**
  * Shared HTTP plumbing for AI provider adapters. Every provider speaks plain
  * REST/JSON to its vendor's API using the platform's built-in `fetch`, so no
  * heavyweight/fast-moving vendor SDK is a dependency of this codebase.
+ *
+ * Vendor errors are logged for us and turned into plain messages: the vendor's
+ * own reply (billing state, quotas, request ids) never reaches a customer.
  */
 export abstract class BaseAIProvider {
+  private readonly httpLogger = new Logger(this.constructor.name);
+
   protected async postJson<T>(
     url: string,
     body: unknown,
@@ -23,20 +28,21 @@ export abstract class BaseAIProvider {
       });
     } catch (error) {
       if ((error as Error).name === 'TimeoutError') {
+        this.httpLogger.warn(`No answer within ${timeoutMs ?? 0} ms`);
         throw new ServiceUnavailableException(
-          `${this.constructor.name} took longer than ${Math.round((timeoutMs ?? 0) / 1000)} seconds to answer. Please try again, or pick a faster provider.`,
+          `The AI took longer than ${Math.round((timeoutMs ?? 0) / 1000)} seconds to answer. Please try again.`,
         );
       }
+      this.httpLogger.error(`Could not reach the vendor: ${(error as Error).message}`);
       throw new ServiceUnavailableException(
-        `Failed to reach ${this.constructor.name}: ${(error as Error).message}`,
+        'The AI could not be reached just now. Please try again in a minute.',
       );
     }
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new ServiceUnavailableException(
-        `${this.constructor.name} request failed (${response.status}): ${errorBody}`,
-      );
+      const detail = (await response.text().catch(() => '')).slice(0, 500);
+      this.httpLogger.error(`Request failed (${response.status}): ${detail}`);
+      throw new ServiceUnavailableException(vendorFailureMessage(response.status));
     }
 
     return response.json() as Promise<T>;
@@ -49,4 +55,13 @@ export abstract class BaseAIProvider {
       );
     }
   }
+}
+
+/** What a customer reads when the AI vendor refuses a request. Billing and key problems (402, 401, 403) are ours to fix,
+ * so they read as "on our side"; the server log has the vendor's own words. */
+export function vendorFailureMessage(status: number): string {
+  if (status === 429) {
+    return 'The AI is busy right now. Please try again in a few minutes.';
+  }
+  return 'The AI is temporarily unavailable on our side. Please try again later.';
 }

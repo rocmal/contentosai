@@ -122,6 +122,11 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   action, place, product, names and numbers; add only camera/light/mood/sound (video) or composition/light/colour/style
   (image); a detailed prompt comes back almost unchanged - at temperature 0.3, with an Undo. Until 2026-10-20 it was a plain
   "rewrite the idea" at 0.7, which swapped in generic stock scenes.
+- **Vendor errors never reach customers:** text AI (`ai/infrastructure/providers/base-ai-provider.ts`), Veo and Sarvam log
+  the vendor's reply and show plain wording ("busy" for 429, "temporarily unavailable on our side" otherwise). Until
+  2026-10-20 the text AI showed Google's raw JSON (billing state included) under Improve with AI. Providers not offered in
+  production (Stability, Flux, Luma, D-ID, HeyGen, Synthesia) and Razorpay still put vendor text in their messages; fix
+  them the same way before offering them.
 - **Text boxes** (Image/Video prompt, Voice script, Scene Builder narration, post composer): Ctrl+Z / Ctrl+Y (Cmd+Z /
   Cmd+Shift+Z) through `src/lib/useTextHistory.ts`, which also steps back over templates, Speak and Improve with AI (the
   browser's own undo cannot). Speak into a box that has text asks Add to the end / Replace / Discard (`VoiceInputButton`
@@ -245,7 +250,10 @@ Needs the owner:
   error on the finished-video screen (the real reason is now shown), then fix the cause.
 - Character Studio avatar pictures showed as broken images although the files and database values are correct; hard refresh and
   report. Character Studio is hidden until it is finished.
-- Generate one real Veo video (billing must be on the Google project) and check credits taken and the gallery entry.
+- Top up the Gemini prepaid credit (Google AI Studio → the project → billing): it ran out on 2026-10-20 (Google answers 402
+  "prepayment credits are depleted"), which stops Veo videos AND every Gemini text call (Improve with AI, Write with AI).
+  Then re-check that a prompt video finishes in the browser on the live site (the 2026-10-20 status-route fix). Veo itself
+  worked on 2026-10-20: a clip was made, saved to the Gallery and charged 180 credits.
 - Add `ELEVENLABS_API_KEY` (cloning-capable plan) so custom voices work; confirm ElevenLabs/Cartesia/Azure prices (placeholders).
 - Confirm the forgot-password email now arrives. Then disable demo accounts `admin@lumora.ai` and `user@lumora.ai`.
 - Razorpay live keys and KYC, Google OAuth live redirect URIs, Meta App Review, Sentry DSN, Apache 60 s timeout, GSTIN in Google billing,
