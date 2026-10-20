@@ -106,7 +106,15 @@ async function rawRequest<T>(path: string, init: RequestInit): Promise<T> {
     throw new ApiError(res.status, message);
   }
 
-  if (res.status === 204 || body === null) {
+  if (res.status === 204) {
+    return undefined as T;
+  }
+  if (body === null) {
+    // A page instead of API data means the request never reached the API (e.g. a web server routing problem).
+    // Say so, rather than letting callers treat "nothing" as an answer.
+    if (contentType.includes('text/html')) {
+      throw new ApiError(502, 'The server sent an unexpected reply. Please try again.');
+    }
     return undefined as T;
   }
 
@@ -1336,8 +1344,10 @@ export async function getVideoJobStatus(
   cacheKey?: string,
 ): Promise<VideoGenerationResult> {
   const keyParam = cacheKey ? `&cacheKey=${encodeURIComponent(cacheKey)}` : '';
+  // The job id goes in the query: Veo ids contain slashes, and an encoded slash in the path never reaches the API
+  // on the live server (Apache served the website's page instead, so the wait never ended).
   return apiRequest<VideoGenerationResult>(
-    `/video/jobs/${encodeURIComponent(jobId)}?provider=${encodeURIComponent(provider)}${keyParam}`,
+    `/video/jobs/status?provider=${encodeURIComponent(provider)}&jobId=${encodeURIComponent(jobId)}${keyParam}`,
     { method: 'GET' },
   );
 }

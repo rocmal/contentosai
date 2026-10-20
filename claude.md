@@ -126,6 +126,12 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   Cmd+Shift+Z) through `src/lib/useTextHistory.ts`, which also steps back over templates, Speak and Improve with AI (the
   browser's own undo cannot). Speak into a box that has text asks Add to the end / Replace / Discard (`VoiceInputButton`
   `currentText` + `onReplace`; phone `PromptBox`). Video templates ask before replacing words the person wrote.
+- **Video job status uses `GET /video/jobs/status?provider=&jobId=`** (website `getVideoJobStatus`, phone `getVideoJob`).
+  Veo job ids contain slashes; in the path they became `%2F`, which the live Apache does not pass to the API - it served the
+  website's index.html with 200, the client read that as "no answer" and waited until it timed out, while the server's
+  background poller had saved the clip in under a minute. Until 2026-10-20 no prompt video could finish in the browser on the
+  live site. Both clients now also throw on an HTML reply instead of returning nothing. `jobs/:jobId` stays for old phone
+  builds. VeoProvider only accepts ids shaped like `models/<model>/operations/<id>` (the id goes into a Google URL with our key).
 - **Prompt videos take time:** the waiting screen (`videoStudio/GeneratingStatus.tsx`, phone video screen) cycles messages
   every 4 s with a timer and, after 3 minutes, says it is fine to leave. The browser waits 10 minutes, then shows a calm "still
   rendering, it will be in your Gallery" note; the server keeps collecting the clip for 20 minutes

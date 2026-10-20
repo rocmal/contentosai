@@ -87,4 +87,27 @@ describe('VeoProvider', () => {
 
     expect((await provider.getJobStatus('operations/abc')).status).toBe('failed');
   });
+
+  it('accepts the full operation name Veo returns, and refuses anything else before calling Google', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ done: false }));
+    const provider = new VeoProvider(config({ 'ai.gemini.apiKey': 'k' }));
+
+    const full = 'models/veo-3.1-fast-generate-preview/operations/a1b2c3';
+    expect((await provider.getJobStatus(full)).status).toBe('processing');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://generativelanguage.googleapis.com/v1beta/' + full,
+      expect.anything(),
+    );
+
+    fetchMock.mockClear();
+    for (const bad of [
+      'models/../files',
+      'files/abc',
+      'operations/abc?alt=media',
+      '../v1/models',
+    ]) {
+      await expect(provider.getJobStatus(bad)).rejects.toThrow('That is not a video job id.');
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

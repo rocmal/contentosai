@@ -1,4 +1,9 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   IVideoProvider,
@@ -7,6 +12,8 @@ import {
 } from '../../domain/interfaces/video-provider.interface';
 
 const VEO_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+/** A long-running operation name as Veo returns it: "models/<model>/operations/<id>" (or just "operations/<id>"). */
+const VEO_OPERATION_ID = /^(models\/[\w.-]+\/)?operations\/[\w-]+$/;
 
 interface VeoVideoRef {
   video?: { uri?: string };
@@ -79,6 +86,10 @@ export class VeoProvider implements IVideoProvider {
   }
 
   async getJobStatus(jobId: string): Promise<VideoGenerationResult> {
+    // The id goes into a Google address sent with our key, so accept only the shape Veo hands out.
+    if (!VEO_OPERATION_ID.test(jobId)) {
+      throw new BadRequestException('That is not a video job id.');
+    }
     const response = await fetch(`${VEO_API_BASE}/${jobId}`, {
       headers: { 'x-goog-api-key': this.apiKey },
     });

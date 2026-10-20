@@ -72,6 +72,10 @@ async function parse<T>(res: Response): Promise<T> {
   const isJson = (res.headers.get('content-type') ?? '').includes('application/json');
   const body = isJson ? await res.json().catch(() => null) : null;
   if (!res.ok) throw new ApiError(res.status, errorMessage(body, res.statusText || `Request failed (${res.status})`));
+  // A page instead of API data means the request never reached the API: say so instead of returning nothing.
+  if (res.status !== 204 && !isJson && (res.headers.get('content-type') ?? '').includes('text/html')) {
+    throw new ApiError(502, 'The server sent an unexpected reply. Please try again.');
+  }
   if (res.status === 204 || body === null) return undefined as T;
   const env = body as Envelope<T>;
   // Paginated results arrive with meta hoisted next to a bare array.
@@ -273,9 +277,11 @@ export const generateVideo = (input: {
   fresh?: boolean;
 }) => request<VideoResult>('/video/generate', { method: 'POST', body: JSON.stringify(input) });
 
+/** The job id goes in the query: Veo ids contain slashes, and an encoded slash in the path never reaches the API on
+ * the live server. */
 export const getVideoJob = (provider: string, jobId: string, cacheKey?: string) =>
   request<VideoResult>(
-    `/video/jobs/${encodeURIComponent(jobId)}?provider=${encodeURIComponent(provider)}${
+    `/video/jobs/status?provider=${encodeURIComponent(provider)}&jobId=${encodeURIComponent(jobId)}${
       cacheKey ? `&cacheKey=${encodeURIComponent(cacheKey)}` : ''
     }`,
   );

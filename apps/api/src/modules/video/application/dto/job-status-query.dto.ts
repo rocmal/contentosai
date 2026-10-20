@@ -12,3 +12,15 @@ export class JobStatusQueryDto {
   @Matches(/^[a-f0-9]{64}$/)
   cacheKey?: string;
 }
+
+/**
+ * The status check with the job id in the query string. Veo job ids contain slashes
+ * ("models/veo-3.1-fast-generate-preview/operations/..."); in the path they become %2F, which the live
+ * server's Apache does not pass to the API, so the browser got the website's HTML back and waited forever.
+ */
+export class JobStatusByIdQueryDto extends JobStatusQueryDto {
+  @ApiProperty({ example: 'models/veo-3.1-fast-generate-preview/operations/abc123' })
+  // Letters, digits and . _ - / only, and never "..": the id ends up in the provider's address.
+  @Matches(/^(?!.*\.\.)[\w./-]{1,300}$/)
+  jobId!: string;
+}

@@ -4,7 +4,7 @@ import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { VideoService } from '../application/services/video.service';
 import { GenerateVideoDto } from '../application/dto/generate-video.dto';
-import { JobStatusQueryDto } from '../application/dto/job-status-query.dto';
+import { JobStatusByIdQueryDto, JobStatusQueryDto } from '../application/dto/job-status-query.dto';
 
 @ApiTags('video')
 @ApiBearerAuth('access-token')
@@ -24,6 +24,28 @@ export class VideoController {
     return this.videoService.submitJob(dto, { userId, organizationId, workspaceId });
   }
 
+  // Declared before 'jobs/:jobId' so "status" is not taken for a job id.
+  @Get('jobs/status')
+  @RequirePermissions('video.generate')
+  @ApiOperation({
+    summary:
+      'Check the status of a video generation job (job id in the query; ids may contain slashes)',
+  })
+  async getJobStatusByQuery(
+    @Query() query: JobStatusByIdQueryDto,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string | null,
+    @CurrentUser('workspaceId') workspaceId: string | null,
+  ) {
+    return this.videoService.getJobStatus(query.provider, query.jobId, {
+      userId,
+      organizationId,
+      workspaceId,
+      cacheKey: query.cacheKey,
+    });
+  }
+
+  /** Kept for older phone builds; ids with slashes (Veo) do not reach it through the live server - use jobs/status. */
   @Get('jobs/:jobId')
   @RequirePermissions('video.generate')
   @ApiOperation({ summary: 'Check the status of a video generation job' })
