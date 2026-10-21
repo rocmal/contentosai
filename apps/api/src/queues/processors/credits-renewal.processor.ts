@@ -15,12 +15,11 @@ import { RenewalReminderService } from '../renewal-reminder.service';
  *
  * Self-serve plans (Starter/Pro) are paid by a one-off Razorpay order per
  * 30-day period - there is no recurring charge - so when the period ends
- * without a new payment the plan lapses: the subscription becomes PAST_DUE
- * and the remaining credits are paused (kept, but not spendable) until the
- * customer renews. Renewing through checkout re-activates it, un-pauses the
- * credits and adds the new period's credits on top. Invoice-billed plans
- * (Enterprise) roll on by themselves, since they are paid outside the
- * checkout. */
+ * without a new payment the plan lapses: the subscription becomes PAST_DUE and
+ * the remaining credits are removed until the customer renews. (Renewing
+ * through checkout re-activates it and grants a fresh allotment - credits
+ * never carry over.) Invoice-billed plans (Enterprise) keep rolling the period
+ * and resetting credits, since they are paid outside the checkout. */
 @Processor(QueueName.CREDITS_RENEWAL)
 export class CreditsRenewalProcessor extends WorkerHost {
   private readonly logger = new Logger(CreditsRenewalProcessor.name);
@@ -68,7 +67,7 @@ export class CreditsRenewalProcessor extends WorkerHost {
 
           if (isPurchasablePlan(subscription.plan)) {
             for (const workspace of workspaces) {
-              await this.creditsService.pause(workspace.id, now);
+              await this.creditsService.expire(subscription.organizationId, workspace.id);
             }
             await this.subscriptionsService.update(subscription.id, {
               status: SubscriptionStatus.PAST_DUE,

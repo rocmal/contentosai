@@ -229,10 +229,9 @@ export const TermsOfServicePage: React.FC<LegalPageProps> = ({ onBack }) => (
     <section>
       <h2>6. Subscriptions and billing</h2>
       <p>Paid plans are paid in advance and run for 30 days. They do not renew automatically: to continue,
-        you pay again from Billing, and the new period's credits are added to any you have not used (unused
-        credits carry forward while you keep renewing). If a plan ends without being renewed, its remaining
-        credits are kept but cannot be used until you renew. You can view or change your plan from Billing at
-        any time.</p>
+        you pay again from Billing. Each period starts with that plan's credits; unused credits do not carry
+        over, and any remaining credits are removed when a plan ends without being renewed. You can view or
+        change your plan from Billing at any time.</p>
     </section>
 
     <section>

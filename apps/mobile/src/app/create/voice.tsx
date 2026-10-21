@@ -10,7 +10,7 @@ import { SITE_URL } from '@/lib/config';
 import { saveToPhotos, uniqueName, writeCacheFile } from '@/lib/files';
 import { SARVAM_VOICE_CATALOG, voiceSampleUrl, type SarvamVoiceGender } from '@/lib/sarvamVoices';
 import { scriptWriter, type ScriptLanguage } from '@/lib/studioPrompts';
-import { creditLabel, formatBalance, useWallet, outOfCreditsDetail } from '@/lib/useWallet';
+import { creditLabel, formatBalance, useWallet } from '@/lib/useWallet';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, PillButton, Screen } from '@/ui/kit';
 import { PromptBox } from '@/ui/PromptBox';
 import { colors, space } from '@/ui/theme';
@@ -37,7 +37,7 @@ function clock(seconds: number): string {
 
 export default function VoiceStudio() {
   const router = useRouter();
-  const { balance, paused, reload } = useWallet();
+  const { balance, reload } = useWallet();
   const { prompt: initialPrompt } = useLocalSearchParams<{ prompt?: string }>();
   const [text, setText] = useState(initialPrompt ?? '');
   const [languageId, setLanguageId] = useState<ScriptLanguage>('hindi');
@@ -197,7 +197,7 @@ export default function VoiceStudio() {
         {outOfCredits && (
           <Card style={{ gap: space.sm }}>
             <Muted style={{ color: colors.text, fontWeight: '600' }}>Not enough credits for this voiceover.</Muted>
-            <Muted>{outOfCreditsDetail(paused, balance, cost)}</Muted>
+            <Muted>You have {formatBalance(balance)} credits; this needs {cost}. Add credits on the Lumora website.</Muted>
             <Button title="See plan and credits" variant="secondary" onPress={() => router.push('/billing')} />
           </Card>
         )}

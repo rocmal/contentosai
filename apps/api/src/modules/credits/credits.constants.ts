@@ -19,7 +19,7 @@ export const TRIAL_CREDITS =
     : 500;
 
 /** A paid plan runs for this many days. It does not renew by itself: the customer pays again (one Razorpay payment)
- * and unused credits carry forward into the new period. */
+ * and the new period starts with a fresh allotment - unused credits do not carry over. */
 export const BILLING_PERIOD_DAYS = 30;
 
 /** When a period that starts at `start` ends. */

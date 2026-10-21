@@ -1035,8 +1035,6 @@ export interface CreditWallet {
   balance: number | null;
   cycleStartAt: string | null;
   cycleEndAt: string | null;
-  /** Set while the paid plan has lapsed: the credits are kept but cannot be spent until the plan is renewed. */
-  pausedAt: string | null;
 }
 
 export interface CreditTransaction {

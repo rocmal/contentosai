@@ -36,8 +36,6 @@ export class CreditWalletsRepository
         lock: transaction.LOCK.UPDATE,
       });
       if (!instance) return null;
-      // A lapsed plan keeps its credits but cannot spend them until it is renewed.
-      if (instance.pausedAt) return null;
 
       // null balance = unlimited (Enterprise) - nothing to decrement, always allowed.
       if (instance.balance === null) {
@@ -86,37 +84,6 @@ export class CreditWalletsRepository
     return this.toEntity(instance);
   }
 
-  async addForNewCycle(
-    workspaceId: string,
-    amount: number | null,
-    cycleStartAt: Date,
-    cycleEndAt: Date | null,
-  ): Promise<CreditWallet> {
-    return this.sequelize.transaction(async (transaction: Transaction) => {
-      const instance = await this.model.findOne({
-        where: { workspaceId },
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-      });
-      if (!instance) {
-        throw new Error(`Credit wallet for workspace "${workspaceId}" not found`);
-      }
-      const balance =
-        amount === null || instance.balance === null ? amount : instance.balance + amount;
-      instance.set({ balance, cycleStartAt, cycleEndAt, pausedAt: null } as never);
-      await instance.save({ transaction });
-      return this.toEntity(instance);
-    });
-  }
-
-  async pause(workspaceId: string, pausedAt: Date): Promise<CreditWallet | null> {
-    const instance = await this.model.findOne({ where: { workspaceId } });
-    if (!instance) return null;
-    instance.set({ pausedAt } as never);
-    await instance.save();
-    return this.toEntity(instance);
-  }
-
   protected toEntity(instance: CreditWalletModel): CreditWallet {
     const plain = instance.get({ plain: true });
     return {
@@ -126,7 +93,6 @@ export class CreditWalletsRepository
       balance: plain.balance,
       cycleStartAt: plain.cycleStartAt,
       cycleEndAt: plain.cycleEndAt,
-      pausedAt: plain.pausedAt ?? null,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       deletedAt: plain.deletedAt,

@@ -65,7 +65,7 @@ export class CheckoutService {
 
     const now = new Date();
     // Renewing early keeps the days already paid for: the new 30 days start when
-    // the current period ends, not today. Unused credits carry forward either way.
+    // the current period ends, not today.
     const stillPaidUntil =
       existing?.status === SubscriptionStatus.ACTIVE && existing.currentPeriodEnd && existing.currentPeriodEnd > now
         ? existing.currentPeriodEnd

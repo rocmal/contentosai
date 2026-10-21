@@ -9,13 +9,13 @@ import { colors, space } from '@/ui/theme';
 const STATUS: Record<Subscription['status'], string> = {
   trialing: 'Free trial',
   active: 'Active',
-  past_due: 'Ended - credits paused until you renew',
+  past_due: 'Ended - renew to continue',
   canceled: 'Cancelled',
 };
 
 export default function Billing() {
   const { user } = useAuth();
-  const { balance, paused } = useWallet();
+  const { balance } = useWallet();
   const [sub, setSub] = useState<Subscription | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +33,7 @@ export default function Billing() {
     <Screen>
       <View style={{ gap: space.lg, paddingTop: space.md }}>
         <Card style={{ gap: 4 }}>
-          <Muted>{paused ? 'Credits paused' : 'Credits remaining'}</Muted>
+          <Muted>Credits remaining</Muted>
           <Text style={{ fontSize: 32, fontWeight: '700', color: colors.text }}>{formatBalance(balance)}</Text>
         </Card>
 
@@ -53,8 +53,8 @@ export default function Billing() {
         </Card>
         <ErrorText message={error} />
         <Muted>
-          Each plan runs for 30 days and does not renew automatically. When you renew, unused credits carry forward. To
-          change your plan or renew, sign in to your account on the Lumora website.
+          Each plan runs for 30 days, starts with a fresh set of credits (unused credits do not carry over) and does not
+          renew automatically. To change your plan or renew, sign in to your account on the Lumora website.
         </Muted>
       </View>
     </Screen>

@@ -195,15 +195,15 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   - **30-day periods** (`BILLING_PERIOD_DAYS`, `addBillingPeriod` in credits.constants.ts; was a calendar month).
     Self-serve plans are still one Razorpay payment per period, never charged automatically; renewing early starts the
     new 30 days when the current ones end.
-  - **Carry forward:** a renewal adds the plan's credits to what is left (`CreditWalletsRepository.addForNewCycle`;
-    it used to replace the balance). Trial leftovers carry into the first paid plan. No cap.
-  - **Lapsed plan = paused credits:** when 30 days pass without payment, the renewal job marks the subscription
-    past_due and sets `credit_wallets.pausedAt` (migration 20261021000001). The balance is kept but `tryDecrement`
-    refuses it (402 "Your plan has ended, so your N credits are paused..."). Paying un-pauses it and adds the new
-    credits. Until 2026-10-21 lapsed credits were removed (`plan.expired` transactions in old history).
-  - Shown in: sidebar card and Billing ("paused"), `OutOfCreditsNotice` (reads the wallet), prices "/ 30 days",
-    landing FAQ, Help, Terms section 6 (effective October 21, 2026), reminder and ended emails, phone Billing and
-    studio out-of-credit cards (`outOfCreditsDetail`). `GET /credits/rates` also returns `trial.credits`.
+  - **No carry-over, like Claude's usage limits:** each period starts fresh - a renewal resets the balance to the
+    plan's credits (`grantMonthlyRenewal` -> `setBalance`). Trial leftovers do not carry into a paid plan either.
+  - **Lapsed plan:** when 30 days pass without payment, the renewal job marks the subscription past_due and removes
+    the remaining credits (`CreditsService.expire`, a `plan.expired` transaction). Paying starts a fresh period.
+  - Carry-forward and "paused credits" were live for a few hours on 2026-10-21 and then dropped by the owner:
+    migration 20261021000001 added `credit_wallets.pausedAt`, 20261021000003 removed any paused balance (as
+    `plan.expired`) and dropped the column. Do not bring either back without asking.
+  - Shown in: prices "/ 30 days", Billing, landing FAQ, Help, Terms section 6 (effective October 21, 2026), the
+    reminder and plan-ended emails, phone Billing. `GET /credits/rates` also returns `trial.credits`.
 
 ### Social posting (LinkedIn personal profile first; added 2026-10-19)
 

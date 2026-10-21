@@ -81,27 +81,19 @@ describe('credit prices shown before generating', () => {
   });
 });
 
-describe('plans: 30-day periods, carry-forward and pausing', () => {
+describe('plans: 30-day periods that start fresh', () => {
   const DAY = 24 * 60 * 60 * 1000;
-  const videoCharge = {
-    organizationId: 'org-1',
-    workspaceId: 'ws-1',
-    amount: 20,
-    reason: CreditTransactionReason.GENERATION_VIDEO,
-  };
   const makeService = (wallet: Record<string, unknown> | null) => {
     const wallets = {
       findByWorkspace: jest.fn().mockResolvedValue(wallet),
       create: jest
         .fn()
         .mockImplementation((data: Record<string, unknown>) => Promise.resolve(data)),
-      setBalance: jest.fn().mockResolvedValue(wallet),
-      addForNewCycle: jest
+      setBalance: jest
         .fn()
-        .mockImplementation((_ws: string, amount: number) =>
-          Promise.resolve({ ...wallet, balance: (wallet?.balance as number) + amount }),
+        .mockImplementation((_ws: string, balance: number | null) =>
+          Promise.resolve({ ...wallet, balance }),
         ),
-      pause: jest.fn().mockResolvedValue(wallet),
       tryDecrement: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<ICreditWalletsRepository>;
     const transactions = {
@@ -131,55 +123,55 @@ describe('plans: 30-day periods, carry-forward and pausing', () => {
     expect(data.cycleEndAt!.getTime() - data.cycleStartAt!.getTime()).toBe(30 * DAY);
   });
 
-  it('carries unused credits forward when a plan renews', async () => {
-    const { service, wallets, transactions } = makeService({
-      workspaceId: 'ws-1',
-      balance: 300,
-      pausedAt: null,
-    });
+  it('starts each renewed period with a fresh allotment: unused credits do not carry over', async () => {
+    const { service, wallets, transactions } = makeService({ workspaceId: 'ws-1', balance: 300 });
     const start = new Date();
     const end = addBillingPeriod(start);
 
     const wallet = await service.grantMonthlyRenewal('org-1', 'ws-1', 'starter', start, end);
 
-    expect(wallets.addForNewCycle).toHaveBeenCalledWith('ws-1', 2500, start, end);
-    expect(wallets.setBalance).not.toHaveBeenCalled();
-    expect(wallet.balance).toBe(2800);
+    expect(wallets.setBalance).toHaveBeenCalledWith('ws-1', 2500, start, end);
+    expect(wallet.balance).toBe(2500);
     expect(transactions.create).toHaveBeenCalledWith(
       expect.objectContaining({
         amount: 2500,
         reason: CreditTransactionReason.PLAN_MONTHLY_GRANT,
-        balanceAfter: 2800,
+        balanceAfter: 2500,
       }),
     );
   });
 
-  it('pauses the credits of a lapsed plan instead of removing them', async () => {
-    const { service, wallets, transactions } = makeService({ workspaceId: 'ws-1', balance: 933 });
-    const at = new Date();
+  it('removes the credits left on a lapsed plan, and records it', async () => {
+    const { service, wallets, transactions } = makeService({
+      workspaceId: 'ws-1',
+      balance: 933,
+      cycleStartAt: null,
+      cycleEndAt: null,
+    });
 
-    await service.pause('ws-1', at);
+    await service.expire('org-1', 'ws-1');
 
-    expect(wallets.pause).toHaveBeenCalledWith('ws-1', at);
-    expect(wallets.setBalance).not.toHaveBeenCalled();
-    expect(transactions.create).not.toHaveBeenCalled();
-  });
-
-  it('explains that paused credits need a renewal', async () => {
-    const { service } = makeService({ workspaceId: 'ws-1', balance: 933, pausedAt: new Date() });
-
-    const error = await service.reserve(videoCharge).catch((e: unknown) => e);
-
-    expect(error).toBeInstanceOf(InsufficientCreditsException);
-    expect((error as Error).message).toBe(
-      'Your plan has ended, so your 933 credits are paused. Renew your plan in Billing to use them.',
+    expect(wallets.setBalance).toHaveBeenCalledWith('ws-1', 0, expect.any(Date), null);
+    expect(transactions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: -933,
+        reason: CreditTransactionReason.PLAN_EXPIRED,
+        balanceAfter: 0,
+      }),
     );
   });
 
-  it('keeps the plain message when credits simply ran out', async () => {
-    const { service } = makeService({ workspaceId: 'ws-1', balance: 5, pausedAt: null });
+  it('refuses a charge the balance cannot cover', async () => {
+    const { service } = makeService({ workspaceId: 'ws-1', balance: 5 });
 
-    await expect(service.reserve(videoCharge)).rejects.toThrow('Not enough credits remaining this billing cycle.');
+    await expect(
+      service.reserve({
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        amount: 20,
+        reason: CreditTransactionReason.GENERATION_VIDEO,
+      }),
+    ).rejects.toBeInstanceOf(InsufficientCreditsException);
   });
 
   it('publishes the trial size with the prices', () => {

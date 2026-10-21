@@ -213,27 +213,28 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
                 {wallet
                   ? wallet.balance === null
                     ? 'Unlimited credits'
-                    : `${wallet.balance.toLocaleString()} credits ${wallet.pausedAt ? 'paused' : 'remaining'}`
+                    : `${wallet.balance.toLocaleString()} credits remaining`
                   : 'No wallet yet'}
               </span>
             </div>
 
             {subscription?.status === 'past_due' && (
               <p className="text-xs text-amber-300">
-                Your plan has ended, so your credits are paused, not lost. Choose a plan below to renew: as soon as payment
-                clears they are usable again, with the new 30 days of credits added on top.
+                Your plan has ended and its remaining credits were removed. Choose a plan below to renew - a fresh 30 days
+                of credits is added as soon as payment clears.
               </p>
             )}
             {subscription?.status === 'active' && subscription.currentPeriodEnd && (
               <p className="text-xs text-slate-300">
                 Paid through {new Date(subscription.currentPeriodEnd).toLocaleDateString()}. Each plan runs for 30 days and
-                does not renew automatically. Renew before this date to keep generating; unused credits carry forward.
+                does not renew automatically. Renew before this date to keep generating; each period starts with a fresh
+                set of credits (unused credits do not carry over).
               </p>
             )}
             {subscription?.status === 'trialing' && (
               <p className="text-xs text-slate-300">
                 You are on the free trial (new workspaces start with 500 credits). Choose a plan below for a full 30 days of
-                credits; whatever trial credits are left carry forward.
+                credits.
               </p>
             )}
 

@@ -76,7 +76,7 @@ export class RenewalReminderService {
         subject: `Your Lumora ${planLabel(subscription.plan)} plan ends ${daysText}`,
         html: this.body(
           `Your <strong>${planLabel(subscription.plan)}</strong> plan ends on <strong>${formatDate(subscription.currentPeriodEnd)}</strong>.`,
-          `Renew before then to keep generating without a break: your unused credits carry forward into the next 30 days. Each plan runs for 30 days and does not renew automatically.`,
+          `Renew before then to keep generating without a break. Each plan runs for 30 days, starts with a fresh set of credits (unused credits do not carry over) and does not renew automatically.`,
           subscription.plan,
         ),
       });
@@ -104,8 +104,8 @@ export class RenewalReminderService {
         to: email,
         subject: `Your Lumora ${planLabel(subscription.plan)} plan has ended`,
         html: this.body(
-          `Your <strong>${planLabel(subscription.plan)}</strong> plan has ended. Your remaining credits are kept but paused.`,
-          `Renew from Billing to use them again: they carry forward, with the new plan credits added on top. Your Gallery and saved content are untouched.`,
+          `Your <strong>${planLabel(subscription.plan)}</strong> plan has ended and your remaining credits were removed.`,
+          `Renew from Billing to start generating again with a fresh 30 days of credits. Your Gallery and saved content are untouched.`,
           subscription.plan,
         ),
       });
