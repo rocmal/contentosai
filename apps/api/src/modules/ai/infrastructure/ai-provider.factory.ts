@@ -9,6 +9,10 @@ import { ClaudeProvider } from './providers/claude.provider';
 import { OpenRouterProvider } from './providers/openrouter.provider';
 import { SarvamProvider } from './providers/sarvam.provider';
 
+/** Gemini and OpenAI stand in for each other: when the default writer fails (out of credit, down, too slow), the other
+ * one answers instead of the customer seeing an error. Used only when the stand-in has a key. */
+const BACKUP_PROVIDER: Record<string, string> = { gemini: 'openai', openai: 'gemini' };
+
 /**
  * Single point of provider selection. Application services ask the factory
  * for "the AI provider" and never instantiate or import a concrete provider
@@ -50,14 +54,14 @@ export class AIProviderFactory {
    * Picks the engine for a piece of writing. An explicit provider always wins.
    * Otherwise Indian-language work (by language name, or Indic script in the
    * text) goes to Sarvam when it is configured, and everything else uses the
-   * default provider.
+   * default provider - backed by the other of Gemini/OpenAI when it has a key.
    */
   getProviderFor(options: { provider?: string; language?: string; text?: string }): IAIProvider {
     if (options.provider) {
       return this.getProvider(options.provider);
     }
     const indian = isIndianLanguage(options.language) || containsIndicScript(options.text);
-    const fallback = this.getProvider();
+    const fallback = this.withBackup(this.getProvider());
     if (indian && this.configService.get<string>('ai.sarvam.apiKey')) {
       const sarvam = this.getProvider('sarvam');
       // Sarvam is the best Indian-language writer but also the slowest; if it
@@ -65,6 +69,14 @@ export class AIProviderFactory {
       return fallback.name === sarvam.name ? sarvam : new FallbackAIProvider(sarvam, fallback);
     }
     return fallback;
+  }
+
+  private withBackup(primary: IAIProvider): IAIProvider {
+    const backupName = BACKUP_PROVIDER[primary.name];
+    if (!backupName || !this.configService.get<string>(`ai.${backupName}.apiKey`)) {
+      return primary;
+    }
+    return new FallbackAIProvider(primary, this.getProvider(backupName));
   }
 
   listProviders(): string[] {

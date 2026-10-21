@@ -127,6 +127,10 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   2026-10-20 the text AI showed Google's raw JSON (billing state included) under Improve with AI. Providers not offered in
   production (Stability, Flux, Luma, D-ID, HeyGen, Synthesia) and Razorpay still put vendor text in their messages; fix
   them the same way before offering them.
+- **Text AI backup** (`ai/infrastructure/ai-provider.factory.ts`, added 2026-10-21): Gemini (the live default,
+  `AI_DEFAULT_PROVIDER`) and OpenAI stand in for each other when the other has a key, so Improve with AI and Write with AI
+  keep working when one runs out of credit. Indian-language work goes Sarvam → default → backup. Videos have no backup:
+  Veo needs the Google (Gemini) prepaid credit.
 - **Text boxes** (Image/Video prompt, Voice script, Scene Builder narration, post composer): Ctrl+Z / Ctrl+Y (Cmd+Z /
   Cmd+Shift+Z) through `src/lib/useTextHistory.ts`, which also steps back over templates, Speak and Improve with AI (the
   browser's own undo cannot). Speak into a box that has text asks Add to the end / Replace / Discard (`VoiceInputButton`
