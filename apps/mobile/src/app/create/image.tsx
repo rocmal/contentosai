@@ -5,7 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { ApiError, generateImage, getImageOptions, type ImageAspectRatio, type ImageProviderOption, type ImageQuality } from '@/lib/api';
 import { uploadToGallery } from '@/lib/upload';
 import { IMAGE_COMPOSITION_NOTE, IMAGE_NO_TEXT_NOTE, IMAGE_WRITER, WANTS_TEXT } from '@/lib/studioPrompts';
-import { creditLabel, formatBalance, useWallet } from '@/lib/useWallet';
+import { creditLabel, formatBalance, useWallet, outOfCreditsDetail } from '@/lib/useWallet';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, Screen, SwitchRow } from '@/ui/kit';
 import { MediaActions } from '@/ui/MediaActions';
 import { useMediaBox } from '@/ui/mediaBox';
@@ -34,7 +34,7 @@ interface Result {
 
 export default function ImageStudio() {
   const router = useRouter();
-  const { balance, reload } = useWallet();
+  const { balance, paused, reload } = useWallet();
   const { prompt: initialPrompt } = useLocalSearchParams<{ prompt?: string }>();
   const [prompt, setPrompt] = useState(initialPrompt ?? '');
   const [noText, setNoText] = useState(true);
@@ -168,7 +168,7 @@ export default function ImageStudio() {
         {outOfCredits && (
           <Card style={{ gap: space.sm }}>
             <Muted style={{ color: colors.text, fontWeight: '600' }}>Not enough credits for this image.</Muted>
-            <Muted>You have {formatBalance(balance)} credits. Add credits on the Lumora website.</Muted>
+            <Muted>{outOfCreditsDetail(paused, balance)}</Muted>
             <Button title="See plan and credits" variant="secondary" onPress={() => router.push('/billing')} />
           </Card>
         )}

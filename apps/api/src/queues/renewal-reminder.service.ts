@@ -76,7 +76,7 @@ export class RenewalReminderService {
         subject: `Your Lumora ${planLabel(subscription.plan)} plan ends ${daysText}`,
         html: this.body(
           `Your <strong>${planLabel(subscription.plan)}</strong> plan ends on <strong>${formatDate(subscription.currentPeriodEnd)}</strong>.`,
-          `Renew before then to keep your credits and keep generating without a break. Plans are paid month by month and do not renew automatically.`,
+          `Renew before then to keep generating without a break: your unused credits carry forward into the next 30 days. Each plan runs for 30 days and does not renew automatically.`,
           subscription.plan,
         ),
       });
@@ -104,8 +104,8 @@ export class RenewalReminderService {
         to: email,
         subject: `Your Lumora ${planLabel(subscription.plan)} plan has ended`,
         html: this.body(
-          `Your <strong>${planLabel(subscription.plan)}</strong> plan has ended and your remaining credits were removed.`,
-          `Renew from Billing to start generating again. Your Brand Brain, projects and saved content are untouched.`,
+          `Your <strong>${planLabel(subscription.plan)}</strong> plan has ended. Your remaining credits are kept but paused.`,
+          `Renew from Billing to use them again: they carry forward, with the new plan credits added on top. Your Gallery and saved content are untouched.`,
           subscription.plan,
         ),
       });
@@ -126,7 +126,7 @@ export class RenewalReminderService {
     const appUrl = this.configService.get<string>('app.url') ?? '';
     // PLAN_PRICING_INR is in paise.
     const price = isPurchasablePlan(plan)
-      ? ` (₹${(PLAN_PRICING_INR[plan] / 100).toLocaleString('en-IN')} / month)`
+      ? ` (₹${(PLAN_PRICING_INR[plan] / 100).toLocaleString('en-IN')} for 30 days)`
       : '';
     return [
       `<p>${headline}</p>`,

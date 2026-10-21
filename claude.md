@@ -187,8 +187,23 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
     refunds (once) when the clip fails, is blocked or has not arrived after 20 minutes, and the notification says so. A
     status check that errors now just retries at the next poll (it used to end the chain with no clip, notice or
     refund). Jobs queued before 2026-10-21 carry no cost and are not refunded automatically.
-  - Known gaps: the Dashboard's "Where your credits went" shows spend per type before refunds (the total is net); 150
-    trial credits do not cover one 180-credit AI video; `video-credits` / `/video/sessions` is a second, unused ledger.
+  - Known gaps (left on purpose): the Dashboard's "Where your credits went" shows spend per type before refunds (the
+    total is net); `video-credits` / `/video/sessions` is a second, unused ledger.
+- **Plans and trial (decided 2026-10-21):**
+  - **Trial:** a new workspace gets 500 credits (`TRIAL_CREDITS`, was 150, which could not pay for one AI video).
+    Migration 20261021000002 topped up every "trialing" workspace to 500 granted in total. Trial credits never expire.
+  - **30-day periods** (`BILLING_PERIOD_DAYS`, `addBillingPeriod` in credits.constants.ts; was a calendar month).
+    Self-serve plans are still one Razorpay payment per period, never charged automatically; renewing early starts the
+    new 30 days when the current ones end.
+  - **Carry forward:** a renewal adds the plan's credits to what is left (`CreditWalletsRepository.addForNewCycle`;
+    it used to replace the balance). Trial leftovers carry into the first paid plan. No cap.
+  - **Lapsed plan = paused credits:** when 30 days pass without payment, the renewal job marks the subscription
+    past_due and sets `credit_wallets.pausedAt` (migration 20261021000001). The balance is kept but `tryDecrement`
+    refuses it (402 "Your plan has ended, so your N credits are paused..."). Paying un-pauses it and adds the new
+    credits. Until 2026-10-21 lapsed credits were removed (`plan.expired` transactions in old history).
+  - Shown in: sidebar card and Billing ("paused"), `OutOfCreditsNotice` (reads the wallet), prices "/ 30 days",
+    landing FAQ, Help, Terms section 6 (effective October 21, 2026), reminder and ended emails, phone Billing and
+    studio out-of-credit cards (`outOfCreditsDetail`). `GET /credits/rates` also returns `trial.credits`.
 
 ### Social posting (LinkedIn personal profile first; added 2026-10-19)
 

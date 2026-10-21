@@ -8,6 +8,12 @@ export class CreditWalletResponseDto {
   @ApiProperty({ nullable: true, description: 'null = unlimited (Enterprise plan)' }) balance: number | null;
   @ApiProperty({ nullable: true }) cycleStartAt: Date | null;
   @ApiProperty({ nullable: true }) cycleEndAt: Date | null;
+  @ApiProperty({
+    nullable: true,
+    description:
+      'Set while the paid plan has lapsed: the balance is kept but cannot be spent until renewal',
+  })
+  pausedAt: Date | null;
 
   constructor(wallet: CreditWallet) {
     this.id = wallet.id;
@@ -16,5 +22,6 @@ export class CreditWalletResponseDto {
     this.balance = wallet.balance;
     this.cycleStartAt = wallet.cycleStartAt;
     this.cycleEndAt = wallet.cycleEndAt;
+    this.pausedAt = wallet.pausedAt;
   }
 }

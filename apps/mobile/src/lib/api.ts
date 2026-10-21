@@ -202,6 +202,8 @@ export async function logout(): Promise<void> {
 export interface CreditWallet {
   /** null = unlimited (Enterprise plan). */
   balance: number | null;
+  /** Set while the paid plan has lapsed: the credits are kept but cannot be spent until it is renewed. */
+  pausedAt?: string | null;
 }
 
 export interface CreditRates {

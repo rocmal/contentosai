@@ -1,6 +1,9 @@
-import { CreditsService } from './credits.service';
+import { CreditsService, InsufficientCreditsException } from './credits.service';
 import {
+  BILLING_PERIOD_DAYS,
   SCENE_VIDEO_CREDITS,
+  TRIAL_CREDITS,
+  addBillingPeriod,
   estimateVoiceMinutes,
   videoCreditsPer10Seconds,
   voiceCreditsPerMinute,
@@ -75,5 +78,111 @@ describe('credit prices shown before generating', () => {
     expect(estimateVoiceMinutes(words(150))).toBe(1);
     expect(estimateVoiceMinutes(words(151))).toBe(2);
     expect(estimateVoiceMinutes(words(450))).toBe(3);
+  });
+});
+
+describe('plans: 30-day periods, carry-forward and pausing', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const videoCharge = {
+    organizationId: 'org-1',
+    workspaceId: 'ws-1',
+    amount: 20,
+    reason: CreditTransactionReason.GENERATION_VIDEO,
+  };
+  const makeService = (wallet: Record<string, unknown> | null) => {
+    const wallets = {
+      findByWorkspace: jest.fn().mockResolvedValue(wallet),
+      create: jest
+        .fn()
+        .mockImplementation((data: Record<string, unknown>) => Promise.resolve(data)),
+      setBalance: jest.fn().mockResolvedValue(wallet),
+      addForNewCycle: jest
+        .fn()
+        .mockImplementation((_ws: string, amount: number) =>
+          Promise.resolve({ ...wallet, balance: (wallet?.balance as number) + amount }),
+        ),
+      pause: jest.fn().mockResolvedValue(wallet),
+      tryDecrement: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<ICreditWalletsRepository>;
+    const transactions = {
+      create: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<ICreditTransactionsRepository>;
+    return { service: new CreditsService(wallets, transactions), wallets, transactions };
+  };
+
+  it('runs a plan for exactly 30 days', () => {
+    const start = new Date('2026-02-01T00:00:00Z');
+    expect(BILLING_PERIOD_DAYS).toBe(30);
+    expect(addBillingPeriod(start).toISOString()).toBe('2026-03-03T00:00:00.000Z');
+  });
+
+  it('gives a new workspace 500 trial credits, enough for an AI video', () => {
+    expect(TRIAL_CREDITS).toBe(500);
+    expect(TRIAL_CREDITS).toBeGreaterThan(videoCreditsPer10Seconds('veo'));
+  });
+
+  it('starts the first period 30 days long', async () => {
+    const { service, wallets } = makeService(null);
+
+    await service.grantInitial('org-1', 'ws-1', 'starter', 'user-1', TRIAL_CREDITS);
+
+    const data = wallets.create.mock.calls[0][0];
+    expect(data.balance).toBe(500);
+    expect(data.cycleEndAt!.getTime() - data.cycleStartAt!.getTime()).toBe(30 * DAY);
+  });
+
+  it('carries unused credits forward when a plan renews', async () => {
+    const { service, wallets, transactions } = makeService({
+      workspaceId: 'ws-1',
+      balance: 300,
+      pausedAt: null,
+    });
+    const start = new Date();
+    const end = addBillingPeriod(start);
+
+    const wallet = await service.grantMonthlyRenewal('org-1', 'ws-1', 'starter', start, end);
+
+    expect(wallets.addForNewCycle).toHaveBeenCalledWith('ws-1', 2500, start, end);
+    expect(wallets.setBalance).not.toHaveBeenCalled();
+    expect(wallet.balance).toBe(2800);
+    expect(transactions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 2500,
+        reason: CreditTransactionReason.PLAN_MONTHLY_GRANT,
+        balanceAfter: 2800,
+      }),
+    );
+  });
+
+  it('pauses the credits of a lapsed plan instead of removing them', async () => {
+    const { service, wallets, transactions } = makeService({ workspaceId: 'ws-1', balance: 933 });
+    const at = new Date();
+
+    await service.pause('ws-1', at);
+
+    expect(wallets.pause).toHaveBeenCalledWith('ws-1', at);
+    expect(wallets.setBalance).not.toHaveBeenCalled();
+    expect(transactions.create).not.toHaveBeenCalled();
+  });
+
+  it('explains that paused credits need a renewal', async () => {
+    const { service } = makeService({ workspaceId: 'ws-1', balance: 933, pausedAt: new Date() });
+
+    const error = await service.reserve(videoCharge).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(InsufficientCreditsException);
+    expect((error as Error).message).toBe(
+      'Your plan has ended, so your 933 credits are paused. Renew your plan in Billing to use them.',
+    );
+  });
+
+  it('keeps the plain message when credits simply ran out', async () => {
+    const { service } = makeService({ workspaceId: 'ws-1', balance: 5, pausedAt: null });
+
+    await expect(service.reserve(videoCharge)).rejects.toThrow('Not enough credits remaining this billing cycle.');
+  });
+
+  it('publishes the trial size with the prices', () => {
+    expect(makeService(null).service.getRates().trial.credits).toBe(TRIAL_CREDITS);
   });
 });

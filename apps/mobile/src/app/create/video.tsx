@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, Text, View } from 'react-native';
 import { ApiError, generateVideo, getCreditRates, pollVideoJob, type CreditRates, type VideoProvider } from '@/lib/api';
 import { VIDEO_STYLES, VIDEO_WRITER, type VideoStyleId } from '@/lib/studioPrompts';
-import { creditLabel, formatBalance, useWallet } from '@/lib/useWallet';
+import { creditLabel, formatBalance, useWallet, outOfCreditsDetail } from '@/lib/useWallet';
 import { useVideoAspect } from '@/lib/videoAspect';
 import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES } from '@/lib/videoTemplates';
 import { Button, Card, Chip, ChipRow, ErrorText, Field, Muted, Screen, SwitchRow } from '@/ui/kit';
@@ -130,7 +130,7 @@ function confirmReplace(apply: () => void) {
 
 export default function VideoStudio() {
   const router = useRouter();
-  const { balance, reload } = useWallet();
+  const { balance, paused, reload } = useWallet();
   const { prompt: initialPrompt } = useLocalSearchParams<{ prompt?: string }>();
   const [prompt, setPrompt] = useState(initialPrompt ?? '');
   const [aspect, setAspect] = useState<Aspect>('9:16');
@@ -283,7 +283,7 @@ export default function VideoStudio() {
         {outOfCredits && (
           <Card style={{ gap: space.sm }}>
             <Muted style={{ color: colors.text, fontWeight: '600' }}>Not enough credits for a video.</Muted>
-            <Muted>You have {formatBalance(balance)} credits; a video needs {cost}. Add credits on the Lumora website.</Muted>
+            <Muted>{outOfCreditsDetail(paused, balance, cost)}</Muted>
             <Button title="See plan and credits" variant="secondary" onPress={() => router.push('/billing')} />
           </Card>
         )}

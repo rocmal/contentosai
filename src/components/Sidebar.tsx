@@ -231,10 +231,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {wallet.balance !== null && (
                 <>
                   <p className="text-sm font-bold text-slate-900 dark:text-white">
-                    {wallet.balance.toLocaleString()} remaining
+                    {wallet.balance.toLocaleString()} {wallet.pausedAt ? 'paused' : 'remaining'}
                   </p>
                   <p className="text-[10px] font-medium text-slate-500 dark:text-slate-400">
-                    View usage &amp; plan details
+                    {wallet.pausedAt ? 'Plan ended - renew to use them' : 'View usage & plan details'}
                   </p>
                 </>
               )}

@@ -9,14 +9,23 @@ export const PLAN_CREDIT_ALLOTMENTS: Record<string, number | null> = {
 
 export const DEFAULT_PLAN = 'starter';
 
-/** Credits a brand-new (unpaid) workspace gets once, at signup. Deliberately
- * far below the Starter allotment: generations cost real money per credit, and
- * signup is not email-verified, so a full paid-plan allotment here would be a
- * free giveaway to anyone with a throwaway address. Override with TRIAL_CREDITS. */
+/** Credits a brand-new (unpaid) workspace gets once, at signup: enough to try every studio, including one AI video
+ * (180). Still well below the Starter allotment, since signup is not email-verified and generations cost real money.
+ * Was 150 until 2026-10-21, which could not pay for a single video; migration 20261021000002 topped up the trials
+ * started before then. Override with TRIAL_CREDITS. */
 export const TRIAL_CREDITS =
   Number.isFinite(Number(process.env.TRIAL_CREDITS)) && process.env.TRIAL_CREDITS !== undefined
     ? Number(process.env.TRIAL_CREDITS)
-    : 150;
+    : 500;
+
+/** A paid plan runs for this many days. It does not renew by itself: the customer pays again (one Razorpay payment)
+ * and unused credits carry forward into the new period. */
+export const BILLING_PERIOD_DAYS = 30;
+
+/** When a period that starts at `start` ends. */
+export function addBillingPeriod(start: Date): Date {
+  return new Date(start.getTime() + BILLING_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+}
 
 export const CREDIT_COST = {
   TEXT_PER_GENERATION: 1,

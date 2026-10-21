@@ -18,6 +18,8 @@ import {
   DEFAULT_PLAN,
   PLAN_CREDIT_ALLOTMENTS,
   SCENE_VIDEO_CREDITS,
+  TRIAL_CREDITS,
+  addBillingPeriod,
   VIDEO_CREDITS_PER_10_SECONDS,
   VOICE_CREDITS_PER_MINUTE,
   VOICE_WORDS_PER_MINUTE,
@@ -32,12 +34,6 @@ export class InsufficientCreditsException extends HttpException {
       HttpStatus.PAYMENT_REQUIRED,
     );
   }
-}
-
-function addOneMonth(date: Date): Date {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + 1);
-  return next;
 }
 
 function planAllotment(plan: string): number | null {
@@ -67,11 +63,13 @@ export class CreditsService {
     voice: { perMinute: Record<string, number>; wordsPerMinute: number };
     video: { per10Seconds: Record<string, number> };
     sceneVideo: { perVideo: number };
+    trial: { credits: number };
   } {
     return {
       voice: { perMinute: { ...VOICE_CREDITS_PER_MINUTE }, wordsPerMinute: VOICE_WORDS_PER_MINUTE },
       video: { per10Seconds: { ...VIDEO_CREDITS_PER_10_SECONDS } },
       sceneVideo: { perVideo: SCENE_VIDEO_CREDITS },
+      trial: { credits: TRIAL_CREDITS },
     };
   }
 
@@ -110,7 +108,7 @@ export class CreditsService {
   ): Promise<CreditWallet> {
     const allotment = amountOverride ?? planAllotment(plan);
     const cycleStartAt = new Date();
-    const cycleEndAt = addOneMonth(cycleStartAt);
+    const cycleEndAt = addBillingPeriod(cycleStartAt);
 
     const existing = await this.walletsRepository.findByWorkspace(workspaceId);
     const wallet = existing
@@ -135,33 +133,16 @@ export class CreditsService {
     return wallet;
   }
 
-  /** A paid plan lapsed without a renewal payment: remove the remaining
-   * credits so usage stops until the customer renews. No-op for unlimited
-   * wallets and workspaces with nothing left. */
-  async expire(organizationId: string, workspaceId: string): Promise<void> {
-    const wallet = await this.walletsRepository.findByWorkspace(workspaceId);
-    if (!wallet || wallet.balance === null || wallet.balance <= 0) return;
-
-    const removed = wallet.balance;
-    await this.walletsRepository.setBalance(
-      workspaceId,
-      0,
-      wallet.cycleStartAt ?? new Date(),
-      wallet.cycleEndAt,
-    );
-    await this.transactionsRepository.create({
-      organizationId,
-      workspaceId,
-      userId: null,
-      amount: -removed,
-      reason: CreditTransactionReason.PLAN_EXPIRED,
-      balanceAfter: 0,
-    });
+  /** A paid plan lapsed without a renewal payment: keep the remaining credits but stop them being spent until the
+   * customer renews (grantMonthlyRenewal un-pauses them and adds the new period's credits). Until 2026-10-21 the
+   * credits were removed instead. */
+  async pause(workspaceId: string, at = new Date()): Promise<void> {
+    await this.walletsRepository.pause(workspaceId, at);
   }
 
-  /** Resets the wallet to the plan's monthly allotment (no rollover, per the
-   * landing page FAQ) and advances the billing cycle. Called by the renewal
-   * job when Subscription.currentPeriodEnd rolls over. */
+  /** Starts a new 30-day period: adds the plan's credits to whatever is left (unused credits carry forward), un-pauses
+   * a lapsed wallet and advances the cycle. Called when a payment clears (CheckoutService) and when the renewal job
+   * rolls an invoice-billed plan. Until 2026-10-21 it replaced the balance (no carry-over). */
   async grantMonthlyRenewal(
     organizationId: string,
     workspaceId: string,
@@ -172,7 +153,12 @@ export class CreditsService {
     const allotment = planAllotment(plan);
     const existing = await this.walletsRepository.findByWorkspace(workspaceId);
     const wallet = existing
-      ? await this.walletsRepository.setBalance(workspaceId, allotment, cycleStartAt, cycleEndAt)
+      ? await this.walletsRepository.addForNewCycle(
+          workspaceId,
+          allotment,
+          cycleStartAt,
+          cycleEndAt,
+        )
       : await this.walletsRepository.create({
           organizationId,
           workspaceId,
@@ -187,7 +173,7 @@ export class CreditsService {
       userId: null,
       amount: allotment ?? 0,
       reason: CreditTransactionReason.PLAN_MONTHLY_GRANT,
-      balanceAfter: allotment,
+      balanceAfter: wallet.balance,
     });
 
     return wallet;
@@ -207,6 +193,12 @@ export class CreditsService {
   }): Promise<void> {
     const wallet = await this.walletsRepository.tryDecrement(params.workspaceId, params.amount);
     if (!wallet) {
+      const current = await this.walletsRepository.findByWorkspace(params.workspaceId);
+      if (current?.pausedAt) {
+        throw new InsufficientCreditsException(
+          `Your plan has ended, so your ${current.balance ?? 0} credits are paused. Renew your plan in Billing to use them.`,
+        );
+      }
       throw new InsufficientCreditsException();
     }
 

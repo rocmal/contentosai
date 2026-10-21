@@ -40,7 +40,7 @@ export const PRICING_PLANS: PricingPlan[] = [
     priceAnnual: 39,
     priceMonthlyINR: 4000,
     creditsPerMonth: 2500,
-    credits: '2,500 credits / month',
+    credits: '2,500 credits every 30 days',
     seats: '1 seat',
     seatLimit: 1,
     popular: false,
@@ -60,13 +60,13 @@ export const PRICING_PLANS: PricingPlan[] = [
     priceAnnual: 119,
     priceMonthlyINR: 10000,
     creditsPerMonth: 10000,
-    credits: '10,000 credits / month',
+    credits: '10,000 credits every 30 days',
     seats: 'Up to 5 seats',
     seatLimit: 5,
     popular: true,
     features: [
       'Everything in Starter',
-      '4x the monthly credits',
+      '4x the credits of Starter',
       'Up to 5 team seats',
       'Priority support',
     ],
@@ -109,7 +109,8 @@ export function formatPlanPrice(plan: PricingPlan, billingCycle: BillingCycle, l
     return { priceDisplay: 'Custom', periodLabel: 'contact us', ctaLabel: 'Contact sales' };
   }
   const usdPrice = billingCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
-  const periodLabel = billingCycle === 'annual' ? '/mo, billed annually' : '/month';
+  // A plan runs for 30 days and is paid again to renew (BILLING_PERIOD_DAYS in the API).
+  const periodLabel = billingCycle === 'annual' ? '/mo, billed annually' : ' / 30 days';
   const ctaLabel = 'Buy Now';
 
   if (!localized || localized.currency === 'USD' || !localized.rate) {

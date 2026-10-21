@@ -21,4 +21,7 @@ export class CreditWalletModel extends BaseModel {
 
   @Column({ type: DataType.DATE, allowNull: true })
   declare cycleEndAt: Date | null;
+
+  @Column({ type: DataType.DATE, allowNull: true })
+  declare pausedAt: Date | null;
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Logo, Wordmark } from './Logo';
 
-const EFFECTIVE_DATE = 'October 20, 2026';
+const EFFECTIVE_DATE = 'October 21, 2026';
 const CONTACT_EMAIL = 'sales@lumoraos.in';
 const SITE = 'lumoraos.in';
 
@@ -228,9 +228,11 @@ export const TermsOfServicePage: React.FC<LegalPageProps> = ({ onBack }) => (
 
     <section>
       <h2>6. Subscriptions and billing</h2>
-      <p>Paid plans are billed in advance on a recurring basis as described at checkout. You can view or
-        change your plan from Billing at any time; cancellations take effect at the end of the current
-        billing period.</p>
+      <p>Paid plans are paid in advance and run for 30 days. They do not renew automatically: to continue,
+        you pay again from Billing, and the new period's credits are added to any you have not used (unused
+        credits carry forward while you keep renewing). If a plan ends without being renewed, its remaining
+        credits are kept but cannot be used until you renew. You can view or change your plan from Billing at
+        any time.</p>
     </section>
 
     <section>

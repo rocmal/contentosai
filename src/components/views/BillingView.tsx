@@ -183,7 +183,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
       key: plan.key,
       name: plan.name,
       price: formatPlanPrice(plan, 'monthly', localizedRate ?? undefined).priceDisplay,
-      period: custom ? '' : '/month',
+      period: custom ? '' : ' / 30 days',
       credits: plan.credits,
       custom,
       // Only a paid, in-period plan counts as "active" - a trial on the same plan
@@ -207,31 +207,33 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
                 <Sparkles className="w-4 h-4 text-blue-400" />
                 Current Plan: {subscription ? PRICING_PLANS.find((p) => p.key === subscription.plan)?.name ?? subscription.plan : 'None'}
                 {subscription?.status === 'trialing' && ' (free trial)'}
-                {subscription?.status === 'past_due' && ' (expired)'}
+                {subscription?.status === 'past_due' && ' (ended)'}
               </span>
               <span className="font-mono text-blue-300">
                 {wallet
                   ? wallet.balance === null
                     ? 'Unlimited credits'
-                    : `${wallet.balance.toLocaleString()} credits remaining`
+                    : `${wallet.balance.toLocaleString()} credits ${wallet.pausedAt ? 'paused' : 'remaining'}`
                   : 'No wallet yet'}
               </span>
             </div>
 
             {subscription?.status === 'past_due' && (
               <p className="text-xs text-amber-300">
-                Your plan has expired and its credits were removed. Choose a plan below to renew - a new month of credits is added as soon as payment clears.
+                Your plan has ended, so your credits are paused, not lost. Choose a plan below to renew: as soon as payment
+                clears they are usable again, with the new 30 days of credits added on top.
               </p>
             )}
             {subscription?.status === 'active' && subscription.currentPeriodEnd && (
               <p className="text-xs text-slate-300">
-                Paid through {new Date(subscription.currentPeriodEnd).toLocaleDateString()}. Plans are paid month by month
-                and do not renew automatically - renew before this date to keep your credits.
+                Paid through {new Date(subscription.currentPeriodEnd).toLocaleDateString()}. Each plan runs for 30 days and
+                does not renew automatically. Renew before this date to keep generating; unused credits carry forward.
               </p>
             )}
             {subscription?.status === 'trialing' && (
               <p className="text-xs text-slate-300">
-                You are on the free trial with a small credit allowance. Choose a plan below to unlock your full monthly credits.
+                You are on the free trial (new workspaces start with 500 credits). Choose a plan below for a full 30 days of
+                credits; whatever trial credits are left carry forward.
               </p>
             )}
 
@@ -282,7 +284,7 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
                   disabled={checkoutPlan !== null}
                   className="w-full text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-60"
                 >
-                  {checkoutPlan === p.key && checkoutStage ? 'Processing...' : 'Renew for another month'}
+                  {checkoutPlan === p.key && checkoutStage ? 'Processing...' : 'Renew for another 30 days'}
                 </button>
               </div>
             ) : p.custom ? (

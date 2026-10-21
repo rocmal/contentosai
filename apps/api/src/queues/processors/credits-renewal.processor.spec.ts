@@ -11,7 +11,7 @@ function makeProcessor(subscriptions: unknown[]) {
   };
   const workspacesService = { findByOrganization: jest.fn().mockResolvedValue([{ id: 'ws-1' }]) };
   const creditsService = {
-    expire: jest.fn().mockResolvedValue(undefined),
+    pause: jest.fn().mockResolvedValue(undefined),
     grantMonthlyRenewal: jest.fn().mockResolvedValue(undefined),
   };
   const renewalReminders = {
@@ -28,7 +28,7 @@ function makeProcessor(subscriptions: unknown[]) {
 }
 
 describe('CreditsRenewalProcessor', () => {
-  it('lapses an unpaid self-serve plan instead of granting free credits', async () => {
+  it('lapses an unpaid self-serve plan, pausing (not removing) its credits', async () => {
     const { processor, subscriptionsService, creditsService, renewalReminders } = makeProcessor([
       {
         id: 's1',
@@ -41,7 +41,7 @@ describe('CreditsRenewalProcessor', () => {
 
     await processor.process({} as never);
 
-    expect(creditsService.expire).toHaveBeenCalledWith('org-1', 'ws-1');
+    expect(creditsService.pause).toHaveBeenCalledWith('ws-1', expect.any(Date));
     expect(creditsService.grantMonthlyRenewal).not.toHaveBeenCalled();
     expect(subscriptionsService.update).toHaveBeenCalledWith('s1', {
       status: SubscriptionStatus.PAST_DUE,
@@ -65,11 +65,35 @@ describe('CreditsRenewalProcessor', () => {
     await processor.process({} as never);
 
     expect(creditsService.grantMonthlyRenewal).toHaveBeenCalledTimes(1);
-    expect(creditsService.expire).not.toHaveBeenCalled();
+    expect(creditsService.pause).not.toHaveBeenCalled();
     expect(subscriptionsService.update).toHaveBeenCalledWith(
       's2',
       expect.objectContaining({ currentPeriodEnd: expect.any(String) }),
     );
+  });
+
+  it('rolls an invoice-billed plan on by exactly 30 days', async () => {
+    const { processor, subscriptionsService, creditsService } = makeProcessor([
+      {
+        id: 's6',
+        organizationId: 'org-6',
+        plan: 'enterprise',
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodEnd: past,
+      },
+    ]);
+
+    await processor.process({} as never);
+
+    const [, , , start, end] = creditsService.grantMonthlyRenewal.mock
+      .calls[0] as unknown as Date[];
+    expect(end.getTime() - start.getTime()).toBe(30 * 24 * 60 * 60 * 1000);
+    const update = subscriptionsService.update.mock.calls[0] as unknown as [
+      string,
+      { currentPeriodEnd: string },
+    ];
+    const { currentPeriodEnd } = update[1];
+    expect(new Date(currentPeriodEnd).getTime()).toBe(end.getTime());
   });
 
   it('ignores plans that are still in period, trials and already-lapsed subscriptions', async () => {
@@ -99,7 +123,7 @@ describe('CreditsRenewalProcessor', () => {
 
     await processor.process({} as never);
 
-    expect(creditsService.expire).not.toHaveBeenCalled();
+    expect(creditsService.pause).not.toHaveBeenCalled();
     expect(subscriptionsService.update).not.toHaveBeenCalled();
   });
 });

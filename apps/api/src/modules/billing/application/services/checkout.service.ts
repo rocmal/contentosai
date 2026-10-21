@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { WorkspacesService } from '@modules/workspaces/application/services/workspaces.service';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
+import { addBillingPeriod } from '@modules/credits/credits.constants';
 import { PLAN_PRICING_INR, PurchasablePlan, isPurchasablePlan } from '../../billing.constants';
 import { PaymentProviderFactory } from '../../infrastructure/payment-provider.factory';
 import { PaymentOrder } from '../../domain/interfaces/payment-provider.interface';
@@ -10,12 +11,6 @@ import {
   ISubscriptionsRepository,
   SUBSCRIPTIONS_REPOSITORY,
 } from '../../domain/repositories/subscription-repository.interface';
-
-function addOneMonth(date: Date): Date {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + 1);
-  return next;
-}
 
 /** Drives self-serve plan checkout: creates the Razorpay order the frontend
  * opens Checkout with, and (from the webhook) activates the subscription and
@@ -69,13 +64,13 @@ export class CheckoutService {
     }
 
     const now = new Date();
-    // Renewing early keeps the days already paid for: the new month starts when
-    // the current one ends, not today.
+    // Renewing early keeps the days already paid for: the new 30 days start when
+    // the current period ends, not today. Unused credits carry forward either way.
     const stillPaidUntil =
       existing?.status === SubscriptionStatus.ACTIVE && existing.currentPeriodEnd && existing.currentPeriodEnd > now
         ? existing.currentPeriodEnd
         : now;
-    const currentPeriodEnd = addOneMonth(stillPaidUntil);
+    const currentPeriodEnd = addBillingPeriod(stillPaidUntil);
 
     if (existing) {
       await this.subscriptionsRepository.update(existing.id, {

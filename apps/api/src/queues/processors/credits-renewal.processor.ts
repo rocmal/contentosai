@@ -6,25 +6,21 @@ import { SubscriptionStatus } from '@modules/billing/domain/entities/subscriptio
 import { isPurchasablePlan } from '@modules/billing/billing.constants';
 import { WorkspacesService } from '@modules/workspaces/application/services/workspaces.service';
 import { CreditsService } from '@modules/credits/application/services/credits.service';
+import { addBillingPeriod } from '@modules/credits/credits.constants';
 import { QueueName } from '../queue-names';
 import { RenewalReminderService } from '../renewal-reminder.service';
-
-function addOneMonth(date: Date): Date {
-  const next = new Date(date);
-  next.setMonth(next.getMonth() + 1);
-  return next;
-}
 
 /** Runs on a schedule (registered as a BullMQ repeatable job, see
  * QueuesModule) and handles subscriptions whose period has ended.
  *
  * Self-serve plans (Starter/Pro) are paid by a one-off Razorpay order per
- * month - there is no recurring charge - so when the period ends without a
- * new payment the plan lapses: the subscription becomes PAST_DUE and the
- * remaining credits are removed until the customer renews. (Renewing through
- * checkout re-activates it and grants a fresh allotment.) Invoice-billed
- * plans (Enterprise) keep the old behaviour of rolling the period and
- * resetting credits, since they are paid outside the checkout. */
+ * 30-day period - there is no recurring charge - so when the period ends
+ * without a new payment the plan lapses: the subscription becomes PAST_DUE
+ * and the remaining credits are paused (kept, but not spendable) until the
+ * customer renews. Renewing through checkout re-activates it, un-pauses the
+ * credits and adds the new period's credits on top. Invoice-billed plans
+ * (Enterprise) roll on by themselves, since they are paid outside the
+ * checkout. */
 @Processor(QueueName.CREDITS_RENEWAL)
 export class CreditsRenewalProcessor extends WorkerHost {
   private readonly logger = new Logger(CreditsRenewalProcessor.name);
@@ -72,7 +68,7 @@ export class CreditsRenewalProcessor extends WorkerHost {
 
           if (isPurchasablePlan(subscription.plan)) {
             for (const workspace of workspaces) {
-              await this.creditsService.expire(subscription.organizationId, workspace.id);
+              await this.creditsService.pause(workspace.id, now);
             }
             await this.subscriptionsService.update(subscription.id, {
               status: SubscriptionStatus.PAST_DUE,
@@ -83,7 +79,7 @@ export class CreditsRenewalProcessor extends WorkerHost {
           }
 
           const cycleStartAt = now;
-          const cycleEndAt = addOneMonth(now);
+          const cycleEndAt = addBillingPeriod(now);
 
           for (const workspace of workspaces) {
             await this.creditsService.grantMonthlyRenewal(

@@ -1035,6 +1035,8 @@ export interface CreditWallet {
   balance: number | null;
   cycleStartAt: string | null;
   cycleEndAt: string | null;
+  /** Set while the paid plan has lapsed: the credits are kept but cannot be spent until the plan is renewed. */
+  pausedAt: string | null;
 }
 
 export interface CreditTransaction {
@@ -1065,6 +1067,8 @@ export interface CreditRates {
   video: { per10Seconds: Record<string, number> };
   /** A Scene Builder video; a typed narration is charged as voice on top. */
   sceneVideo: { perVideo: number };
+  /** What a new workspace gets once, at signup. */
+  trial: { credits: number };
 }
 
 export function getCreditRates(): Promise<CreditRates> {
