@@ -139,7 +139,8 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   Veo job ids contain slashes; in the path they became `%2F`, which the live Apache does not pass to the API - it served the
   website's index.html with 200, the client read that as "no answer" and waited until it timed out, while the server's
   background poller had saved the clip in under a minute. Until 2026-10-20 no prompt video could finish in the browser on the
-  live site. Both clients now also throw on an HTML reply instead of returning nothing. `jobs/:jobId` stays for old phone
+  live site. Verified live 2026-10-21: a 6 s vertical clip reached the browser in 45 s, saved to the Gallery, 180 credits.
+  Both clients now also throw on an HTML reply instead of returning nothing. `jobs/:jobId` stays for old phone
   builds. VeoProvider only accepts ids shaped like `models/<model>/operations/<id>` (the id goes into a Google URL with our key).
 - **Prompt videos take time:** the waiting screen (`videoStudio/GeneratingStatus.tsx`, phone video screen) cycles messages
   every 4 s with a timer and, after 3 minutes, says it is fine to leave. The browser waits 10 minutes, then shows a calm "still
@@ -213,6 +214,33 @@ Post now or Schedule. The Calendar refreshes itself after a post (`useOnPostCrea
 Rewritten 2026-10-07 for the current product. There is no walkthrough video (the old one showed the retired product and was
 deleted 2026-10-19).
 
+### Vendors: which feature uses which (as of 2026-10-21)
+
+| Feature | Vendor and model | Server key |
+| --- | --- | --- |
+| Image Studio pictures | OpenAI `gpt-image-2` (`OPENAI_IMAGE_MODEL`) | `OPENAI_API_KEY` |
+| Video Studio prompt videos | Google Veo 3.1 Fast (`veo-3.1-fast-generate-preview`) | `GEMINI_API_KEY` (`VEO_API_KEY` overrides) |
+| Scene Builder, text overlays, video editor | No vendor: rendered in the person's browser (`src/lib/videoCompositor.ts`) | - |
+| Voice Studio, Scene Builder narration (website and phone) | Sarvam `bulbul:v3` | `SARVAM_API_KEY` |
+| Record your own voice → speak new scripts | ElevenLabs instant clone (not live yet: no key) | `ELEVENLABS_API_KEY` |
+| Speak (dictation in every text box) | Sarvam speech-to-text | `SARVAM_API_KEY` |
+| Improve / Generate / Write with AI (studios, post composer), Copilot | `AI_DEFAULT_PROVIDER` = Gemini `gemini-flash-latest`; OpenAI `gpt-4o-mini` stands in if it fails | `GEMINI_API_KEY`, `OPENAI_API_KEY` |
+| The same for Hindi/Punjabi text | Sarvam `sarvam-105b` first, then the row above | `SARVAM_API_KEY` |
+| Posting | LinkedIn; Meta Graph (Facebook, Instagram); YouTube Data API | `LINKEDIN_*`; `META_APP_ID/SECRET`; `GOOGLE_CLIENT_ID/SECRET` |
+| Sign in with Google | Google OAuth | `GOOGLE_CLIENT_ID/SECRET` |
+| Email (password reset, notices) | Brevo SMTP | `SMTP_*`, `BREVO_API_KEY` |
+| Payments | Razorpay (live keys pending) | `RAZORPAY_*` |
+| Phone notifications | Expo push service | none |
+| Error tracking | Sentry (DSN pending) | `SENTRY_DSN` |
+| Gallery files | Server disk (`STORAGE_PROVIDER=local`, Docker volume `api_storage`) | - |
+
+Who pays: the **Google AI Studio prepaid credit** (https://ai.studio/projects → project → Billing) pays for videos AND
+Gemini text; when it runs out Google answers 402 and both stop (2026-10-20). The **OpenAI** account (project "LumoraOS")
+pays for images. **Sarvam** pays for voices, dictation and Indian-language text.
+In code but not used in production: Character Studio (D-ID, HeyGen, Synthesia, local SadTalker/Wav2Lip), other video
+(Runway, Kling, Pika, Luma, Gemini Omni), image (Stability, Flux; keys exist, picker hidden), voice (Edge TTS, Azure,
+Cartesia, Piper), text (Claude, OpenRouter).
+
 ### Deploy and operations
 
 - Push to `main` runs GitHub Actions "Deploy (Docker)" (tests, build, migrate, seed, recreate, ops-check). "Deploy to cPanel" is
@@ -254,10 +282,10 @@ Needs the owner:
   error on the finished-video screen (the real reason is now shown), then fix the cause.
 - Character Studio avatar pictures showed as broken images although the files and database values are correct; hard refresh and
   report. Character Studio is hidden until it is finished.
-- Top up the Gemini prepaid credit (Google AI Studio → the project → billing): it ran out on 2026-10-20 (Google answers 402
-  "prepayment credits are depleted"), which stops Veo videos AND every Gemini text call (Improve with AI, Write with AI).
-  Then re-check that a prompt video finishes in the browser on the live site (the 2026-10-20 status-route fix). Veo itself
-  worked on 2026-10-20: a clip was made, saved to the Gallery and charged 180 credits.
+- The OpenAI key refuses text: every chat model failed on 2026-10-21 while images worked, so the OpenAI stand-in for
+  Gemini text does nothing yet. In the OpenAI project "LumoraOS", give the key chat completions (or "All" permissions)
+  and allow `gpt-4o-mini` if the project has a model list. Check: `POST /ai/generate` with `"provider":"openai"`.
+- Gemini prepaid credit ran out 2026-10-20 and was topped up 2026-10-21. Turn on auto-reload and a budget alert (below).
 - Add `ELEVENLABS_API_KEY` (cloning-capable plan) so custom voices work; confirm ElevenLabs/Cartesia/Azure prices (placeholders).
 - Confirm the forgot-password email now arrives. Then disable demo accounts `admin@lumora.ai` and `user@lumora.ai`.
 - Razorpay live keys and KYC, Google OAuth live redirect URIs, Meta App Review, Sentry DSN, Apache 60 s timeout, GSTIN in Google billing,
