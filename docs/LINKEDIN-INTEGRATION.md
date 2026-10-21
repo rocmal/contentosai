@@ -134,18 +134,21 @@ and scheduled LinkedIn posts then fail until someone connects again.
 
 | From | What opens |
 | --- | --- |
+| **LinkedIn Posts** (sidebar, under Creation) → **New post** | An empty post; the page also lists your scheduled, published and failed LinkedIn posts |
 | **Calendar → New post** | An empty post |
 | **Gallery → Post** (on an image or video card, or in its preview) | A post with that item attached |
 | **Image Studio**, after **Save to gallery** → **Post** | A post with that image attached |
 | **Video Studio**, finished video → **Post or schedule** | A post with the video (saved to the Gallery first if it was not yet) |
-| **Create** menu (header, or the bottom bar on a phone-width screen) → **Social post** | An empty post |
-| **Ctrl+K** → "Create a social post" | An empty post |
+| **Create** menu (header, or the bottom bar on a phone-width screen) → **LinkedIn post** | An empty post |
+| **Ctrl+K** → "Create a LinkedIn post" | An empty post |
 | Phone app: **Gallery** → an image or video → **Post or schedule** | The phone's post sheet |
 
 ### Writing the post
 
-- **Post to:** pick the accounts. LinkedIn takes text only, an image or a video; Facebook, Instagram and YouTube take
-  videos only for now, so they are greyed out for text and images.
+- **Post to:** your connected LinkedIn profile; it is the only account offered (Facebook, Instagram and YouTube can
+  take only videos from Lumora, so they are left out of the post window). If LinkedIn is not connected, or the
+  connection ran out, the window shows **Connect LinkedIn** / **Reconnect** right there. LinkedIn takes text only, an
+  image or a video.
 - **Text:** up to 3,000 characters on LinkedIn (the counter turns red past the limit). Put hashtags at the end, e.g.
   `#TermInsurance`; they stay clickable on LinkedIn, Hindi and Punjabi hashtags included.
 - **Speak** types what you say. **Write with AI** drafts a post from what you made (the image's or video's prompt) or

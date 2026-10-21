@@ -53,7 +53,8 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 ### Sidebar (src/components/Sidebar.tsx)
 
 - Main: Dashboard, Calendar
-- Creation: Video Studio, Image Studio, Voice Studio, Gallery (view id `media-library`)
+- Creation: Video Studio, Image Studio, Voice Studio, Gallery (view id `media-library`), LinkedIn Posts (view id
+  `linkedin-posts`, added 2026-10-21)
 - Management: Team, Integrations, Settings, Help & Tutorial
 - **Hidden on purpose, code and routes kept** (still reachable by typing the hash, e.g. `#ai-studio`): AI Studio, Brand Brain,
   Projects, Campaigns, Character Studio (also removed from the mobile Studio chip row and Profile menu). To bring one back, add
@@ -211,9 +212,16 @@ Full guide (setup, use, internals, troubleshooting): `docs/LINKEDIN-INTEGRATION.
 
 Posting is not a studio: one **post composer** (`src/components/PostComposer.tsx`, rendered once by App) opens with
 `openPostComposer()` (`src/lib/socialPosts.ts`) from the Calendar ("New post"), Gallery cards and preview ("Post"), Image Studio
-after saving, Video Studio's finished screen, the header and phone-width Create menus ("Social post") and Ctrl+K. It takes text
-(Speak, Write/Improve with AI - free, uses `/ai/generate`), one Gallery image or video, one or more connected accounts, and
-Post now or Schedule. The Calendar refreshes itself after a post (`useOnPostCreated`).
+after saving, Video Studio's finished screen, the header and phone-width Create menus ("LinkedIn post"), Ctrl+K and the
+LinkedIn Posts page. It takes text (Speak, Write/Improve with AI - free, uses `/ai/generate`), one Gallery image or video,
+and Post now or Schedule. **LinkedIn only** (2026-10-21): the composer shows one LinkedIn row with Connect/Reconnect instead
+of account tiles, and always sends `platforms: ['linkedin']`; the phone's PostSheet offers only LinkedIn too. The API
+still accepts the other platforms. The Calendar and LinkedIn Posts refresh themselves after a post (`useOnPostCreated`).
+- **LinkedIn Posts page** (`src/components/views/LinkedInPostsView.tsx`): connection (name, "reconnect by", Connect /
+  Reconnect), New post, and the LinkedIn jobs from `/publishing/jobs` joined with `/content` (newest 50 each) in
+  Scheduled / Published / Failed: edit (the Calendar's `EditPostModal`) or cancel a scheduled post, View on LinkedIn,
+  Try again / Post again (reopens the composer with the text and Gallery item). Jobs keep no failure reason; it is in
+  the failure notification.
 - API: `POST /publishing/posts` (`SocialPostsService`) checks every account (media it takes, text length, connected, LinkedIn
   sign-in still valid at the post time), takes media only as a workspace Gallery item id (never a URL), saves one Content and one
   publishing job per account; "Post now" = scheduledAt now. Same queue/worker as before (`SocialPublishProcessor`).

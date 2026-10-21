@@ -1776,7 +1776,8 @@ export interface ContentItem {
   type: string;
   projectId?: string | null;
   createdAt?: string;
-  metadata: { videoUrl?: string; caption?: string } | null;
+  /** Posts from the composer also carry the Gallery item they attach (mediaAssetId + imageUrl or videoUrl). */
+  metadata: { videoUrl?: string; imageUrl?: string; caption?: string; mediaAssetId?: string } | null;
 }
 
 /** Backs the real Content Calendar view - joined client-side with

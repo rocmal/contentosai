@@ -29,6 +29,7 @@ import { IntegrationsView } from './components/views/IntegrationsView';
 import { ResetPasswordPage, VerifyEmailPage } from './components/AuthLinkPages';
 import { MarketplaceView } from './components/views/MarketplaceView';
 import { MediaLibraryView } from './components/views/MediaLibraryView';
+import { LinkedInPostsView } from './components/views/LinkedInPostsView';
 import { ProjectsView } from './components/views/ProjectsView';
 import { SettingsView } from './components/views/SettingsView';
 import { ProfileView } from './components/views/ProfileView';
@@ -57,6 +58,7 @@ const VIEW_TYPES: ViewType[] = [
   'character-studio',
   'brand-brain',
   'media-library',
+  'linkedin-posts',
   'automation',
   'ai-agents',
   'analytics',
@@ -347,6 +349,10 @@ export function App() {
 
           {currentView === 'media-library' && (
             <MediaLibraryView onNavigate={(v) => setCurrentView(v)} />
+          )}
+
+          {currentView === 'linkedin-posts' && (
+            <LinkedInPostsView onNavigate={(v) => setCurrentView(v)} />
           )}
 
           {currentView === 'automation' && (

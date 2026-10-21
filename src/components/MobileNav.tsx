@@ -57,7 +57,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({ currentView, onNavigate, o
               }}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
-              <Send className="w-4 h-4 text-blue-500" /> Social post
+              <Send className="w-4 h-4 text-blue-500" /> LinkedIn post
             </button>
           </div>
         </>

@@ -10,6 +10,7 @@ export type ViewType =
   | 'character-studio'
   | 'brand-brain'
   | 'media-library'
+  | 'linkedin-posts'
   | 'automation'
   | 'ai-agents'
   | 'analytics'

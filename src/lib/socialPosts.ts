@@ -29,9 +29,6 @@ export const PLATFORM_LABEL: Record<SocialPlatform, string> = {
   youtube: 'YouTube',
 };
 
-/** The order accounts are offered in the composer: LinkedIn first. */
-export const COMPOSER_PLATFORMS: SocialPlatform[] = ['linkedin', 'facebook', 'instagram', 'youtube'];
-
 const POST_CREATED_EVENT = 'lumora:post-created';
 
 /** Post now (no scheduledAt) or at a time, to one or more connected accounts. Screens listening with

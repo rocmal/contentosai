@@ -13,7 +13,8 @@ import {
 import { Button, Chip, ChipRow, ErrorText, Field, Input, Muted } from './kit';
 import { colors, space } from './theme';
 
-const PLATFORMS = Object.keys(PLATFORM_LABEL) as SocialPlatform[];
+/** LinkedIn only, like the website's composer (2026-10-21): the other accounts cannot take images or text yet. */
+const PLATFORMS: SocialPlatform[] = ['linkedin'];
 const TEXT_LIMIT: Record<SocialPlatform, number> = { linkedin: 3000, facebook: 5000, instagram: 2200, youtube: 5000 };
 const DAY_MS = 24 * 60 * 60 * 1000;
 

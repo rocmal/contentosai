@@ -9,6 +9,7 @@ import {
   Image,
   Layers,
   LayoutDashboard,
+  Linkedin,
   LogOut,
   Mic,
   Settings,
@@ -81,6 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'image-studio', label: 'Image Studio', icon: Image },
     { id: 'voice-studio', label: 'Voice Studio', icon: Mic },
     { id: 'media-library', label: 'Gallery', icon: FolderOpen },
+    { id: 'linkedin-posts', label: 'LinkedIn Posts', icon: Linkedin },
   ];
 
   const managementNav: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [

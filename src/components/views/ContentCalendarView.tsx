@@ -24,7 +24,7 @@ interface ContentCalendarViewProps {
   onNavigate: (view: ViewType) => void;
 }
 
-interface CalendarPost {
+export interface CalendarPost {
   job: api.PublishingJob;
   content: api.ContentItem | null;
 }
@@ -91,8 +91,8 @@ function toLocalInput(date: Date | null): string {
   );
 }
 
-/** Edit the title, text with hashtags, and time of a post that has not gone out yet. */
-const EditPostModal: React.FC<{
+/** Edit the title, text with hashtags, and time of a post that has not gone out yet (also used by LinkedIn Posts). */
+export const EditPostModal: React.FC<{
   post: CalendarPost;
   onClose: () => void;
   onSaved: () => void;
