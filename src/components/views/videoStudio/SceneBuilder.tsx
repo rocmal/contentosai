@@ -43,9 +43,11 @@ export const SceneBuilder: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     templateVisibility,
     videoProjectId,
   } = studio;
-  // Combining scenes happens in the browser and is free; only a typed script costs (it is voiced like Voice Studio).
+  // A Scene Builder video has its own price; a typed script is voiced like Voice Studio and charged as voice on top.
   const voicesScript = !recordedNarration && narrationText.trim().length > 0;
-  const generateCost = creditRates ? (voicesScript ? voiceCreditCost(creditRates, 'sarvam', narrationText) : 0) : null;
+  const generateCost = creditRates
+    ? creditRates.sceneVideo.perVideo + (voicesScript ? voiceCreditCost(creditRates, 'sarvam', narrationText) : 0)
+    : null;
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -206,8 +208,8 @@ export const SceneBuilder: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
             />
           </div>
           <p className="text-[10px] text-slate-400">
-            Free - uses a sample of the selected voice, not your actual narration text. Click Generate Video
-            for the real thing.
+            Free preview, marked PREVIEW, with a sample of the selected voice instead of your narration. Generate
+            Video makes the finished video.
           </p>
         </div>
       )}
@@ -274,7 +276,7 @@ export const SceneBuilder: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
           type="button"
           onClick={handlePreviewSceneVideo}
           disabled={scenes.length === 0 || isPreviewingVideo}
-          title="Free - previews pacing and voice using a local sample, no API call"
+          title="Free - a marked preview of the pacing, with a sample of the voice"
           className="flex-1 py-3.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-500 hover:text-blue-600 font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-50"
         >
           {isPreviewingVideo ? (

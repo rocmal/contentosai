@@ -517,6 +517,24 @@ function drawSceneTransition(
   ctx.restore();
 }
 
+/** Writes a large see-through word (e.g. "PREVIEW") diagonally across the frame, so a free preview cannot stand in for
+ * the charged video. */
+function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: number, text: string): void {
+  const size = Math.round(Math.min(width, height) / 5);
+  ctx.save();
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(-Math.atan2(height, width));
+  ctx.font = `800 ${size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = Math.max(2, size / 24);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.strokeText(text, 0, 0);
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+}
+
 export interface CompositeScenesOptions {
   /** Single narration track for the whole output, decoded and scheduled
    * once at t=0 instead of per-scene audio. Scene clips' own audio is never
@@ -532,6 +550,8 @@ export interface CompositeScenesOptions {
    * of whichever neighboring scene is shorter, so a transition can never eat
    * a whole short scene. */
   transition?: SceneTransitionType;
+  /** Drawn across every frame - Scene Builder's free preview is marked "PREVIEW"; the charged video has none. */
+  watermark?: string;
 }
 
 export async function compositeScenes(
@@ -798,6 +818,8 @@ export async function compositeScenes(
             currentOptions,
           );
         }
+
+        if (options?.watermark) drawWatermark(ctx, OUTPUT_WIDTH, OUTPUT_HEIGHT, options.watermark);
 
         const elapsedBeforeScene = durations.slice(0, sceneIndex).reduce((sum, d) => sum + d, 0);
         const elapsedTotal = elapsedBeforeScene + Math.min(elapsedInScene, duration);

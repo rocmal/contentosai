@@ -195,7 +195,7 @@ export default function VideoStudio() {
       // The same prompt made before comes back finished and free.
       const done = job.status === 'completed' && job.videoUrl ? job : await pollVideoJob(job, { signal: controller.signal });
       if (done.status === 'failed' || !done.videoUrl) {
-        throw new ApiError(502, 'The video service could not make this clip. Try again, or change the prompt a little.');
+        throw new ApiError(502, 'The video service could not make this clip, so its credits are being returned. Try again, or change the prompt a little.');
       }
       setResult({ url: done.videoUrl, aspect, cached: Boolean(job.cached), assetId: done.mediaAssetId ?? job.mediaAssetId });
     } catch (e) {

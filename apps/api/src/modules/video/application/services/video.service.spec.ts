@@ -1,5 +1,10 @@
+import { BadRequestException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { CreditsService } from '@modules/credits/application/services/credits.service';
+import {
+  CreditsService,
+  InsufficientCreditsException,
+} from '@modules/credits/application/services/credits.service';
+import { CreditTransactionReason } from '@modules/credits/domain/entities/credit-transaction.entity';
 import { MediaAssetsService } from '@modules/media/application/services/media-assets.service';
 import { MediaAssetType } from '@modules/media/domain/entities/media-asset.entity';
 import { StorageService } from '@modules/storage/application/services/storage.service';
@@ -212,6 +217,23 @@ describe('VideoService', () => {
       expect(creditsService.reserve).toHaveBeenCalledWith(expect.objectContaining({ amount: 180 }));
     });
 
+    it('tells the poller what the job cost, so a clip that never arrives can be refunded', async () => {
+      provider.submitJob.mockResolvedValue({
+        provider: 'runway',
+        model: 'gen-3',
+        jobId: 'job-5',
+        status: 'processing',
+      });
+
+      await service.submitJob(dto, actor);
+      await service.submitJob({ ...dto, provider: 'mock' }, actor);
+
+      const costs = eventEmitter.emit.mock.calls.map(
+        ([, event]) => (event as VideoJobSubmittedEvent).creditsCharged,
+      );
+      expect(costs).toEqual([180, 0]);
+    });
+
     describe('reusing a saved clip', () => {
       const submitted = {
         provider: 'runway',
@@ -321,6 +343,67 @@ describe('VideoService', () => {
         expect(event.cacheKey).toBe(result.cacheKey);
         expect(result.cacheKey).toMatch(/^[a-f0-9]{64}$/);
       });
+    });
+  });
+
+  describe('refundFailedJob', () => {
+    it('returns what the job cost to its workspace', async () => {
+      await expect(
+        service.refundFailedJob({ jobId: 'job-1', ...actor, creditsCharged: 180 }),
+      ).resolves.toBe(180);
+
+      expect(creditsService.refund).toHaveBeenCalledWith({
+        organizationId: 'org-1',
+        workspaceId: 'workspace-1',
+        amount: 180,
+        userId: 'user-1',
+      });
+    });
+
+    it('refunds nothing for a free job or one without a workspace', async () => {
+      await expect(
+        service.refundFailedJob({ jobId: 'job-1', ...actor, creditsCharged: 0 }),
+      ).resolves.toBe(0);
+      await expect(service.refundFailedJob({ jobId: 'job-1', ...actor })).resolves.toBe(0);
+      await expect(
+        service.refundFailedJob({ jobId: 'job-1', userId: 'user-1', creditsCharged: 180 }),
+      ).resolves.toBe(0);
+
+      expect(creditsService.refund).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('chargeSceneVideo', () => {
+    const projectId = '11111111-1111-4111-8111-111111111111';
+
+    it('charges 20 credits as video, kept with the draft it was made from', async () => {
+      await expect(service.chargeSceneVideo({ ...actor, projectId })).resolves.toEqual({
+        creditsCharged: 20,
+      });
+
+      expect(creditsService.reserve).toHaveBeenCalledWith({
+        organizationId: 'org-1',
+        workspaceId: 'workspace-1',
+        amount: 20,
+        reason: CreditTransactionReason.GENERATION_VIDEO,
+        userId: 'user-1',
+        relatedEntityId: projectId,
+      });
+    });
+
+    it('passes on "not enough credits", so the browser does not show the video', async () => {
+      creditsService.reserve.mockRejectedValue(new InsufficientCreditsException());
+
+      await expect(service.chargeSceneVideo(actor)).rejects.toBeInstanceOf(
+        InsufficientCreditsException,
+      );
+    });
+
+    it('refuses an account without a workspace', async () => {
+      await expect(
+        service.chargeSceneVideo({ userId: 'user-1', organizationId: null, workspaceId: null }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(creditsService.reserve).not.toHaveBeenCalled();
     });
   });
 });

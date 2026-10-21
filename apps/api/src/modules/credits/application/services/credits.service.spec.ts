@@ -1,5 +1,10 @@
 import { CreditsService } from './credits.service';
-import { estimateVoiceMinutes, videoCreditsPer10Seconds, voiceCreditsPerMinute } from '../../credits.constants';
+import {
+  SCENE_VIDEO_CREDITS,
+  estimateVoiceMinutes,
+  videoCreditsPer10Seconds,
+  voiceCreditsPerMinute,
+} from '../../credits.constants';
 import { CreditTransactionReason } from '../../domain/entities/credit-transaction.entity';
 import { ICreditTransactionsRepository } from '../../domain/repositories/credit-transaction-repository.interface';
 import { ICreditWalletsRepository } from '../../domain/repositories/credit-wallet-repository.interface';
@@ -60,6 +65,7 @@ describe('credit prices shown before generating', () => {
     expect(rates.voice.perMinute.sarvam).toBe(voiceCreditsPerMinute('sarvam'));
     expect(rates.voice.wordsPerMinute).toBe(150);
     expect(rates.video.per10Seconds.default).toBe(videoCreditsPer10Seconds('veo'));
+    expect(rates.sceneVideo.perVideo).toBe(SCENE_VIDEO_CREDITS);
   });
 
   it('works out voice minutes from the script, charging at least one minute', () => {

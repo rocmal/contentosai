@@ -17,6 +17,7 @@ import {
 import {
   DEFAULT_PLAN,
   PLAN_CREDIT_ALLOTMENTS,
+  SCENE_VIDEO_CREDITS,
   VIDEO_CREDITS_PER_10_SECONDS,
   VOICE_CREDITS_PER_MINUTE,
   VOICE_WORDS_PER_MINUTE,
@@ -65,10 +66,12 @@ export class CreditsService {
   getRates(): {
     voice: { perMinute: Record<string, number>; wordsPerMinute: number };
     video: { per10Seconds: Record<string, number> };
+    sceneVideo: { perVideo: number };
   } {
     return {
       voice: { perMinute: { ...VOICE_CREDITS_PER_MINUTE }, wordsPerMinute: VOICE_WORDS_PER_MINUTE },
       video: { per10Seconds: { ...VIDEO_CREDITS_PER_10_SECONDS } },
+      sceneVideo: { perVideo: SCENE_VIDEO_CREDITS },
     };
   }
 

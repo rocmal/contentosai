@@ -459,6 +459,8 @@ export function useSceneBuilder({ user, source, setError, narration }: { user: a
         globalAudioUrl: narrationText.trim() ? sarvamVoiceSampleUrl(previewVoiceId, narrationLanguage) : null,
         aspectRatio: sceneAspectRatio,
         transition: sceneTransition,
+        // Generate Video is charged; the free preview is marked so it cannot stand in for it.
+        watermark: 'PREVIEW',
       });
       setSceneWarning(describeSkippedScenes(skippedSceneNumbers ?? []));
       setPreviewVideoUrl((prev) => {

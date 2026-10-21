@@ -63,6 +63,10 @@ export const VIDEO_CREDITS_PER_10_SECONDS: Record<string, number> = {
   default: 180,
 };
 
+/** Credits per Scene Builder video: pictures and clips joined into one video in the person's browser. There is no
+ * vendor cost - this is the price of the feature itself. A typed narration is voiced and charged as voice on top. */
+export const SCENE_VIDEO_CREDITS = 20;
+
 /** Credits per 10 seconds of talking-avatar video, by provider. HeyGen Avatar IV
  * is $0.05-0.10 per second (Rs 44-88 per 10 s) -> 180 credits at the top of that
  * range. D-ID and Synthesia prices are unverified (same placeholder). The

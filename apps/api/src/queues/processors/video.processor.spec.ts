@@ -17,7 +17,12 @@ describe('VideoProcessor', () => {
   }
 
   beforeEach(() => {
-    videoService = { getJobStatus: jest.fn() } as unknown as jest.Mocked<VideoService>;
+    videoService = {
+      getJobStatus: jest.fn(),
+      refundFailedJob: jest
+        .fn()
+        .mockImplementation((data: PollVideoJobData) => Promise.resolve(data.creditsCharged ?? 0)),
+    } as unknown as jest.Mocked<VideoService>;
     videoQueue = { add: jest.fn() } as unknown as jest.Mocked<Queue>;
     notificationsService = { create: jest.fn().mockResolvedValue({}) } as unknown as jest.Mocked<NotificationsService>;
     processor = new VideoProcessor(videoService, videoQueue, notificationsService);
@@ -117,5 +122,95 @@ describe('VideoProcessor', () => {
     const result = await processor.process(makeJob({ provider: 'veo', jobId: 'job-1', attempt: 0, ...actor }));
 
     expect(result.status).toBe('completed');
+  });
+
+  describe('refunds', () => {
+    const paid = { ...actor, creditsCharged: 180 };
+    const veo = (status: 'completed' | 'failed' | 'processing') => ({
+      provider: 'veo',
+      model: 'veo-3.1',
+      jobId: 'job-1',
+      status,
+    });
+
+    it('returns the credits when the video service reports a failed or blocked clip', async () => {
+      videoService.getJobStatus.mockResolvedValue(veo('failed'));
+
+      await processor.process(makeJob({ provider: 'veo', jobId: 'job-1', attempt: 3, ...paid }));
+
+      expect(videoService.refundFailedJob).toHaveBeenCalledTimes(1);
+      expect(videoService.refundFailedJob).toHaveBeenCalledWith(
+        expect.objectContaining({ jobId: 'job-1', creditsCharged: 180, ...actor }),
+      );
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          message: expect.stringContaining('Your 180 credits were returned'),
+        }),
+      );
+    });
+
+    it('returns the credits when the clip never arrives', async () => {
+      videoService.getJobStatus.mockResolvedValue(veo('processing'));
+
+      await processor.process(
+        makeJob({ provider: 'veo', jobId: 'job-1', attempt: MAX_POLL_ATTEMPTS, ...paid }),
+      );
+
+      expect(videoService.refundFailedJob).toHaveBeenCalledTimes(1);
+    });
+
+    it('never refunds a finished clip or one still rendering', async () => {
+      videoService.getJobStatus.mockResolvedValueOnce(veo('completed'));
+      await processor.process(makeJob({ provider: 'veo', jobId: 'job-1', attempt: 0, ...paid }));
+      videoService.getJobStatus.mockResolvedValueOnce(veo('processing'));
+      await processor.process(makeJob({ provider: 'veo', jobId: 'job-1', attempt: 5, ...paid }));
+
+      expect(videoService.refundFailedJob).not.toHaveBeenCalled();
+    });
+
+    it('carries the cost to the next poll', async () => {
+      videoService.getJobStatus.mockResolvedValue(veo('processing'));
+
+      await processor.process(makeJob({ provider: 'veo', jobId: 'job-1', attempt: 0, ...paid }));
+
+      expect(videoQueue.add).toHaveBeenCalledWith(
+        VideoJobName.POLL,
+        expect.objectContaining({ creditsCharged: 180, attempt: 1 }),
+        expect.anything(),
+      );
+    });
+
+    it('keeps polling when a status check errors, instead of ending with no clip, notice or refund', async () => {
+      videoService.getJobStatus.mockRejectedValue(new Error('Could not check the video status'));
+
+      const result = await processor.process(
+        makeJob({ provider: 'veo', jobId: 'job-1', attempt: 4, ...paid }),
+      );
+
+      expect(result.status).toBe('processing');
+      expect(videoQueue.add).toHaveBeenCalledWith(
+        VideoJobName.POLL,
+        expect.objectContaining({ attempt: 5 }),
+        expect.anything(),
+      );
+      expect(videoService.refundFailedJob).not.toHaveBeenCalled();
+    });
+
+    it('still ends the job, without retrying the refund, when the refund cannot be saved', async () => {
+      videoService.getJobStatus.mockResolvedValue(veo('failed'));
+      videoService.refundFailedJob.mockRejectedValue(new Error('db down'));
+
+      const result = await processor.process(
+        makeJob({ provider: 'veo', jobId: 'job-1', attempt: 0, ...paid }),
+      );
+
+      expect(result.status).toBe('failed');
+      expect(notificationsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Generation failed on the video service. Open Video Studio to try again.',
+        }),
+      );
+    });
   });
 });

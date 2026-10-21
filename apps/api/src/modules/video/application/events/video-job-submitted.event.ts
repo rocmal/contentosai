@@ -17,6 +17,8 @@ export class VideoJobSubmittedEvent extends DomainEvent {
     public readonly cacheKey?: string,
     /** What the clip was made from, so its gallery entry can show and reuse it. */
     public readonly prompt?: string,
+    /** What the job cost, so the poller can give it back if the clip never arrives. 0 when nothing was charged. */
+    public readonly creditsCharged = 0,
   ) {
     super();
   }

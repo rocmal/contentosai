@@ -158,7 +158,8 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   A Scene Builder draft remembers its voice recording (`video_projects.narrationRecordingId`, a custom voice id).
   The server saves every generated clip to the Gallery and says so in the job result (`savedToGallery`); the finished screen
   then shows "Saved to Gallery" instead of uploading a second copy (only text overlays, Scene Builder videos and uploads are
-  saved from the browser). Scene Builder's Generate button shows its price: free, or the voice cost when a typed script is voiced.
+  saved from the browser). Scene Builder's Generate button shows its price: 20 credits, plus the voice cost when a typed
+  script is voiced.
   Finished screen: Download and "Post or schedule" are the main buttons ("Post or schedule" saves the video to the Gallery
   first if needed, then opens the post composer); Save to Gallery, Share, Facebook, Save as template and Create another sit
   below. A saved text version is named after its text and keeps the prompt, so it can be created again. Video job results
@@ -173,7 +174,21 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
 - Voice and video buttons show the credit cost before generating (`GET /credits/rates`, `src/lib/creditCost.ts`); the server charges
   from the same tables. Voice is charged per whole minute (150 words each), video per 10 seconds.
 - Credit prices target 50% margin: see `apps/api/src/modules/credits/credits.constants.ts` (image 2/13/50, voice 7 per minute with
-  Sarvam, video 180 per 10 s).
+  Sarvam, video 180 per 10 s, Scene Builder video 20).
+- **What is charged and what is free (decided 2026-10-21):** images, voice, AI video and Scene Builder videos cost credits.
+  Improve/Generate/Write with AI, Speak (dictation), text on a video, Scene Builder's Preview and a repeated prompt video
+  stay free on purpose: they cost almost nothing and lead to paid generations.
+  - **Scene Builder** (`SCENE_VIDEO_CREDITS`): the browser checks the balance, makes the video, then calls
+    `POST /video/scene-builder/charge` before showing it (402 = not shown, out-of-credits notice). A failed render never
+    costs anything, so there is no refund path. Booked as `generation.video`. Its free Preview is drawn with a "PREVIEW"
+    watermark (`compositeScenes` `watermark`) so it cannot replace Generate. Being browser-made, a person editing the
+    page's code could skip the charge; there is no vendor cost to lose.
+  - **Failed AI videos are refunded:** the submit event carries `creditsCharged` into the poll job; `VideoProcessor` alone
+    refunds (once) when the clip fails, is blocked or has not arrived after 20 minutes, and the notification says so. A
+    status check that errors now just retries at the next poll (it used to end the chain with no clip, notice or
+    refund). Jobs queued before 2026-10-21 carry no cost and are not refunded automatically.
+  - Known gaps: the Dashboard's "Where your credits went" shows spend per type before refunds (the total is net); 150
+    trial credits do not cover one 180-credit AI video; `video-credits` / `/video/sessions` is a second, unused ledger.
 
 ### Social posting (LinkedIn personal profile first; added 2026-10-19)
 

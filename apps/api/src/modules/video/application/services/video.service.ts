@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { StorageService } from '@modules/storage/application/services/storage.service';
 import { MediaAssetsService } from '@modules/media/application/services/media-assets.service';
@@ -7,6 +7,7 @@ import { buildGenerationCacheKey } from '@shared/utils/generation-cache-key.util
 import { CreditsService } from '@modules/credits/application/services/credits.service';
 import { CreditTransactionReason } from '@modules/credits/domain/entities/credit-transaction.entity';
 import {
+  SCENE_VIDEO_CREDITS,
   creditsForDurationSeconds,
   videoCreditsPer10Seconds,
 } from '@modules/credits/credits.constants';
@@ -56,9 +57,9 @@ export class VideoService {
   /** Video generation is asynchronous vendor-side (see VideoProcessor) - the
    * charge happens here, at submission, not on eventual completion. A
    * synchronous rejection from the provider (bad request, no credentials,
-   * etc.) refunds immediately; a job accepted here but that later fails
-   * vendor-side keeps its charge, matching how the vendor's own compute
-   * cost was already incurred once the job was accepted. */
+   * etc.) refunds immediately; a job accepted here that later fails, is
+   * blocked or never arrives is refunded by VideoProcessor (refundFailedJob),
+   * which learns the cost from the submitted event. */
   async submitJob(
     dto: GenerateVideoDto,
     actor: SubmitJobActor = {},
@@ -131,10 +132,54 @@ export class VideoService {
         actor.workspaceId,
         cacheKey,
         dto.prompt,
+        charges ? cost : 0,
       ),
     );
 
     return { ...result, cacheKey };
+  }
+
+  /** Gives back what an accepted job cost once it has failed, been blocked or never arrived. Only VideoProcessor
+   * calls this, once per job: the browser's own status checks never refund, so a job is never refunded twice.
+   * Returns the credits returned (0 when the job cost nothing). */
+  async refundFailedJob(job: {
+    jobId: string;
+    userId?: string;
+    organizationId?: string | null;
+    workspaceId?: string | null;
+    creditsCharged?: number;
+  }): Promise<number> {
+    if (!job.creditsCharged || !job.organizationId || !job.workspaceId) return 0;
+    await this.creditsService.refund({
+      organizationId: job.organizationId,
+      workspaceId: job.workspaceId,
+      amount: job.creditsCharged,
+      userId: job.userId,
+    });
+    this.logger.log(`Returned ${job.creditsCharged} credits for video job ${job.jobId}`);
+    return job.creditsCharged;
+  }
+
+  /** Charges a finished Scene Builder video. The browser makes the video (no vendor involved) and calls this before
+   * showing it, so a failed render never costs anything; a refusal (not enough credits) means the video is not shown. */
+  async chargeSceneVideo(actor: {
+    userId: string;
+    organizationId: string | null;
+    workspaceId: string | null;
+    projectId?: string;
+  }): Promise<{ creditsCharged: number }> {
+    if (!actor.organizationId || !actor.workspaceId) {
+      throw new BadRequestException('Your account is not attached to a workspace yet.');
+    }
+    await this.creditsService.reserve({
+      organizationId: actor.organizationId,
+      workspaceId: actor.workspaceId,
+      amount: SCENE_VIDEO_CREDITS,
+      reason: CreditTransactionReason.GENERATION_VIDEO,
+      userId: actor.userId,
+      relatedEntityId: actor.projectId,
+    });
+    return { creditsCharged: SCENE_VIDEO_CREDITS };
   }
 
   /** `actor` is optional (and getJobStatus is called by anyone polling a

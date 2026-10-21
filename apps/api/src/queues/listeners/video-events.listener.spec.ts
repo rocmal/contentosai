@@ -13,7 +13,16 @@ describe('VideoEventsListener', () => {
   });
 
   it('enqueues the first poll job with the full actor context and attempt 0', async () => {
-    const event = new VideoJobSubmittedEvent('runway', 'job-1', 'user-1', 'org-1', 'workspace-1');
+    const event = new VideoJobSubmittedEvent(
+      'runway',
+      'job-1',
+      'user-1',
+      'org-1',
+      'workspace-1',
+      undefined,
+      undefined,
+      180,
+    );
 
     await listener.onVideoJobSubmitted(event);
 
@@ -26,6 +35,8 @@ describe('VideoEventsListener', () => {
         userId: 'user-1',
         organizationId: 'org-1',
         workspaceId: 'workspace-1',
+        // What the job cost travels with the poll, so a clip that never arrives can be refunded.
+        creditsCharged: 180,
       },
       expect.objectContaining({ attempts: 3 }),
     );

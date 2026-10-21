@@ -5,6 +5,7 @@ import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { VideoService } from '../application/services/video.service';
 import { GenerateVideoDto } from '../application/dto/generate-video.dto';
 import { JobStatusByIdQueryDto, JobStatusQueryDto } from '../application/dto/job-status-query.dto';
+import { ChargeSceneVideoDto } from '../application/dto/charge-scene-video.dto';
 
 @ApiTags('video')
 @ApiBearerAuth('access-token')
@@ -22,6 +23,26 @@ export class VideoController {
     @CurrentUser('workspaceId') workspaceId: string | null,
   ) {
     return this.videoService.submitJob(dto, { userId, organizationId, workspaceId });
+  }
+
+  @Post('scene-builder/charge')
+  @RequirePermissions('video.generate')
+  @ApiOperation({
+    summary:
+      'Charge a Scene Builder video (made in the browser) before it is shown; 402 when credits run short',
+  })
+  chargeSceneVideo(
+    @Body() dto: ChargeSceneVideoDto,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('organizationId') organizationId: string | null,
+    @CurrentUser('workspaceId') workspaceId: string | null,
+  ): Promise<{ creditsCharged: number }> {
+    return this.videoService.chargeSceneVideo({
+      userId,
+      organizationId,
+      workspaceId,
+      projectId: dto.projectId,
+    });
   }
 
   // Declared before 'jobs/:jobId' so "status" is not taken for a job id.

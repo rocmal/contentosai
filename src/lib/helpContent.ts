@@ -159,14 +159,14 @@ export const FAQS: { id: string; category: FaqCategory; question: string; answer
     category: 'Credits',
     question: 'How are credits used?',
     answer:
-      'Credits are taken when you generate, and the cost is shown before you press the button. An image costs 2 to 50 credits depending on quality. A voiceover costs about 7 credits per minute with Indian-language voices. An AI video costs about 180 credits for a clip of up to 10 seconds, taken when the job starts. If a request is turned down before it starts, no credits are used. The credits in your plan are topped up each month, and unused credits do not carry over. New workspaces get a small one-time free allowance. The Dashboard shows what you have used by studio.',
+      'Credits are taken when you generate, and the cost is shown before you press the button. An image costs 2 to 50 credits depending on quality. A voiceover costs about 7 credits per minute with Indian-language voices. An AI video costs about 180 credits for a clip of up to 10 seconds, taken when the job starts. A Scene Builder video (your own pictures and clips joined into one) costs 20 credits, plus the voiceover if you type a script; its Preview is free and marked PREVIEW. If a request is turned down before it starts, no credits are used. The credits in your plan are topped up each month, and unused credits do not carry over. New workspaces get a small one-time free allowance. The Dashboard shows what you have used by studio.',
   },
   {
     id: 'faq-6b',
     category: 'Credits',
     question: 'What if a generation fails or the result is not what I wanted?',
     answer:
-      'If an image or video request is turned down before it starts, nothing is charged and you will see a message saying so. A video that is accepted but fails later still uses its credits, so please contact support and we will look into it. A result that simply is not what you hoped for counts as a normal generation - try "Improve with AI" on the prompt, or start again from the Gallery with small changes.',
+      'If an image or video request is turned down before it starts, nothing is charged and you will see a message saying so. If a video is accepted but then fails, is blocked by the safety rules or never arrives, its credits are returned automatically and you get a notification saying so. A result that simply is not what you hoped for counts as a normal generation - try "Improve with AI" on the prompt, or start again from the Gallery with small changes.',
   },
   {
     id: 'faq-7',

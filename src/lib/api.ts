@@ -1063,10 +1063,20 @@ export interface CreditUsageSummary {
 export interface CreditRates {
   voice: { perMinute: Record<string, number>; wordsPerMinute: number };
   video: { per10Seconds: Record<string, number> };
+  /** A Scene Builder video; a typed narration is charged as voice on top. */
+  sceneVideo: { perVideo: number };
 }
 
 export function getCreditRates(): Promise<CreditRates> {
   return apiRequest<CreditRates>('/credits/rates');
+}
+
+/** Pays for a Scene Builder video the browser has just made, before it is shown. 402 = not enough credits. */
+export function chargeSceneVideo(projectId?: string | null): Promise<{ creditsCharged: number }> {
+  return apiRequest<{ creditsCharged: number }>('/video/scene-builder/charge', {
+    method: 'POST',
+    body: JSON.stringify(projectId ? { projectId } : {}),
+  });
 }
 
 export function getMyCreditUsage(days = 30): Promise<CreditUsageSummary> {

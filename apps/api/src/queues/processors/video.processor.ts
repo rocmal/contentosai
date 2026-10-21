@@ -21,6 +21,9 @@ export interface PollVideoJobData {
   /** Lets the finished clip be saved under the prompt's signature for reuse. */
   cacheKey?: string;
   prompt?: string;
+  /** What the job cost; returned if the clip fails, is blocked or never arrives. Absent on jobs queued before
+   * 2026-10-21 (never refunded automatically). */
+  creditsCharged?: number;
 }
 
 /** 20 minutes at 10 s. Veo usually needs 1-3 minutes but can take well over 5 when Google is busy, and a clip is
@@ -59,23 +62,35 @@ export class VideoProcessor extends WorkerHost {
       workspaceId,
       cacheKey,
       prompt,
+      creditsCharged,
     } = job.data;
-    const result = await this.videoService.getJobStatus(provider, jobId, {
-      userId,
-      organizationId,
-      workspaceId,
-      cacheKey,
-      prompt,
-    });
+    let result: VideoGenerationResult;
+    try {
+      result = await this.videoService.getJobStatus(provider, jobId, {
+        userId,
+        organizationId,
+        workspaceId,
+        cacheKey,
+        prompt,
+      });
+    } catch (error) {
+      // A failed status check (vendor or network hiccup) is just a poll that learned nothing: try again at the next
+      // poll. Throwing here used to end the chain after BullMQ's 3 retries, with no clip, notice or refund.
+      this.logger.warn(
+        `Status check for video job ${jobId} failed (attempt ${attempt}): ${error instanceof Error ? error.message : String(error)}`,
+      );
+      result = { provider, model: '', jobId, status: 'processing' };
+    }
 
-    if (result.status === 'completed' || result.status === 'failed') {
+    if (result.status === 'completed') {
       // A reused clip is handed back at once, so the person already has it - no need to tell them.
-      if (!result.cached) await this.notify(userId, result.status);
+      if (!result.cached) await this.notify(userId, 'completed');
       return result;
     }
 
-    if (attempt >= MAX_POLL_ATTEMPTS) {
-      await this.notify(userId, 'failed');
+    if (result.status === 'failed' || attempt >= MAX_POLL_ATTEMPTS) {
+      const refunded = await this.refund(job.data);
+      await this.notify(userId, 'failed', refunded);
       return { ...result, status: 'failed' };
     }
 
@@ -90,14 +105,34 @@ export class VideoProcessor extends WorkerHost {
         workspaceId,
         cacheKey,
         prompt,
+        creditsCharged,
       },
       { delay: POLL_DELAY_MS, ...RETRY_OPTIONS },
     );
     return result;
   }
 
+  /** Returns what the job cost. At most once: a refund that errors is logged for a manual correction rather than
+   * retried, since a retry could pay it twice. */
+  private async refund(data: PollVideoJobData): Promise<number> {
+    try {
+      return await this.videoService.refundFailedJob(data);
+    } catch (error) {
+      this.logger.error(
+        `Could not return ${data.creditsCharged ?? 0} credits for video job ${data.jobId} (workspace ${data.workspaceId}): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return 0;
+    }
+  }
+
   /** Lets the person leave the app while the clip renders (in-app and push). Never fails the job. */
-  private async notify(userId: string | undefined, status: 'completed' | 'failed'): Promise<void> {
+  private async notify(
+    userId: string | undefined,
+    status: 'completed' | 'failed',
+    creditsReturned = 0,
+  ): Promise<void> {
     if (!userId) return;
     try {
       await this.notificationsService.create(
@@ -112,7 +147,10 @@ export class VideoProcessor extends WorkerHost {
           : {
               userId,
               title: 'Video could not be made',
-              message: 'Generation failed on the video service. Open Video Studio to try again.',
+              message:
+                creditsReturned > 0
+                  ? `The video service could not make it. Your ${creditsReturned} credits were returned. Open Video Studio to try again.`
+                  : 'Generation failed on the video service. Open Video Studio to try again.',
               type: NotificationType.ERROR,
               metadata: { link: 'video' },
             },

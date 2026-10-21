@@ -192,6 +192,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     }
 
     setError(null);
+    setOutOfCredits(false);
     setSceneWarning(null);
     setPreviewVideoUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
@@ -200,6 +201,19 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setStep('compositing');
     setCompositeProgress(0);
     try {
+      // The video is paid for once it exists (below), so check first that it can be: nobody should sit through a
+      // render they cannot pay for. A typed narration is charged by the voice request itself.
+      const scenePrice = creditRates?.sceneVideo.perVideo ?? 0;
+      if (scenePrice > 0) {
+        setProgressLabel('Checking your credits...');
+        const wallet = await api.getMyCreditWallet().catch(() => null);
+        if (wallet && wallet.balance !== null && wallet.balance < scenePrice) {
+          setOutOfCredits(true);
+          setStep('create');
+          return;
+        }
+      }
+
       let globalAudioUrl: string | null = null;
 
       if (recordedNarration) {
@@ -237,6 +251,10 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
         aspectRatio: sceneAspectRatio,
         transition: sceneTransition,
       });
+      // Charged only now that the video exists, so a failed render never costs anything. If the charge is refused
+      // (not enough credits), the video is not shown.
+      setProgressLabel('Finishing...');
+      await api.chargeSceneVideo(videoProjectId);
       // Route into the same text-overlay editor the prompt/upload/template
       // flows use (compositeTextOntoVideo in videoCompositor.ts) instead of
       // finishing directly - it works on any source video, blob URLs are
@@ -250,13 +268,17 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
       setSourceInGallery(false);
       setStep('edit');
     } catch (err) {
-      setError(
-        err instanceof api.ApiError
-          ? err.message
-          : err instanceof Error
-            ? `Couldn't generate your video: ${err.message}`
-            : "Couldn't generate your video.",
-      );
+      if (err instanceof api.ApiError && err.status === 402) {
+        setOutOfCredits(true);
+      } else {
+        setError(
+          err instanceof api.ApiError
+            ? err.message
+            : err instanceof Error
+              ? `Couldn't generate your video: ${err.message}`
+              : "Couldn't generate your video.",
+        );
+      }
       setStep('create');
     }
   };
@@ -331,7 +353,10 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
         setSourceAssetId(final.mediaAssetId ?? null);
         setStep('edit');
       } else {
-        setError(`${PROVIDER_LABELS[provider]} could not render this video. Try again or pick a different engine.`);
+        // The server gives the credits back for a clip that fails after it was accepted (VideoProcessor).
+        setError(
+          `${PROVIDER_LABELS[provider]} could not make this video, so its credits are being returned. Try again, or change the prompt a little.`,
+        );
         setStep('create');
       }
     } catch (err) {
