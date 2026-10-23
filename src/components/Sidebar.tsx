@@ -17,6 +17,7 @@ import {
   Store,
   Users,
   Video,
+  Youtube,
   Zap,
 } from 'lucide-react';
 import { ViewType } from '../types';
@@ -83,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'voice-studio', label: 'Voice Studio', icon: Mic },
     { id: 'media-library', label: 'Gallery', icon: FolderOpen },
     { id: 'linkedin-posts', label: 'LinkedIn Posts', icon: Linkedin },
+    { id: 'youtube-posts', label: 'YouTube', icon: Youtube },
   ];
 
   const managementNav: { id: ViewType; label: string; icon: React.FC<{ className?: string }> }[] = [

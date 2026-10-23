@@ -12,6 +12,7 @@ import {
   PLATFORM_TEXT_LIMIT,
   PostMediaKind,
   SocialPlatform,
+  youtubeSafeText,
 } from '../../domain/post-media';
 import { CreateSocialPostDto } from '../dto/create-social-post.dto';
 import { PublishingJobsService } from './publishing-jobs.service';
@@ -93,12 +94,18 @@ export class SocialPostsService {
     for (const platform of dto.platforms) {
       await this.checkPlatform(platform, kind, text, workspaceId, when);
     }
+    const toYouTube = dto.platforms.includes('youtube');
+    // YouTube needs a title; it is also the post's title in the Calendar, where it can be edited.
+    const title = (toYouTube ? youtubeSafeText(dto.title ?? '') : (dto.title ?? '')).trim();
+    if (toYouTube && !title) {
+      throw new BadRequestException('Give the YouTube video a title.');
+    }
 
     const content = await this.contentService.create(
       {
         organizationId,
         workspaceId,
-        title: postTitle(text, asset),
+        title: title || postTitle(text, asset),
         body: text,
         type:
           kind === 'image'
@@ -114,6 +121,9 @@ export class SocialPostsService {
           ...(asset ? { mediaAssetId: asset.id } : {}),
           ...(kind === 'image' && asset ? { imageUrl: asset.url } : {}),
           ...(kind === 'video' && asset ? { videoUrl: asset.url } : {}),
+          // Made by one of Lumora's AI engines: YouTube is told it is altered or synthetic content.
+          ...(asset?.provider ? { aiGenerated: true } : {}),
+          ...(toYouTube ? { visibility: dto.visibility ?? 'public' } : {}),
         },
       },
       actor.id,

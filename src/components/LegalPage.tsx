@@ -1,7 +1,7 @@
 import React from 'react';
 import { Logo, Wordmark } from './Logo';
 
-const EFFECTIVE_DATE = 'October 21, 2026';
+const EFFECTIVE_DATE = 'October 23, 2026';
 const CONTACT_EMAIL = 'sales@lumoraos.in';
 const SITE = 'lumoraos.in';
 
@@ -79,7 +79,7 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
       <p><strong>Content you create.</strong> Text, images, video, voice, and other assets you generate,
         upload, or schedule through the Service, along with the brand and campaign settings you configure.</p>
       <p><strong>Connected platform data.</strong> When you connect a social account (for example, via
-        "Connect Facebook/Instagram" or "Connect LinkedIn"), we receive and store only what is required to
+        "Connect Facebook/Instagram", "Connect LinkedIn" or "Connect YouTube"), we receive and store only what is required to
         publish on your behalf:</p>
       <ul>
         <li>The Facebook Page ID and Page name you selected, and the Instagram Business Account ID and
@@ -91,12 +91,17 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
           <code>openid</code> and <code>profile</code> permissions), and an access token that lets the Service
           post to your profile (<code>w_member_social</code>). LinkedIn issues these tokens for 60 days; we
           keep the expiry date so we can remind you to reconnect.</li>
+        <li>For YouTube: your YouTube channel ID and channel name (read with the{' '}
+          <code>youtube.readonly</code> permission, only to identify the channel and to check that the
+          connection still works), and a Google refresh token that lets the Service upload the videos you
+          choose to that channel (<code>youtube.upload</code>).</li>
         <li>Publishing status and metadata for posts you schedule or publish through the Service (for
           example, the resulting post ID and timestamp).</li>
       </ul>
-      <p>We do not request or store your Facebook, Instagram or LinkedIn password, and we do not read your
-        personal feed, connections, direct messages, or content unrelated to the Pages and profile you
-        explicitly connect. From LinkedIn we read nothing beyond your member ID and name.</p>
+      <p>We do not request or store your Facebook, Instagram, LinkedIn or Google password, and we do not read
+        your personal feed, connections, direct messages, or content unrelated to the Pages, profile and
+        channel you explicitly connect. From LinkedIn we read nothing beyond your member ID and name; from
+        YouTube, nothing beyond your channel ID and name.</p>
       <p><strong>Usage data.</strong> Log data, device/browser information, and product analytics used to
         operate and improve the Service.</p>
     </section>
@@ -112,16 +117,26 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
       </ul>
       <p>We publish to a connected account only the text, image or video that you (or a member of your
         workspace) write or choose, at the time chosen in the Service ("Post now" or a scheduled time). We
-        do not sell your data, and we do not use your connected Facebook, Instagram or LinkedIn data for
-        advertising or share it with data brokers.</p>
+        do not sell your data, and we do not use your connected Facebook, Instagram, LinkedIn or YouTube data
+        for advertising or share it with data brokers.</p>
+      <p>Lumora's use and transfer of information received from Google APIs adheres to the{' '}
+        <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noreferrer">
+          Google API Services User Data Policy
+        </a>
+        , including the Limited Use requirements.</p>
     </section>
 
     <section>
       <h2>3. Third-party services</h2>
       <p>Publishing features rely on the official APIs of the platforms you connect (Meta Graph API for
-        Facebook/Instagram, the LinkedIn API for LinkedIn, and the YouTube Data API for YouTube). Content you
+        Facebook/Instagram, the LinkedIn API for LinkedIn, and the YouTube API Services for YouTube). Content you
         choose to publish
-        is sent to those platforms and is then also governed by their own privacy policies. We also use
+        is sent to those platforms and is then also governed by their own privacy policies; for YouTube that
+        is the{' '}
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
+          Google Privacy Policy
+        </a>
+        . We also use
         infrastructure and AI providers (such as hosting, storage, and generative AI/voice providers) to
         deliver the Service; those providers process data solely on our behalf under contractual
         confidentiality obligations.</p>
@@ -138,18 +153,22 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
       <h2>5. Data retention and deletion</h2>
       <p>We retain account and content data for as long as your account is active, or as needed to
         provide the Service. Connected-platform credentials (such as a Facebook Page access token or a
-        LinkedIn access token) are retained only until you disconnect the integration or delete your
-        account, whichever is sooner; a LinkedIn token also stops working when it expires and is replaced
-        when you reconnect.</p>
+        LinkedIn access token, or a Google refresh token for YouTube) are retained only until you disconnect
+        the integration or delete your account, whichever is sooner; a LinkedIn token also stops working when
+        it expires and is replaced when you reconnect.</p>
       <p id="data-deletion"><strong>How to request deletion.</strong> You can disconnect a connected
-        Facebook/Instagram Page or LinkedIn profile at any time from the Integrations page, which
+        Facebook/Instagram Page, LinkedIn profile or YouTube channel at any time from the Integrations page, which
         immediately deletes the stored access token on our side. To delete your entire account and all associated
         data (including any stored integration credentials and generated content), email{' '}
         <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> from your account's registered email
         address with the subject "Data Deletion Request". We will confirm and complete deletion within 30
         days. You can also revoke Lumora's access directly at any time, independent of any action on our
-        end: from your Facebook Settings → Business Integrations, or on LinkedIn from Settings → Data
-        privacy → Other applications → Permitted services.</p>
+        end: from your Facebook Settings → Business Integrations, on LinkedIn from Settings → Data
+        privacy → Other applications → Permitted services, or for YouTube from your Google Account's{' '}
+        <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">
+          third-party access page
+        </a>
+        .</p>
     </section>
 
     <section>
@@ -201,13 +220,26 @@ export const TermsOfServicePage: React.FC<LegalPageProps> = ({ onBack }) => (
         Lumora to publish content to that account only when you initiate or schedule a post through the
         Service. You must have the authority to manage the Page or account you connect, and you remain
         responsible for complying with that platform's own terms, community standards, and advertising
-        policies (including Meta's Platform Terms and Community Standards, and LinkedIn's User Agreement
-        and Professional Community Policies) for anything you publish. You may disconnect a connected
+        policies (including Meta's Platform Terms and Community Standards, LinkedIn's User Agreement
+        and Professional Community Policies, and YouTube's Terms of Service and Community Guidelines) for
+        anything you publish. You may disconnect a connected
         account at any time from the Integrations page.</p>
       <p><strong>LinkedIn.</strong> Lumora posts to the personal LinkedIn profile of the member who connected
         it. A workspace has one LinkedIn connection, so posts created by any member of that workspace are
         published to that profile: connect only a profile you are happy for your workspace to post to.
         LinkedIn connections last 60 days and must then be reconnected.</p>
+      <p><strong>YouTube.</strong> Lumora uploads to the YouTube channel connected to the workspace, using
+        YouTube API Services. By connecting YouTube you agree to be bound by the{' '}
+        <a href="https://www.youtube.com/t/terms" target="_blank" rel="noreferrer">
+          YouTube Terms of Service
+        </a>{' '}
+        and the{' '}
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">
+          Google Privacy Policy
+        </a>
+        . Videos made with Lumora's AI are marked to YouTube as altered or synthetic content, and every upload
+        is marked as not made for children. YouTube may keep videos private until it has reviewed Lumora's
+        access.</p>
     </section>
 
     <section>

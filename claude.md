@@ -54,7 +54,7 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 
 - Main: Dashboard, Calendar
 - Creation: Video Studio, Image Studio, Voice Studio, Gallery (view id `media-library`), LinkedIn Posts (view id
-  `linkedin-posts`, added 2026-10-21)
+  `linkedin-posts`, added 2026-10-21), YouTube (view id `youtube-posts`, added 2026-10-23)
 - Management: Team, Integrations, Settings, Help & Tutorial
 - **Hidden on purpose, code and routes kept** (still reachable by typing the hash, e.g. `#ai-studio`): AI Studio, Brand Brain,
   Projects, Campaigns, Character Studio (also removed from the mobile Studio chip row and Profile menu). To bring one back, add
@@ -222,7 +222,22 @@ still accepts the other platforms. The Calendar and LinkedIn Posts refresh thems
   Scheduled / Published / Failed: edit (the Calendar's `EditPostModal`) or cancel a scheduled post, View on LinkedIn,
   Try again / Post again (reopens the composer with the text and Gallery item). A failed job keeps its reason
   (`publishing_jobs.errorMessage`, set only by the worker through `PublishingJobsService.markFailed`; migration
-  20261023000001 back-filled older ones from their notifications) and the page shows it.
+  20261023000001 back-filled older ones from their notifications) and the page shows it. The list part is
+  `src/components/social/SocialPostList.tsx` (+ `usePlatformPosts`), shared with the YouTube page.
+- **YouTube** (2026-10-23; full guide `docs/YOUTUBE-INTEGRATION.md`, keep it in step): own page
+  (`YouTubePostsView`, live sign-in check via `GET /integrations/youtube/check`) and upload window
+  (`src/components/YouTubeUploader.tsx`, `openYouTubeUpload()`): Gallery video, title (= the post's title, max 100),
+  description (= its text, max 5,000 bytes), visibility (default public), now or scheduled. Also from Gallery video
+  cards/preview, Video Studio's finished screen ("Upload to YouTube"; "Post or schedule" became "Post to LinkedIn"),
+  the Create menus and Ctrl+K. Server: `title`/`visibility` on `POST /publishing/posts`; metadata `visibility` and
+  `aiGenerated` (Gallery item has a provider) -> `containsSyntheticMedia`; always `selfDeclaredMadeForKids: false`;
+  `<`/`>` stripped; Google errors made readable (`youtubeFailureMessage`). Connect can return to the page
+  (`?returnTo=youtube-posts`, allow-listed). Deploy applies the variable `YOUTUBE_REDIRECT_URI`; ops-check prints it.
+  The workspace was already connected to the channel "Navish is cricketer player" (owner: keep it). Owner still has to:
+  enable YouTube Data API v3, add the two scopes, publish the consent screen (Testing ends sign-ins after 7 days),
+  add the redirect URI to the OAuth client, set the GitHub variable, and apply for YouTube's API audit - until then
+  YouTube locks uploads to private. Privacy Policy/Terms cover YouTube (Limited Use, YouTube ToS, revoke link).
+  The phone app has no YouTube upload yet.
 - **LinkedIn version pins:** both of the owner's first posts (21 and 23 Oct 2026) failed with "Requested version
   20240101 is not active": the live server's settings file still had `LINKEDIN_API_VERSION=202401` (the deploy only
   writes non-empty values, so it never cleared it). `effectiveLinkedInVersion` now ignores a pin older than 10 months

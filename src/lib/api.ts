@@ -1673,10 +1673,26 @@ export async function getLinkedInConnectUrl(): Promise<string> {
   return result.url;
 }
 
-/** Resolves the YouTube (Google) OAuth "connect" URL. */
-export async function getYouTubeConnectUrl(): Promise<string> {
-  const result = await apiRequest<{ url: string }>('/integrations/youtube/connect');
+/** Resolves the YouTube (Google) OAuth "connect" URL. `returnTo` is the screen Google sends the browser back to
+ * (default Integrations). */
+export async function getYouTubeConnectUrl(returnTo?: 'youtube-posts'): Promise<string> {
+  const query = returnTo ? `?returnTo=${returnTo}` : '';
+  const result = await apiRequest<{ url: string }>(`/integrations/youtube/connect${query}`);
   return result.url;
+}
+
+export interface YouTubeConnectionCheck {
+  connected: boolean;
+  /** Google still accepts the stored sign-in. */
+  working?: boolean;
+  channelTitle?: string;
+  /** Why it does not work, ready to show. */
+  problem?: string;
+}
+
+/** Asks Google whether the workspace's YouTube sign-in still works (nothing is posted). */
+export function checkYouTubeConnection(): Promise<YouTubeConnectionCheck> {
+  return apiRequest<YouTubeConnectionCheck>('/integrations/youtube/check');
 }
 
 interface StoredFile {

@@ -115,10 +115,75 @@ describe('SocialPostsService', () => {
   it('makes one job per account for a video', async () => {
     media.findForActor.mockResolvedValue(video as MediaAsset);
     await service.create(
-      { text: 'New reel', mediaAssetId: 'vid-1', platforms: ['linkedin', 'youtube'] },
+      {
+        text: 'New reel',
+        title: 'New reel',
+        mediaAssetId: 'vid-1',
+        platforms: ['linkedin', 'youtube'],
+      },
       actor,
     );
     expect(jobs.create.mock.calls.map(([dto]) => dto.platform)).toEqual(['linkedin', 'youtube']);
+  });
+
+  describe('YouTube', () => {
+    const youtube = { channelId: 'UC1', channelTitle: 'My channel', refreshToken: 'r' };
+
+    beforeEach(() => {
+      integrations.getDecryptedCredentials.mockResolvedValue(youtube);
+      media.findForActor.mockResolvedValue({ ...video, provider: 'veo' } as MediaAsset);
+    });
+
+    it('uses the title (without < and >) as the post title, and keeps visibility and the AI flag', async () => {
+      await service.create(
+        {
+          text: 'Term plans explained <in 30 seconds>',
+          title: 'Term plan <basics>',
+          visibility: 'unlisted',
+          mediaAssetId: 'vid-1',
+          platforms: ['youtube'],
+        },
+        actor,
+      );
+
+      expect(content.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Term plan basics',
+          metadata: expect.objectContaining({
+            videoUrl: 'https://cdn/v.mp4',
+            visibility: 'unlisted',
+            aiGenerated: true,
+          }),
+        }),
+        'u1',
+      );
+    });
+
+    it('defaults to public', async () => {
+      await service.create(
+        { text: '', title: 'Reel', mediaAssetId: 'vid-1', platforms: ['youtube'] },
+        actor,
+      );
+      expect(content.create.mock.calls[0][0].metadata).toEqual(
+        expect.objectContaining({ visibility: 'public' }),
+      );
+    });
+
+    it('needs a title', async () => {
+      await expect(
+        service.create(
+          { text: 'x', title: ' <> ', mediaAssetId: 'vid-1', platforms: ['youtube'] },
+          actor,
+        ),
+      ).rejects.toThrow('Give the YouTube video a title.');
+      expect(content.create).not.toHaveBeenCalled();
+    });
+
+    it('needs a video', async () => {
+      await expect(
+        service.create({ text: 'Hello', title: 'Hello', platforms: ['youtube'] }, actor),
+      ).rejects.toThrow('YouTube needs a video');
+    });
   });
 
   it('refuses what an account cannot post, before saving anything', async () => {

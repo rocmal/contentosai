@@ -125,6 +125,12 @@ function checkLinkedIn() {
   );
 }
 
+// YouTube posting: the Google client (shared with "Sign in with Google") and the YouTube redirect address.
+function checkYouTube() {
+  out('youtube keys set', `google client id ${Boolean(process.env.GOOGLE_CLIENT_ID)}, secret ${Boolean(process.env.GOOGLE_CLIENT_SECRET)}`);
+  out('youtube redirect', process.env.YOUTUBE_REDIRECT_URI || '(not set - Connect YouTube will say "not configured")');
+}
+
 async function checkUser() {
   let conn;
   try {
@@ -241,6 +247,7 @@ async function checkQueue() {
   await checkOpenAi();
   await checkGemini();
   checkLinkedIn();
+  checkYouTube();
   await checkUser();
   await checkAvatars();
   await checkTemplates();

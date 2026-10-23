@@ -53,6 +53,16 @@ export class YouTubeApiClient {
     });
   }
 
+  /** Confirms a stored sign-in still works: Google refreshes it and the channel is read. Throws Google's error when
+   * it does not (e.g. invalid_grant: revoked, or expired because the Google app is still in Testing mode). */
+  async checkChannel(refreshToken: string): Promise<{ channelTitle?: string }> {
+    const oauth2Client = this.buildOAuthClient();
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    const youtubeClient = youtube({ version: 'v3', auth: oauth2Client });
+    const channels = await youtubeClient.channels.list({ part: ['snippet'], mine: true });
+    return { channelTitle: channels.data.items?.[0]?.snippet?.title ?? undefined };
+  }
+
   async connectChannel(code: string): Promise<ConnectedYouTubeChannel> {
     const oauth2Client = this.buildOAuthClient();
     const { tokens } = await oauth2Client.getToken(code);

@@ -3,7 +3,7 @@ import { ViewType } from '../../../types';
 import * as api from '../../../lib/api';
 import { VIDEO_PROMPT_CATEGORIES } from '../../../lib/videoPromptTemplates';
 import { takeNarrationAudio, takeReuse } from '../../../lib/reuse';
-import { openPostComposer } from '../../../lib/socialPosts';
+import { openPostComposer, openYouTubeUpload } from '../../../lib/socialPosts';
 import { cleanImprovedPrompt, improvePromptRequest } from '../../../lib/improvePrompt';
 import { useCreditRates } from '../../../lib/creditCost';
 import { compositeScenes, compositeTextOntoVideo, SceneInput } from '../../../lib/videoCompositor';
@@ -475,6 +475,19 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     });
   };
 
+  /** Opens the YouTube upload window with the finished video, saving it to the Gallery first if it is not there yet. */
+  const handleUploadToYouTube = async () => {
+    if (!finalVideoUrl) return;
+    const assetId = savedAssetId ?? (await handleSaveToGallery());
+    if (!assetId) return;
+    const about = (source === 'scenes' ? narrationText : prompt).trim();
+    openYouTubeUpload({
+      media: { assetId, type: 'video', url: finalVideoUrl, name: overlayText.trim() || undefined },
+      title: overlayText.trim() || undefined,
+      topic: about || overlayText.trim() || undefined,
+    });
+  };
+
   const applyOverlayAndFinish = async () => {
     if (!sourceVideoUrl) return;
     if (!overlayText.trim()) {
@@ -541,6 +554,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     handlePickStockTemplate,
     handlePickVideoTemplate,
     handlePostVideo,
+    handleUploadToYouTube,
     handleSaveToGallery,
     hasOverlay,
     improveError,

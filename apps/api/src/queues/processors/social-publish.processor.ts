@@ -20,6 +20,8 @@ interface PublishableContentMetadata {
   imageUrl?: string;
   caption?: string;
   text?: string;
+  visibility?: 'public' | 'unlisted' | 'private';
+  aiGenerated?: boolean;
 }
 
 const PLATFORM_NAMES: Record<string, string> = {
@@ -96,6 +98,9 @@ export class SocialPublishProcessor extends WorkerHost {
         imageUrl: metadata?.imageUrl,
         text,
         caption: metadata?.caption ?? content.title,
+        title: content.title,
+        visibility: metadata?.visibility,
+        aiGenerated: metadata?.aiGenerated,
         credentials,
       });
 

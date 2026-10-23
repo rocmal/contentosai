@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Bookmark, Check, Copy, Download, FolderPlus, Loader2, RotateCcw, Send, Share2, X } from 'lucide-react';
+import { AlertTriangle, Bookmark, Check, Copy, Download, FolderPlus, Loader2, RotateCcw, Send, Share2, X, Youtube } from 'lucide-react';
 import { previewBoxWidth } from './constants';
 import { VideoShapeLabel } from './VideoShapeLabel';
 import type { VideoStudio } from './useVideoStudio';
@@ -17,6 +17,7 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     handleDownload,
     handleOpenSaveTemplatePanel,
     handlePostVideo,
+    handleUploadToYouTube,
     handleSaveTemplate,
     handleSaveToGallery,
     handleShare,
@@ -68,11 +69,20 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         <button
           onClick={() => void handlePostVideo()}
           disabled={isSavingToGallery}
-          title="Post now or schedule it to LinkedIn and your other connected accounts"
+          title="Post now or schedule it to your LinkedIn profile"
           className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition-all disabled:opacity-60"
         >
           {isSavingToGallery ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-          <span>Post or schedule</span>
+          <span>Post to LinkedIn</span>
+        </button>
+        <button
+          onClick={() => void handleUploadToYouTube()}
+          disabled={isSavingToGallery}
+          title="Upload now or schedule it to your YouTube channel"
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-md transition-all disabled:opacity-60"
+        >
+          {isSavingToGallery ? <Loader2 className="w-4 h-4 animate-spin" /> : <Youtube className="w-4 h-4" />}
+          <span>Upload to YouTube</span>
         </button>
       </div>
 

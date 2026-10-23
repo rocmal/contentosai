@@ -9,9 +9,23 @@ interface OAuthStatePayload {
   workspaceId: string;
   userId: string;
   iat: number;
+  /** The app screen to come back to (see RETURN_VIEWS). */
+  returnTo?: string;
 }
 
 const STATE_MAX_AGE_MS = 10 * 60 * 1000;
+
+/** Screens a connect can return to; anything else returns to Integrations. */
+const RETURN_VIEWS = ['integrations', 'youtube-posts'];
+
+export interface YouTubeConnectionCheck {
+  connected: boolean;
+  /** The stored sign-in still works (Google refreshed it and the channel could be read). */
+  working?: boolean;
+  channelTitle?: string;
+  /** Why it does not work, in words a person can act on. */
+  problem?: string;
+}
 
 /**
  * Drives the one-time "Connect YouTube" OAuth handshake. Same opaque-state
@@ -30,11 +44,14 @@ export class YouTubeConnectService {
     return this.configService.get<string>('youtube.frontendUrl') ?? 'http://localhost:3000';
   }
 
-  buildConnectUrl(user: {
-    organizationId: string | null;
-    workspaceId: string | null;
-    id: string;
-  }): string {
+  buildConnectUrl(
+    user: {
+      organizationId: string | null;
+      workspaceId: string | null;
+      id: string;
+    },
+    returnTo?: string,
+  ): string {
     if (!this.youTubeApiClient.isConfigured()) {
       throw new ServiceUnavailableException(
         'YouTube publishing is not configured - set GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/YOUTUBE_REDIRECT_URI',
@@ -52,6 +69,7 @@ export class YouTubeConnectService {
         workspaceId: user.workspaceId,
         userId: user.id,
         iat: Date.now(),
+        returnTo: returnTo && RETURN_VIEWS.includes(returnTo) ? returnTo : undefined,
       } satisfies OAuthStatePayload),
     );
     return this.youTubeApiClient.getLoginDialogUrl(state);
@@ -60,11 +78,13 @@ export class YouTubeConnectService {
   /** Always resolves to a frontend redirect URL - success and failure alike -
    * since this is called from the browser's top-level navigation, not fetch. */
   async handleCallback(code: string | undefined, state: string | undefined): Promise<string> {
+    let back = 'integrations';
     try {
       if (!code || !state) {
         throw new BadRequestException('Missing code or state from Google');
       }
       const decoded = this.decodeState(state);
+      if (decoded.returnTo && RETURN_VIEWS.includes(decoded.returnTo)) back = decoded.returnTo;
       const channel = await this.youTubeApiClient.connectChannel(code);
 
       await this.integrationsService.connect(
@@ -79,10 +99,36 @@ export class YouTubeConnectService {
         decoded.userId,
       );
 
-      return `${this.frontendUrl}/?youtube_connected=1#integrations`;
+      return `${this.frontendUrl}/?youtube_connected=1#${back}`;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'unknown_error';
-      return `${this.frontendUrl}/?youtube_error=${encodeURIComponent(message)}#integrations`;
+      return `${this.frontendUrl}/?youtube_error=${encodeURIComponent(message)}#${back}`;
+    }
+  }
+
+  /** Whether the workspace's stored YouTube sign-in still works - the YouTube page shows this before anyone posts. */
+  async check(workspaceId: string): Promise<YouTubeConnectionCheck> {
+    const credentials = await this.integrationsService.getDecryptedCredentials(
+      workspaceId,
+      'youtube',
+    );
+    const refreshToken = credentials?.refreshToken;
+    if (typeof refreshToken !== 'string' || !refreshToken) return { connected: false };
+    const storedTitle =
+      typeof credentials?.channelTitle === 'string' ? credentials.channelTitle : undefined;
+    try {
+      const { channelTitle } = await this.youTubeApiClient.checkChannel(refreshToken);
+      return { connected: true, working: true, channelTitle: channelTitle ?? storedTitle };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        connected: true,
+        working: false,
+        channelTitle: storedTitle,
+        problem: /invalid_grant|invalid_client|unauthorized_client/i.test(message)
+          ? 'The YouTube sign-in has expired or was removed. Reconnect YouTube.'
+          : `Google could not confirm the connection: ${message}`,
+      };
     }
   }
 

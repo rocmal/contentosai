@@ -11,7 +11,13 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
-import { SOCIAL_PLATFORMS, SocialPlatform } from '../../domain/post-media';
+import {
+  SOCIAL_PLATFORMS,
+  SocialPlatform,
+  VIDEO_VISIBILITIES,
+  VideoVisibility,
+  YOUTUBE_TITLE_LIMIT,
+} from '../../domain/post-media';
 
 /** A post written in the composer: text, optionally one Gallery image or video, to one or more accounts. */
 export class CreateSocialPostDto {
@@ -37,4 +43,22 @@ export class CreateSocialPostDto {
   @IsOptional()
   @IsDateString()
   scheduledAt?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "The post's title - YouTube's video title (required there); defaults to the text's first line",
+    maxLength: YOUTUBE_TITLE_LIMIT,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(YOUTUBE_TITLE_LIMIT)
+  title?: string;
+
+  @ApiPropertyOptional({
+    enum: VIDEO_VISIBILITIES,
+    description: 'YouTube only; public when left out',
+  })
+  @IsOptional()
+  @IsIn(VIDEO_VISIBILITIES)
+  visibility?: VideoVisibility;
 }

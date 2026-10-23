@@ -3,8 +3,8 @@ import {
   Check,
   Download,
   Eye,
-  FolderOpen,
   Film,
+  FolderOpen,
   History as HistoryIcon,
   Image as ImageIcon,
   Loader2,
@@ -16,6 +16,7 @@ import {
   Trash2,
   Users,
   X,
+  Youtube,
 } from 'lucide-react';
 import { ViewType } from '../../types';
 import {
@@ -35,7 +36,7 @@ import {
   studioForType,
   takeGallerySearch,
 } from '../../lib/reuse';
-import { openPostComposer } from '../../lib/socialPosts';
+import { openPostComposer, openYouTubeUpload } from '../../lib/socialPosts';
 
 interface MediaLibraryViewProps {
   onNavigate: (view: ViewType) => void;
@@ -252,6 +253,18 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
     const studio = studioForType(item.type);
     openPostComposer({
       media: { assetId: item.id, type: item.type === 'image' ? 'image' : 'video', url: item.url, name: item.fileName },
+      topic: item.prompt && studio ? cleanPrompt(studio, item.prompt) : undefined,
+    });
+  };
+
+  /** A video can also go to YouTube (its title starts from the file name, its description from the prompt). */
+  const canUploadToYouTube = (item: LibraryItem) => item.type === 'video' || item.type === 'character';
+
+  const uploadToYouTube = (item: LibraryItem) => {
+    const studio = studioForType(item.type);
+    openYouTubeUpload({
+      media: { assetId: item.id, type: 'video', url: item.url, name: item.fileName },
+      title: item.fileName.replace(/\.[a-z0-9]{1,5}$/i, ''),
       topic: item.prompt && studio ? cleanPrompt(studio, item.prompt) : undefined,
     });
   };
@@ -540,6 +553,17 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
                       <Send className="w-3 h-3" /> Post
                     </button>
                   )}
+                  {canUploadToYouTube(item) && (
+                    <button
+                      type="button"
+                      onClick={() => uploadToYouTube(item)}
+                      title="Upload to YouTube"
+                      aria-label="Upload to YouTube"
+                      className="inline-flex items-center px-2 py-1.5 rounded-lg text-[11px] font-bold bg-red-600 text-white hover:bg-red-500"
+                    >
+                      <Youtube className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   {canCreateAgain(item) && (
                     <button type="button" onClick={() => createAgain(item)} className={`${actionButton} !px-2`}>
                       <RefreshCw className="w-3 h-3" /> Create again
@@ -682,6 +706,18 @@ export const MediaLibraryView: React.FC<MediaLibraryViewProps> = ({ onNavigate }
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 text-white hover:bg-blue-500"
                   >
                     <Send className="w-3.5 h-3.5" /> Post
+                  </button>
+                )}
+                {canUploadToYouTube(preview) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPreview(null);
+                      uploadToYouTube(preview);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-500"
+                  >
+                    <Youtube className="w-3.5 h-3.5" /> YouTube
                   </button>
                 )}
                 <button

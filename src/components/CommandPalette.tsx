@@ -5,19 +5,20 @@ import {
   FolderOpen,
   HelpCircle,
   Image as ImageIcon,
-  LayoutDashboard,
   Layers,
+  LayoutDashboard,
   Loader2,
   Mic,
   Search,
   Send,
   Settings,
-  UserPlus,
   User as UserIcon,
+  UserPlus,
   Users,
   Video,
   Wand2,
   X,
+  Youtube,
 } from 'lucide-react';
 import { ViewType } from '../types';
 import { LibraryItem, listLibrary } from '../lib/api';
@@ -25,7 +26,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { VIDEO_PROMPT_TEMPLATES } from '../lib/videoPromptTemplates';
 import { requestGallerySearch, requestReuse } from '../lib/reuse';
 import { MANAGE_MEMBERS_PERMISSION, requestInviteForm } from '../lib/teamInvite';
-import { openPostComposer } from '../lib/socialPosts';
+import { openPostComposer, openYouTubeUpload } from '../lib/socialPosts';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -101,6 +102,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       { id: 'p-voice', group: 'Go to', label: 'Voice Studio', keywords: 'audio speech narration record voice hindi punjabi', icon: Mic, run: go('voice-studio') },
       { id: 'p-gallery', group: 'Go to', label: 'Gallery', keywords: 'history saved files media library created', icon: FolderOpen, run: go('media-library') },
       { id: 'p-calendar', group: 'Go to', label: 'Calendar', keywords: 'schedule posts publish', icon: Calendar, run: go('calendar') },
+      { id: 'p-youtube', group: 'Go to', label: 'YouTube', keywords: 'youtube video upload channel shorts scheduled', icon: Youtube, run: go('youtube-posts') },
       { id: 'p-linkedin', group: 'Go to', label: 'LinkedIn Posts', keywords: 'linkedin posts scheduled published failed profile share social', icon: Send, run: go('linkedin-posts') },
       { id: 'p-team', group: 'Go to', label: 'Team', keywords: 'members seats invite roles', icon: Users, run: go('team') },
       { id: 'p-integrations', group: 'Go to', label: 'Integrations', keywords: 'connect facebook instagram linkedin youtube accounts', icon: Layers, run: go('integrations') },
@@ -118,6 +120,16 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       keywords: 'linkedin post share publish schedule social',
       icon: Send,
       run: () => openPostComposer(),
+    };
+
+    const youtubeAction: Entry = {
+      id: 'a-youtube',
+      group: 'Do',
+      label: 'Upload a video to YouTube',
+      hint: 'A Gallery video to your channel, now or scheduled',
+      keywords: 'youtube upload video channel shorts publish schedule',
+      icon: Youtube,
+      run: () => openYouTubeUpload(),
     };
 
     const actions: Entry[] = canInvite

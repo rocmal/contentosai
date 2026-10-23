@@ -25,6 +25,18 @@ export const PLATFORM_TEXT_LIMIT: Record<SocialPlatform, number> = {
   youtube: 5000,
 };
 
+/** Who can watch a YouTube video. */
+export const VIDEO_VISIBILITIES = ['public', 'unlisted', 'private'] as const;
+export type VideoVisibility = (typeof VIDEO_VISIBILITIES)[number];
+
+/** YouTube's longest video title. */
+export const YOUTUBE_TITLE_LIMIT = 100;
+
+/** YouTube refuses "<" and ">" in titles and descriptions. */
+export function youtubeSafeText(text: string): string {
+  return text.replace(/[<>]/g, '');
+}
+
 export const PLATFORM_NAMES: Record<SocialPlatform, string> = {
   linkedin: 'LinkedIn',
   facebook: 'Facebook',

@@ -5,7 +5,10 @@ import { Public } from '@common/decorators/public.decorator';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
-import { YouTubeConnectService } from '../application/services/youtube-connect.service';
+import {
+  YouTubeConnectionCheck,
+  YouTubeConnectService,
+} from '../application/services/youtube-connect.service';
 import { IntegrationsService } from '../application/services/integrations.service';
 
 @ApiTags('integrations')
@@ -20,8 +23,22 @@ export class YouTubeConnectController {
   @ApiBearerAuth('access-token')
   @RequirePermissions('integrations.create')
   @ApiOperation({ summary: 'Get the YouTube (Google) OAuth connect URL for the current workspace' })
-  connect(@CurrentUser() user: AuthenticatedUser): { url: string } {
-    return { url: this.youTubeConnectService.buildConnectUrl(user) };
+  connect(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('returnTo') returnTo?: string,
+  ): { url: string } {
+    return { url: this.youTubeConnectService.buildConnectUrl(user, returnTo) };
+  }
+
+  @Get('check')
+  @ApiBearerAuth('access-token')
+  @RequirePermissions('integrations.read')
+  @ApiOperation({
+    summary:
+      "Whether the workspace's stored YouTube sign-in still works (Google is asked; nothing is posted)",
+  })
+  check(@CurrentUser('workspaceId') workspaceId: string): Promise<YouTubeConnectionCheck> {
+    return this.youTubeConnectService.check(workspaceId);
   }
 
   @Get('callback')

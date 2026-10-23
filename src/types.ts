@@ -11,6 +11,7 @@ export type ViewType =
   | 'brand-brain'
   | 'media-library'
   | 'linkedin-posts'
+  | 'youtube-posts'
   | 'automation'
   | 'ai-agents'
   | 'analytics'
