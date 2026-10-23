@@ -116,6 +116,15 @@ export class YouTubeConnectService {
     if (typeof refreshToken !== 'string' || !refreshToken) return { connected: false };
     const storedTitle =
       typeof credentials?.channelTitle === 'string' ? credentials.channelTitle : undefined;
+    if (!this.youTubeApiClient.hasGoogleClient()) {
+      return {
+        connected: true,
+        working: false,
+        channelTitle: storedTitle,
+        problem:
+          'YouTube is not set up on this server yet (the Google client is missing). Once it is, reconnect YouTube.',
+      };
+    }
     try {
       const { channelTitle } = await this.youTubeApiClient.checkChannel(refreshToken);
       return { connected: true, working: true, channelTitle: channelTitle ?? storedTitle };

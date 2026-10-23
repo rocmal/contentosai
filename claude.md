@@ -233,7 +233,10 @@ still accepts the other platforms. The Calendar and LinkedIn Posts refresh thems
   `aiGenerated` (Gallery item has a provider) -> `containsSyntheticMedia`; always `selfDeclaredMadeForKids: false`;
   `<`/`>` stripped; Google errors made readable (`youtubeFailureMessage`). Connect can return to the page
   (`?returnTo=youtube-posts`, allow-listed). Deploy applies the variable `YOUTUBE_REDIRECT_URI`; ops-check prints it.
-  The workspace was already connected to the channel "Navish is cricketer player" (owner: keep it). Owner still has to:
+  The workspace was already connected to the channel "Navish is cricketer player" (owner: keep it), but from a
+  different Google client: the live server has NO Google client (GOOGLE_CLIENT_ID/SECRET unset; Sign in with Google
+  sends client_id=not-configured), so the check says "not set up on this server" and the channel must be reconnected
+  once the client is set. Owner still has to: set GOOGLE_CLIENT_SECRET (secret) and GOOGLE_CLIENT_ID (variable),
   enable YouTube Data API v3, add the two scopes, publish the consent screen (Testing ends sign-ins after 7 days),
   add the redirect URI to the OAuth client, set the GitHub variable, and apply for YouTube's API audit - until then
   YouTube locks uploads to private. Privacy Policy/Terms cover YouTube (Limited Use, YouTube ToS, revoke link).

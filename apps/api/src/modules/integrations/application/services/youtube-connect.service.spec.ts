@@ -7,7 +7,7 @@ import { YouTubeConnectService } from './youtube-connect.service';
 describe('YouTubeConnectService.check', () => {
   const make = (credentials: Record<string, unknown> | null, check: jest.Mock) =>
     new YouTubeConnectService(
-      { checkChannel: check } as unknown as YouTubeApiClient,
+      { checkChannel: check, hasGoogleClient: () => true } as unknown as YouTubeApiClient,
       {} as EncryptionService,
       {
         getDecryptedCredentials: jest.fn().mockResolvedValue(credentials),
@@ -43,5 +43,25 @@ describe('YouTubeConnectService.check', () => {
       channelTitle: 'My channel',
       problem: 'The YouTube sign-in has expired or was removed. Reconnect YouTube.',
     });
+  });
+
+  it('says the server is not set up when the Google client is missing', async () => {
+    const check = jest.fn();
+    const service = new YouTubeConnectService(
+      { checkChannel: check, hasGoogleClient: () => false } as unknown as YouTubeApiClient,
+      {} as EncryptionService,
+      {
+        getDecryptedCredentials: jest
+          .fn()
+          .mockResolvedValue({ refreshToken: 'r', channelTitle: 'My channel' }),
+      } as unknown as IntegrationsService,
+      {} as ConfigService,
+    );
+
+    await expect(service.check('w1')).resolves.toEqual(
+      expect.objectContaining({ connected: true, working: false, channelTitle: 'My channel' }),
+    );
+    expect((await service.check('w1')).problem).toContain('not set up on this server');
+    expect(check).not.toHaveBeenCalled();
   });
 });

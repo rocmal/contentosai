@@ -30,6 +30,9 @@ export function youtubeFailureMessage(error: unknown): string {
   if (oauthError === 'invalid_grant' || /invalid_grant/.test(message)) {
     return 'Your YouTube connection has expired or was removed. Reconnect YouTube, then post again.';
   }
+  if (/^(invalid_request|invalid_client|unauthorized_client)$/.test(oauthError ?? message)) {
+    return 'YouTube is not set up correctly on the server (the Google client). Check the YouTube setup, then reconnect YouTube.';
+  }
   if (reason === 'quotaExceeded') {
     return "Lumora has used up today's YouTube upload allowance from Google. Try again tomorrow.";
   }

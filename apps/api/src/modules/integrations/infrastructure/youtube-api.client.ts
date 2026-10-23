@@ -39,6 +39,11 @@ export class YouTubeApiClient {
     return !!(this.clientId && this.clientSecret && this.redirectUri);
   }
 
+  /** The Google client (shared with "Sign in with Google") is set - needed to use a stored sign-in at all. */
+  hasGoogleClient(): boolean {
+    return !!(this.clientId && this.clientSecret);
+  }
+
   private buildOAuthClient(): OAuth2Client {
     return new auth.OAuth2(this.clientId, this.clientSecret, this.redirectUri);
   }
