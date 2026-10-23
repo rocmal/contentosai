@@ -32,6 +32,32 @@ describe('PublishingJobsService', () => {
     );
   });
 
+  describe('markFailed', () => {
+    it('marks the job failed and keeps the reason, so the app can show it', async () => {
+      repository.findById.mockResolvedValue(mine);
+
+      await service.markFailed(
+        'j1',
+        'LinkedIn could not start the image upload: Requested version 20240101 is not active',
+      );
+
+      expect(repository.update).toHaveBeenCalledWith('j1', {
+        status: PublishingJobStatus.FAILED,
+        errorMessage:
+          'LinkedIn could not start the image upload: Requested version 20240101 is not active',
+      });
+    });
+
+    it('keeps a very long reason to 2,000 characters', async () => {
+      repository.findById.mockResolvedValue(mine);
+
+      await service.markFailed('j1', 'x'.repeat(5000));
+
+      const [, data] = repository.update.mock.calls[0];
+      expect(data.errorMessage).toHaveLength(2000);
+    });
+  });
+
   describe('listForWorkspace', () => {
     it("lists only the caller's workspace, never everyone's", async () => {
       await service.listForWorkspace(me, { limit: 50 });

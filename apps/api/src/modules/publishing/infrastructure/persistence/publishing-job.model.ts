@@ -40,4 +40,7 @@ export class PublishingJobModel extends BaseModel {
 
   @Column({ type: DataType.STRING(500), allowNull: true })
   declare permalink: string | null;
+
+  @Column({ type: DataType.TEXT, allowNull: true })
+  declare errorMessage: string | null;
 }

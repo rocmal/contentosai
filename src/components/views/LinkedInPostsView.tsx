@@ -278,11 +278,15 @@ export const LinkedInPostsView: React.FC<{ onNavigate: (view: ViewType) => void 
                     )}
                     {job.status === 'failed' && (
                       <>
-                        <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> Did not post ({formatWhen(job.scheduledAt)}). The
-                        reason is in your notifications.
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> Did not post ({formatWhen(job.scheduledAt)})
                       </>
                     )}
                   </p>
+                  {job.status === 'failed' && (
+                    <p className="text-[11px] leading-snug px-2.5 py-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 break-words">
+                      {job.errorMessage || 'LinkedIn did not say why. Check the notification for this post (the bell).'}
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                     {job.status === 'scheduled' &&
                       (confirmCancelId === job.id ? (

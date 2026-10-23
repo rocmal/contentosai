@@ -14,4 +14,6 @@ export interface PublishingJob extends BaseTenantEntity {
   publishedAt: Date | null;
   externalPostId: string | null;
   permalink: string | null;
+  /** Why the post failed (the platform's own words), set by the publishing worker. */
+  errorMessage: string | null;
 }

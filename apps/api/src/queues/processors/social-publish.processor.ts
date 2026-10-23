@@ -114,9 +114,7 @@ export class SocialPublishProcessor extends WorkerHost {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown publishing error';
       this.logger.error(`Publishing job ${publishingJobId} failed: ${message}`);
-      await this.publishingJobsService.updateAsSystem(publishingJobId, {
-        status: PublishingJobStatus.FAILED,
-      });
+      await this.publishingJobsService.markFailed(publishingJobId, message);
       await this.notify(publishingJob.createdBy, {
         title: `${platformName(publishingJob.platform)} post failed`,
         message,

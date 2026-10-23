@@ -132,6 +132,16 @@ export class PublishingJobsService {
   }
 
   /** For the background publishing worker, which updates a job's status with no signed-in user. */
+  /** The worker could not publish: mark the job failed and keep the reason so the app can show it. Not reachable from
+   * the API (the update endpoint cannot set errorMessage). */
+  async markFailed(id: string, reason: string): Promise<PublishingJob> {
+    await this.findById(id);
+    return this.publishingJobsRepository.update(id, {
+      status: PublishingJobStatus.FAILED,
+      errorMessage: reason.slice(0, 2000),
+    });
+  }
+
   async updateAsSystem(id: string, dto: UpdatePublishingJobDto): Promise<PublishingJob> {
     await this.findById(id);
     return this.updateRecord(id, dto);

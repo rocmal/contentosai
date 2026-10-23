@@ -220,8 +220,20 @@ still accepts the other platforms. The Calendar and LinkedIn Posts refresh thems
 - **LinkedIn Posts page** (`src/components/views/LinkedInPostsView.tsx`): connection (name, "reconnect by", Connect /
   Reconnect), New post, and the LinkedIn jobs from `/publishing/jobs` joined with `/content` (newest 50 each) in
   Scheduled / Published / Failed: edit (the Calendar's `EditPostModal`) or cancel a scheduled post, View on LinkedIn,
-  Try again / Post again (reopens the composer with the text and Gallery item). Jobs keep no failure reason; it is in
-  the failure notification.
+  Try again / Post again (reopens the composer with the text and Gallery item). A failed job keeps its reason
+  (`publishing_jobs.errorMessage`, set only by the worker through `PublishingJobsService.markFailed`; migration
+  20261023000001 back-filled older ones from their notifications) and the page shows it.
+- **LinkedIn version pins:** both of the owner's first posts (21 and 23 Oct 2026) failed with "Requested version
+  20240101 is not active": the live server's settings file still had `LINKEDIN_API_VERSION=202401` (the deploy only
+  writes non-empty values, so it never cleared it). `effectiveLinkedInVersion` now ignores a pin older than 10 months
+  (or malformed, or in the future) and logs it; ops-check says so too. Removing the line from the server is still tidy.
+- **Notifications bell** (`src/components/NotificationsBell.tsx`, 2026-10-23): the header's bell was a placeholder that
+  always said "You're all caught up", so failure notices only reached the phone. It now lists `/notifications`
+  (15 newest, refreshed every minute while visible) with an unread badge, Mark all read, and opens the screen named by
+  `metadata.link` (calendar -> LinkedIn Posts for LinkedIn notices, gallery, video, integrations, billing).
+- The owner signs in to the live site as `admin@lumora.ai` ("Lumora Demo" workspace), and their LinkedIn is connected
+  there, so the demo login sees their real posts and notifications: never post, cancel or test-post with it without
+  asking, and do not disable it (see Pending) until the owner has their own account.
 - API: `POST /publishing/posts` (`SocialPostsService`) checks every account (media it takes, text length, connected, LinkedIn
   sign-in still valid at the post time), takes media only as a workspace Gallery item id (never a URL), saves one Content and one
   publishing job per account; "Post now" = scheduledAt now. Same queue/worker as before (`SocialPublishProcessor`).

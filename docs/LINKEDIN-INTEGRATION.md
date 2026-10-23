@@ -163,9 +163,11 @@ and scheduled LinkedIn posts then fail until someone connects again.
 ### After posting
 
 - **Post now:** it appears on the profile within a minute or two (longer for a video, which LinkedIn processes first).
-- **Scheduled:** it sits in the **Calendar**, where you can change its text or time, or cancel it, until it goes out.
-- Either way you get a notification: "Posted to LinkedIn", or "LinkedIn post failed" with LinkedIn's own reason (see
-  [Troubleshooting](#6-troubleshooting)). The phone app's Calendar links to each published post.
+- **Scheduled:** it sits in **LinkedIn Posts** and the **Calendar**, where you can change its text or time, or cancel
+  it, until it goes out.
+- Either way you get a notification (the bell in the header, and on the phone): "Posted to LinkedIn", or "LinkedIn
+  post failed" with LinkedIn's own reason (see [Troubleshooting](#6-troubleshooting)). A failed post also shows that
+  reason on **LinkedIn Posts → Failed**. The phone app's Calendar links to each published post.
 
 ---
 
@@ -272,14 +274,15 @@ real post needs a real connection (section 2).
 | "Your LinkedIn connection expired on ..." / "runs out on ..., before this post's time" | The 60 days are over, or will be by the scheduled time | Reconnect LinkedIn (section 4) |
 | "LinkedIn post failed: ... Invalid access token" | The connection was revoked on LinkedIn, or has expired | Reconnect LinkedIn |
 | "LinkedIn did not accept the post: ... duplicate ..." | The same text was posted to that profile recently | Change the text |
-| Any LinkedIn message ending "Requested version ... is not active" | `LINKEDIN_API_VERSION` pins a retired version | Remove the variable and redeploy |
+| Any LinkedIn message ending "Requested version ... is not active" | `LINKEDIN_API_VERSION` pins a retired version (the live server's settings file had `202401` until October 2026) | Since 2026-10-23 a pin older than 10 months is ignored and the automatic version is used, so redeploying is enough; also remove the setting from the server. The deploy log's ops-check line says when a pin is ignored. |
 | "LinkedIn could not process this video" | LinkedIn rejected the file | Use an MP4 of a few minutes or less |
 | "LinkedIn is still processing the video" | Processing took longer than 5 minutes | Post it again in a few minutes |
 | "Could not read the file to post (404)" | The Gallery file is gone, or the server cannot reach its own address | Check the file opens in the Gallery; check `APP_URL` (see `deploy/README.md`) |
 | "Facebook needs a video ..." / "Instagram can only post a video from Lumora for now." | That account does not take text-only or image posts yet | Post the text or image to LinkedIn, or attach a video |
 | "LinkedIn takes up to 3,000 characters; this post has ..." | The text is too long | Shorten it |
 
-A failed post stays in the Calendar under **Failed**. Fix the cause, then create the post again.
+A failed post stays under **Failed** (LinkedIn Posts and the Calendar) with its reason. Fix the cause, then press
+**Try again**, which opens a new post with the same text and picture.
 
 ---
 

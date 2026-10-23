@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { formatIndiaDate } from '@shared/utils/india-time.util';
 import {
@@ -42,6 +47,27 @@ export function defaultLinkedInVersion(now: Date = new Date()): string {
   return `${month.getUTCFullYear()}${String(month.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+/** A pinned version older than this many months is ignored: LinkedIn retires versions about a year after release. */
+export const PINNED_VERSION_MAX_AGE_MONTHS = 10;
+
+/**
+ * The version to send. A pin (LINKEDIN_API_VERSION) is used only while it is released and young enough; otherwise
+ * the automatic one. A stale "202401" left in the live server's settings file made LinkedIn refuse every post in
+ * October 2026 ("Requested version 20240101 is not active").
+ */
+export function effectiveLinkedInVersion(
+  pinned: string | undefined,
+  now: Date = new Date(),
+): string {
+  const automatic = defaultLinkedInVersion(now);
+  if (!pinned || !/^\d{6}$/.test(pinned)) return automatic;
+  const ageMonths =
+    now.getUTCFullYear() * 12 +
+    now.getUTCMonth() -
+    (Number(pinned.slice(0, 4)) * 12 + Number(pinned.slice(4)) - 1);
+  return ageMonths >= 0 && ageMonths <= PINNED_VERSION_MAX_AGE_MONTHS ? pinned : automatic;
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -52,6 +78,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 @Injectable()
 export class LinkedInPublisherProvider implements ISocialPublisher {
   readonly name = 'linkedin';
+  private readonly logger = new Logger(LinkedInPublisherProvider.name);
+  private warnedAboutPin = false;
 
   /** Test seam: how long to wait between video status checks. */
   protected videoPollMs = VIDEO_READY_POLL_MS;
@@ -59,7 +87,15 @@ export class LinkedInPublisherProvider implements ISocialPublisher {
   constructor(private readonly configService: ConfigService) {}
 
   private get apiVersion(): string {
-    return this.configService.get<string>('linkedin.apiVersion') || defaultLinkedInVersion();
+    const pinned = this.configService.get<string>('linkedin.apiVersion') || '';
+    const version = effectiveLinkedInVersion(pinned);
+    if (pinned && version !== pinned && !this.warnedAboutPin) {
+      this.warnedAboutPin = true;
+      this.logger.warn(
+        `LINKEDIN_API_VERSION=${pinned} is retired or invalid; using ${version}. Remove the setting from the server.`,
+      );
+    }
+    return version;
   }
 
   private headers(accessToken: string): Record<string, string> {

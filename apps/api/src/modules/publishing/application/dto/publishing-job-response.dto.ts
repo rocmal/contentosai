@@ -12,6 +12,8 @@ export class PublishingJobResponseDto {
   @ApiProperty({ nullable: true }) publishedAt: Date | null;
   @ApiProperty({ nullable: true }) externalPostId: string | null;
   @ApiProperty({ nullable: true }) permalink: string | null;
+  @ApiProperty({ nullable: true, description: "Why the post failed, in the platform's own words" })
+  errorMessage: string | null;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
 
@@ -26,6 +28,7 @@ export class PublishingJobResponseDto {
     this.publishedAt = publishingJob.publishedAt;
     this.externalPostId = publishingJob.externalPostId;
     this.permalink = publishingJob.permalink;
+    this.errorMessage = publishingJob.errorMessage;
     this.createdAt = publishingJob.createdAt;
     this.updatedAt = publishingJob.updatedAt;
   }

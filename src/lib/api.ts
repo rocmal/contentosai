@@ -1703,6 +1703,8 @@ export interface PublishingJob {
   publishedAt: string | null;
   externalPostId: string | null;
   permalink: string | null;
+  /** Why the post failed, in the platform's own words (posts that failed before 2026-10-23 may have none). */
+  errorMessage?: string | null;
 }
 
 /** Uploads the finished video, wraps it in a Content record, then schedules

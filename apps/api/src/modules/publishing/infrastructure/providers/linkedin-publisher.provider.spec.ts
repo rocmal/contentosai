@@ -1,5 +1,9 @@
 import { ConfigService } from '@nestjs/config';
-import { defaultLinkedInVersion, LinkedInPublisherProvider } from './linkedin-publisher.provider';
+import {
+  defaultLinkedInVersion,
+  effectiveLinkedInVersion,
+  LinkedInPublisherProvider,
+} from './linkedin-publisher.provider';
 
 /** A fetch Response stand-in with just what the publisher reads. */
 function reply(body: unknown, init: { status?: number; headers?: Record<string, string> } = {}) {
@@ -158,5 +162,48 @@ describe('defaultLinkedInVersion', () => {
   it('is the month three months back, across a year boundary too', () => {
     expect(defaultLinkedInVersion(new Date(Date.UTC(2026, 9, 19)))).toBe('202607');
     expect(defaultLinkedInVersion(new Date(Date.UTC(2027, 1, 3)))).toBe('202611');
+  });
+});
+
+describe('effectiveLinkedInVersion', () => {
+  const october2026 = new Date(Date.UTC(2026, 9, 23));
+
+  it('ignores a retired pin - the stale 202401 that broke every post in October 2026', () => {
+    expect(effectiveLinkedInVersion('202401', october2026)).toBe('202607');
+  });
+
+  it('keeps a recent pin', () => {
+    expect(effectiveLinkedInVersion('202605', october2026)).toBe('202605');
+    expect(effectiveLinkedInVersion('202512', october2026)).toBe('202512');
+  });
+
+  it('ignores a pin from the future, a malformed one and an empty one', () => {
+    expect(effectiveLinkedInVersion('202702', october2026)).toBe('202607');
+    expect(effectiveLinkedInVersion('2026-05', october2026)).toBe('202607');
+    expect(effectiveLinkedInVersion('', october2026)).toBe('202607');
+  });
+
+  it('sends the automatic version when the server pins a retired one', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue(reply({}, { status: 201, headers: { 'x-restli-id': 'urn:li:share:1' } }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const pinnedStale = new LinkedInPublisherProvider({
+      get: (key: string) => (key === 'linkedin.apiVersion' ? '202401' : ''),
+    } as unknown as ConfigService);
+
+    await pinnedStale
+      .publish({
+        caption: 'Hello',
+        credentials: {
+          authorUrn: 'urn:li:person:abc',
+          accessToken: 'token',
+          expiresAt: Date.now() + 86_400_000,
+        },
+      })
+      .catch(() => undefined);
+
+    const headers = fetchMock.mock.calls[0][1].headers as Record<string, string>;
+    expect(headers['LinkedIn-Version']).toBe(defaultLinkedInVersion());
   });
 });

@@ -109,7 +109,20 @@ function checkLinkedIn() {
   const redirect = process.env.LINKEDIN_REDIRECT_URI || '';
   out('linkedin keys set', `client id ${Boolean(id)}, secret ${Boolean(secret)}`);
   out('linkedin redirect', redirect || '(not set)');
-  out('linkedin api version', process.env.LINKEDIN_API_VERSION || 'automatic (three months back)');
+  // Mirrors effectiveLinkedInVersion in linkedin-publisher.provider.ts: a pin older than 10 months is ignored.
+  const pinned = process.env.LINKEDIN_API_VERSION || '';
+  const now = new Date();
+  const age = /^\d{6}$/.test(pinned)
+    ? now.getUTCFullYear() * 12 + now.getUTCMonth() - (Number(pinned.slice(0, 4)) * 12 + Number(pinned.slice(4)) - 1)
+    : null;
+  out(
+    'linkedin api version',
+    !pinned
+      ? 'automatic (three months back)'
+      : age !== null && age >= 0 && age <= 10
+        ? `${pinned} (pinned)`
+        : `${pinned} is retired or invalid - ignored, automatic version used; remove LINKEDIN_API_VERSION from the server`,
+  );
 }
 
 async function checkUser() {

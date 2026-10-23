@@ -36,6 +36,7 @@ export class PublishingJobsRepository
       publishedAt: plain.publishedAt,
       externalPostId: plain.externalPostId,
       permalink: plain.permalink,
+      errorMessage: plain.errorMessage ?? null,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       deletedAt: plain.deletedAt,

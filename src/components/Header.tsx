@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Bell,
-  BellOff,
   ChevronDown,
   HelpCircle,
   Image as ImageIcon,
@@ -16,6 +14,7 @@ import {
 import { ThemeMode, ViewType } from '../types';
 import { AuthUser } from '../lib/api';
 import { openPostComposer } from '../lib/socialPosts';
+import { NotificationsBell } from './NotificationsBell';
 
 interface HeaderProps {
   currentView: ViewType;
@@ -36,7 +35,6 @@ export const Header: React.FC<HeaderProps> = ({
   onStartTour,
   user,
 }) => {
-  const [showNotifications, setShowNotifications] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
   // The shortcut is Cmd+K on a Mac and Ctrl+K everywhere else.
   const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform);
@@ -205,33 +203,7 @@ export const Header: React.FC<HeaderProps> = ({
           <HelpCircle className="w-4 h-4" />
         </button>
 
-        {/* Notifications Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors relative"
-            title="Notifications"
-          >
-            <Bell className="w-4 h-4" />
-          </button>
-
-          {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="flex items-center pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
-                <span className="text-xs font-semibold text-slate-900 dark:text-white">
-                  Notifications
-                </span>
-              </div>
-
-              {/* No notifications backend exists yet - an honest empty state
-                  beats fabricated activity that never reflects anything real. */}
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
-                <BellOff className="w-5 h-5 text-slate-300 dark:text-slate-600" />
-                <p className="text-[11px] text-slate-400">You're all caught up.</p>
-              </div>
-            </div>
-          )}
-        </div>
+        <NotificationsBell onNavigate={onNavigate} />
 
         {/* Create menu: pick a studio */}
         <div className="relative">
