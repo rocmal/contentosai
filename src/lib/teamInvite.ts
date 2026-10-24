@@ -36,3 +36,16 @@ export function takeInviteRequest(): boolean {
 export function seatsLeft(seatLimit: number | null, seatsUsed: number): number | null {
   return seatLimit === null ? null : Math.max(0, seatLimit - seatsUsed);
 }
+
+/** Seats beyond the plan limit (a workspace that was bigger before a downgrade); 0 when within it or unlimited. */
+export function seatsOver(seatLimit: number | null, seatsUsed: number): number {
+  return seatLimit === null ? 0 : Math.max(0, seatsUsed - seatLimit);
+}
+
+/** "1 of 1 seat used", or "2 seats used · 1 seat over your plan limit" so it never reads "2 of 1". */
+export function seatSummary(seatLimit: number | null, seatsUsed: number): string {
+  const noun = (n: number) => `seat${n === 1 ? '' : 's'}`;
+  const over = seatsOver(seatLimit, seatsUsed);
+  if (over > 0) return `${seatsUsed} ${noun(seatsUsed)} used · ${over} ${noun(over)} over your plan limit`;
+  return `${seatsUsed} of ${seatLimit === null ? 'unlimited' : seatLimit} ${noun(seatLimit ?? 2)} used`;
+}

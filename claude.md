@@ -87,11 +87,14 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 
 ### Dashboard (src/components/views/DashboardView.tsx)
 
-Studio-focused. Top to bottom: greeting + 7/30/90-day switch; three studio cards (Image, Video, Voice) each with a Create
-button, saved count and credits used, "Most used" badge; four stat cards (credits remaining, credits used, content created,
-published); "Pick up where you left off" (last 8 generated items with Create again) next to "Where your credits went"; a
-**Your team** seats card shown only to people with `organizations.manage-members` - Invite a teammate when seats are left
-(opens the Team invite form via `src/lib/teamInvite.ts`), Upgrade for more seats when none are.
+Numbers only (2026-10-24 feedback pass). Greeting + 7/30/90-day switch; a collapsible "Studios" row of three cards (Image,
+Video, Voice: saved count, credits used, "Most used" badge; no Create buttons - Create is in the top menu and sidebar; open/closed
+is remembered in localStorage); four stat cards. "Where your credits went" and the **Your team** seats card moved to
+Profile > Plan & Usage (`src/components/UsagePanels.tsx`). Seats over the plan limit read "N seats used - M seats over your plan
+limit" (`seatSummary` in `src/lib/teamInvite.ts`). Drafts (unposted Gallery items) live on each channel page
+(`src/components/social/ChannelDrafts.tsx`). Sidebar: Creation (Video, Image, Voice, Gallery) and Published (LinkedIn, Facebook
+Posts - new, with a Facebook-mode composer via openPostComposer({ platform: "facebook" }), videos only - YouTube) groups, foldable, and a desktop icon-rail collapse; channel icons come from `src/lib/channels.ts`.
+Calendar has date/channel/status filters.
 - Data: `GET /credits/usage?days=` (spend per generation type, net of refunds), `/media/library`, `/media/my` counts,
   `GET /publishing/jobs/summary` (exact scheduled/published/failed counts for the workspace).
 - Publishing jobs were not workspace-scoped either (list/get/update/delete) - fixed 2026-10-07 the same way as media; the

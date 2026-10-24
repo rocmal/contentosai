@@ -29,6 +29,7 @@ import { IntegrationsView } from './components/views/IntegrationsView';
 import { ResetPasswordPage, VerifyEmailPage } from './components/AuthLinkPages';
 import { MarketplaceView } from './components/views/MarketplaceView';
 import { MediaLibraryView } from './components/views/MediaLibraryView';
+import { FacebookPostsView } from './components/views/FacebookPostsView';
 import { LinkedInPostsView } from './components/views/LinkedInPostsView';
 import { YouTubePostsView } from './components/views/YouTubePostsView';
 import { YouTubeUploaderHost } from './components/YouTubeUploader';
@@ -61,6 +62,7 @@ const VIEW_TYPES: ViewType[] = [
   'brand-brain',
   'media-library',
   'linkedin-posts',
+  'facebook-posts',
   'youtube-posts',
   'automation',
   'ai-agents',
@@ -111,6 +113,24 @@ export function App() {
   const [publicRoute, setPublicRoute] = useState<PublicRoute>(() => getPublicRouteFromPath());
   const [darkMode, setDarkMode] = useState<boolean>(initialDarkMode);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
+  // Desktop only: the sidebar folds down to an icon rail. Kept per browser.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('lumora.sidebarCollapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      try {
+        window.localStorage.setItem('lumora.sidebarCollapsed', prev ? '0' : '1');
+      } catch {
+        // Storage blocked: it just won't be remembered.
+      }
+      return !prev;
+    });
+  };
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
 
   // Ctrl+K (Cmd+K on a Mac) opens or closes the global search from anywhere in the app.
@@ -282,10 +302,12 @@ export function App() {
         onNavigate={(view) => setCurrentView(view)}
         isOpenMobile={mobileSidebarOpen}
         onCloseMobile={() => setMobileSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={toggleSidebarCollapsed}
       />
 
       {/* Main Content Area Layout */}
-      <div className="lg:pl-64 flex flex-col min-h-screen">
+      <div className={`${sidebarCollapsed ? 'lg:pl-16' : 'lg:pl-64'} flex flex-col min-h-screen transition-[padding] duration-200`}>
         {/* Top Header */}
         <Header
           currentView={currentView}
@@ -358,6 +380,10 @@ export function App() {
             <LinkedInPostsView onNavigate={(v) => setCurrentView(v)} />
           )}
 
+          {currentView === 'facebook-posts' && (
+            <FacebookPostsView onNavigate={(v) => setCurrentView(v)} />
+          )}
+
           {currentView === 'youtube-posts' && (
             <YouTubePostsView onNavigate={(v) => setCurrentView(v)} />
           )}
@@ -408,7 +434,7 @@ export function App() {
             />
           )}
 
-          {currentView === 'profile' && <ProfileView />}
+          {currentView === 'profile' && <ProfileView onNavigate={(v) => setCurrentView(v)} />}
 
           {currentView === 'help' && (
             <HelpGuideView

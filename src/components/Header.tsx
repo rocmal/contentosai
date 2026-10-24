@@ -3,10 +3,10 @@ import {
   ChevronDown,
   HelpCircle,
   Image as ImageIcon,
+  Linkedin,
   Mic,
   Moon,
   Search,
-  Send,
   Sparkles,
   Sun,
   Video,
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ThemeMode, ViewType } from '../types';
 import { AuthUser } from '../lib/api';
+import { CHANNEL_TEXT } from '../lib/channels';
 import { openPostComposer, openYouTubeUpload } from '../lib/socialPosts';
 import { NotificationsBell } from './NotificationsBell';
 
@@ -43,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
   const viewTitles: Record<ViewType, { title: string; subtitle: string }> = {
     dashboard: {
       title: 'Dashboard',
-      subtitle: 'What you have made, what it cost, and where to start next.',
+      subtitle: 'Your credits, content and publishing numbers at a glance.',
     },
     'ai-studio': {
       title: 'AI Studio Wizard',
@@ -89,6 +90,10 @@ export const Header: React.FC<HeaderProps> = ({
       title: 'LinkedIn Posts',
       subtitle: 'Write, schedule and track posts on your LinkedIn profile.',
     },
+    'facebook-posts': {
+      title: 'Facebook Posts',
+      subtitle: 'Post videos to your Facebook Page and track what is scheduled, published or failed.',
+    },
     'youtube-posts': {
       title: 'YouTube',
       subtitle: 'Upload and schedule videos to your YouTube channel.',
@@ -127,7 +132,7 @@ export const Header: React.FC<HeaderProps> = ({
     },
     profile: {
       title: 'Profile',
-      subtitle: 'Your account details and plan usage.',
+      subtitle: 'Your account, plan, credit usage and team seats.',
     },
     help: {
       title: 'Help Center',
@@ -251,7 +256,7 @@ export const Header: React.FC<HeaderProps> = ({
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  <Send className="w-4 h-4 text-blue-500" /> LinkedIn post
+                  <Linkedin className={`w-4 h-4 ${CHANNEL_TEXT.linkedin}`} /> LinkedIn post
                 </button>
                 <button
                   onClick={() => {
@@ -260,7 +265,7 @@ export const Header: React.FC<HeaderProps> = ({
                   }}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
-                  <Youtube className="w-4 h-4 text-red-500" /> YouTube video
+                  <Youtube className={`w-4 h-4 ${CHANNEL_TEXT.youtube}`} /> YouTube video
                 </button>
               </div>
             </>

@@ -3,6 +3,7 @@ import { AlertTriangle, Linkedin, Loader2, Plus } from 'lucide-react';
 import * as api from '../../lib/api';
 import { openPostComposer } from '../../lib/socialPosts';
 import { ViewType } from '../../types';
+import { ChannelDrafts } from '../social/ChannelDrafts';
 import { SocialPostList, postMedia, postText, usePlatformPosts } from '../social/SocialPostList';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -130,6 +131,8 @@ export const LinkedInPostsView: React.FC<{ onNavigate: (view: ViewType) => void 
           <p className="text-xs leading-snug">{shownError}</p>
         </div>
       )}
+
+      <ChannelDrafts channel="linkedin" posts={posts} onNavigate={onNavigate} />
 
       <SocialPostList
         posts={posts}

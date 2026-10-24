@@ -194,7 +194,7 @@ export const FAQS: { id: string; category: FaqCategory; question: string; answer
     category: 'Gallery & team',
     question: 'How do I start again from something I made before?',
     answer:
-      'Open Gallery, go to "Creation history" (or find it on your Dashboard under "Pick up where you left off") and press "Create again". The studio opens with that prompt filled in. Items saved before this feature was added do not have a saved prompt.',
+      'Open Gallery, go to "Creation history" (or find it as a draft on the LinkedIn Posts, Facebook Posts or YouTube page) and press "Create again". The studio opens with that prompt filled in. Items saved before this feature was added do not have a saved prompt.',
   },
   {
     id: 'faq-11',

@@ -197,6 +197,11 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<CalendarPost | null>(null);
+  // Filters for both views. Dates are yyyy-mm-dd in local time; either end may be left empty.
+  const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const load = async (isRefresh = false) => {
     isRefresh ? setRefreshing(true) : setLoading(true);
@@ -230,6 +235,32 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
   const reloadAfterPost = useCallback(() => void load(true), []);
   useOnPostCreated(reloadAfterPost);
 
+  const channels = useMemo(() => Array.from(new Set(posts.map((p) => p.job.platform))).sort(), [posts]);
+  const filtersActive = channelFilter !== 'all' || statusFilter !== 'all' || !!fromDate || !!toDate;
+
+  const visiblePosts = useMemo(() => {
+    const from = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : null;
+    const to = toDate ? new Date(`${toDate}T23:59:59.999`).getTime() : null;
+    return posts.filter(({ job }) => {
+      if (channelFilter !== 'all' && job.platform !== channelFilter) return false;
+      if (statusFilter !== 'all' && job.status !== statusFilter) return false;
+      if (from !== null || to !== null) {
+        const when = postDate(job)?.getTime();
+        if (when === undefined) return false;
+        if (from !== null && when < from) return false;
+        if (to !== null && when > to) return false;
+      }
+      return true;
+    });
+  }, [posts, channelFilter, statusFilter, fromDate, toDate]);
+
+  const clearFilters = () => {
+    setChannelFilter('all');
+    setStatusFilter('all');
+    setFromDate('');
+    setToDate('');
+  };
+
   const monthGrid = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -239,7 +270,7 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
     const monthLabel = now.toLocaleString(undefined, { month: 'long', year: 'numeric' });
 
     const byDay = new Map<number, CalendarPost[]>();
-    posts.forEach((p) => {
+    visiblePosts.forEach((p) => {
       const d = postDate(p.job);
       if (d && d.getFullYear() === year && d.getMonth() === month) {
         const list = byDay.get(d.getDate()) ?? [];
@@ -249,7 +280,7 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
     });
 
     return { year, month, firstWeekday, daysInMonth, monthLabel, byDay, today: now.getDate() };
-  }, [posts]);
+  }, [visiblePosts]);
 
   return (
     <div className="space-y-6 pb-16 animate-in fade-in duration-200">
@@ -295,6 +326,72 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
         </div>
       </div>
 
+      {/* Filters: date range, channel and status */}
+      {!loading && !error && posts.length > 0 && (
+        <div className="flex flex-wrap items-end gap-3 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          {[
+            { label: 'From', value: fromDate, set: setFromDate, max: toDate || undefined, min: undefined as string | undefined },
+            { label: 'To', value: toDate, set: setToDate, max: undefined as string | undefined, min: fromDate || undefined },
+          ].map((f) => (
+            <label key={f.label} className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {f.label}
+              <input
+                type="date"
+                value={f.value}
+                min={f.min}
+                max={f.max}
+                onChange={(e) => f.set(e.target.value)}
+                className="mt-1 block text-xs font-normal normal-case tracking-normal px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+              />
+            </label>
+          ))}
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Channel
+            <select
+              value={channelFilter}
+              onChange={(e) => setChannelFilter(e.target.value)}
+              className="mt-1 block text-xs font-normal normal-case tracking-normal px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+            >
+              <option value="all">All channels</option>
+              {channels.map((c) => (
+                <option key={c} value={c}>
+                  {PLATFORM_LABEL[c] ?? c}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            Status
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="mt-1 block text-xs font-normal normal-case tracking-normal px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
+            >
+              <option value="all">All statuses</option>
+              {STATUS_COLUMNS.map((st) => (
+                <option key={st} value={st}>
+                  {STATUS_META[st].label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {filtersActive && (
+            <>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800"
+              >
+                Clear filters
+              </button>
+              <span className="ml-auto text-[11px] text-slate-500 dark:text-slate-400 pb-2">
+                Showing {visiblePosts.length} of {posts.length}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       {loading && (
         <div className="flex items-center justify-center gap-2 py-24 text-slate-400 text-sm">
           <Loader2 className="w-5 h-5 animate-spin" /> Loading scheduled content...
@@ -338,7 +435,7 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {STATUS_COLUMNS.map((status) => {
             const meta = STATUS_META[status];
-            const columnPosts = posts.filter((p) => p.job.status === status);
+            const columnPosts = visiblePosts.filter((p) => p.job.status === status);
             return (
               <div
                 key={status}
@@ -356,7 +453,7 @@ export const ContentCalendarView: React.FC<ContentCalendarViewProps> = ({ onNavi
                 <div className="space-y-3 flex-1 overflow-y-auto max-h-[650px] custom-scroll">
                   {columnPosts.length === 0 ? (
                     <div className="py-8 text-center text-[11px] text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
-                      No posts {meta.label.toLowerCase()}
+                      {filtersActive ? `No ${meta.label.toLowerCase()} posts match` : `No posts ${meta.label.toLowerCase()}`}
                     </div>
                   ) : (
                     columnPosts.map(({ job, content }) => {

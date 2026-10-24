@@ -5,6 +5,7 @@ import {
   Check,
   Globe,
   ImagePlus,
+  Facebook,
   Linkedin,
   Loader2,
   Send,
@@ -19,6 +20,7 @@ import {
   ComposerMedia,
   ComposerRequest,
   createSocialPost,
+  PLATFORM_LABEL,
   PLATFORM_TEXT_LIMIT,
   PostMediaKind,
   usePostComposerRequest,
@@ -27,7 +29,7 @@ import {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const AI_SYSTEM_PROMPT =
-  'You write LinkedIn posts for a small business or professional in India (often an insurance advisor). ' +
+  'You write social media posts for a small business or professional in India (often an insurance advisor). ' +
   'Write ONE post of 80-180 words: a strong first line, short paragraphs, a clear call to action, and 3 to 5 ' +
   'relevant hashtags on the last line. Plain text only - no markdown, at most two emojis. Do not invent facts, ' +
   'figures, returns, guarantees or claims; where a number is needed write a placeholder such as [premium]. ' +
@@ -62,6 +64,11 @@ interface PostComposerProps {
  * Posts page, the Calendar, the Gallery, the studios, the Create menus and Ctrl+K through openPostComposer().
  */
 export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, onNavigate }) => {
+  const platform = request.platform ?? 'linkedin';
+  const name = PLATFORM_LABEL[platform];
+  const isFacebook = platform === 'facebook';
+  const accent = isFacebook ? 'bg-[#1877F2] hover:bg-[#1668d6]' : 'bg-[#0A66C2] hover:bg-[#09579f]';
+  const PlatformIcon = isFacebook ? Facebook : Linkedin;
   const [text, setText] = useState(request.text ?? '');
   // Ctrl+Z / Ctrl+Y over every change, including Speak and Write with AI.
   const textHistory = useTextHistory(text, setText);
@@ -85,15 +92,15 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
     api
       .getSocialConnectionStatus()
       .then((status) => {
-        if (!cancelled) setLinkedInStatus(status.linkedin ?? { connected: false });
+        if (!cancelled) setLinkedInStatus(status[platform] ?? { connected: false });
       })
       .catch(() => {
-        if (!cancelled) setError('Could not check your LinkedIn connection. Close this and try again.');
+        if (!cancelled) setError(`Could not check your ${name} connection. Close this and try again.`);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [platform, name]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -103,7 +110,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
     return () => window.removeEventListener('keydown', onKey);
   }, [state, onClose]);
 
-  const limit = PLATFORM_TEXT_LIMIT.linkedin;
+  const limit = PLATFORM_TEXT_LIMIT[platform];
   const trimmed = text.trim();
   const overLimit = trimmed.length > limit;
   const linkedInReady = !!linkedInStatus?.connected && !linkedInStatus.expired;
@@ -112,16 +119,16 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
     !linkedInStatus.expired &&
     !!linkedInStatus.expiresAt &&
     new Date(linkedInStatus.expiresAt).getTime() - Date.now() < 7 * DAY_MS;
-  const canPost = state === 'idle' && linkedInReady && (trimmed || media) && !overLimit;
+  const canPost = state === 'idle' && linkedInReady && (trimmed || media) && !overLimit && (!isFacebook || media?.type === 'video');
 
   /** Straight to LinkedIn's sign-in; LinkedIn sends the browser back to Integrations. */
   const connectLinkedIn = async () => {
     setConnecting(true);
     setError(null);
     try {
-      window.location.href = await api.getLinkedInConnectUrl();
+      window.location.href = isFacebook ? await api.getMetaConnectUrl() : await api.getLinkedInConnectUrl();
     } catch (err) {
-      setError(err instanceof api.ApiError ? err.message : 'Could not start connecting LinkedIn. Please try again.');
+      setError(err instanceof api.ApiError ? err.message : `Could not start connecting ${name}. Please try again.`);
       setConnecting(false);
     }
   };
@@ -137,8 +144,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
     try {
       const result = await api.generateText({
         prompt: trimmed
-          ? `Improve this LinkedIn post. Keep its meaning and any facts exactly as they are:\n\n${trimmed}`
-          : `Write a LinkedIn post to go with ${kind === 'video' ? 'a video' : kind === 'image' ? 'an image' : 'nothing else'} about: ${topic}`,
+          ? `Improve this ${name} post. Keep its meaning and any facts exactly as they are:\n\n${trimmed}`
+          : `Write a ${name} post to go with ${kind === 'video' ? 'a video' : kind === 'image' ? 'an image' : 'nothing else'} about: ${topic}`,
         systemPrompt: AI_SYSTEM_PROMPT,
       });
       setText(result.text.trim());
@@ -154,7 +161,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
     if (galleryItems) return;
     api
       .listMyGallery(undefined, 60)
-      .then((items) => setGalleryItems(items.filter((i) => i.type === 'image' || i.type === 'video' || i.type === 'character')))
+      .then((items) =>
+        setGalleryItems(
+          items.filter((i) => (isFacebook ? false : i.type === 'image') || i.type === 'video' || i.type === 'character'),
+        ),
+      )
       .catch(() => setGalleryItems([]));
   };
 
@@ -176,7 +187,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
       await createSocialPost({
         text: trimmed,
         mediaAssetId: media?.assetId,
-        platforms: ['linkedin'],
+        platforms: [platform],
         scheduledAt: at ? at.toISOString() : undefined,
       });
       setDoneAt(at);
@@ -193,7 +204,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
     () => (
       <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
         <div className="flex items-center gap-2.5 p-3">
-          <div className="w-9 h-9 rounded-full bg-[#0A66C2] text-white flex items-center justify-center text-sm font-bold">
+          <div className={`w-9 h-9 rounded-full ${accent.split(' ')[0]} text-white flex items-center justify-center text-sm font-bold`}>
             {previewName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
@@ -218,7 +229,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
           ))}
       </div>
     ),
-    [previewName, when, scheduledAt, trimmed, media],
+    [previewName, accent, when, scheduledAt, trimmed, media],
   );
 
   return (
@@ -235,7 +246,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
           <h2 id="post-composer-title" className="text-base font-bold text-slate-900 dark:text-white">
-            Create LinkedIn post
+            Create {name} post
           </h2>
           <button
             type="button"
@@ -254,11 +265,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
               <Check className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
             </div>
             <p className="text-sm font-bold text-slate-900 dark:text-white">
-              {doneAt ? `Scheduled for ${formatWhen(doneAt)} on LinkedIn.` : 'Posting to LinkedIn now.'}
+              {doneAt ? `Scheduled for ${formatWhen(doneAt)} on ${name}.` : `Posting to ${name} now.`}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
               {doneAt
-                ? 'Lumora posts it at that time. You can change or cancel it from LinkedIn Posts or the Calendar until then.'
+                ? `Lumora posts it at that time. You can change or cancel it from ${name} Posts or the Calendar until then.`
                 : 'It appears on your profile in a minute or two. You get a notification when it is live.'}
             </p>
             <div className="flex justify-center gap-2">
@@ -266,11 +277,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                 type="button"
                 onClick={() => {
                   onClose();
-                  onNavigate('linkedin-posts');
+                  onNavigate(isFacebook ? 'facebook-posts' : 'linkedin-posts');
                 }}
                 className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
-                See my LinkedIn posts
+                See my {name} posts
               </button>
               <button
                 type="button"
@@ -284,22 +295,22 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 p-5">
             <div className="space-y-4 min-w-0">
-              {/* Account: LinkedIn only */}
+              {/* Account: one per composer */}
               <div>
                 <p className="text-xs font-bold text-slate-900 dark:text-white mb-2">Post to</p>
                 <div className="flex items-center gap-3 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                  <div className="w-9 h-9 rounded-lg bg-[#0A66C2] text-white flex items-center justify-center shrink-0">
-                    <Linkedin className="w-4 h-4" />
+                  <div className={`w-9 h-9 rounded-lg ${accent.split(' ')[0]} text-white flex items-center justify-center shrink-0`}>
+                    <PlatformIcon className="w-4 h-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">LinkedIn</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white">{name}</p>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                       {linkedInStatus === undefined
                         ? 'Checking your connection...'
                         : linkedInReady
-                          ? `${linkedInStatus.label || 'Your profile'} · personal profile`
+                          ? `${linkedInStatus.label || (isFacebook ? 'Your Page' : 'Your profile')}${isFacebook ? '' : ' · personal profile'}`
                           : linkedInStatus.connected
-                            ? 'Your LinkedIn connection has run out'
+                            ? `Your ${name} connection has run out`
                             : 'Not connected yet'}
                     </p>
                   </div>
@@ -311,17 +322,17 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                         type="button"
                         onClick={connectLinkedIn}
                         disabled={connecting}
-                        className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0A66C2] hover:bg-[#09579f] text-white text-[11px] font-bold disabled:opacity-60"
+                        className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${accent} text-white text-[11px] font-bold disabled:opacity-60`}
                       >
                         {connecting && <Loader2 className="w-3 h-3 animate-spin" />}
-                        {linkedInStatus.connected ? 'Reconnect' : 'Connect LinkedIn'}
+                        {linkedInStatus.connected ? 'Reconnect' : `Connect ${name}`}
                       </button>
                     )
                   )}
                 </div>
                 {linkedInExpiresSoon && (
                   <p className="mt-2 text-[11px] text-amber-700 dark:text-amber-400">
-                    Your LinkedIn connection runs out on{' '}
+                    Your {name} connection runs out on{' '}
                     {new Date(linkedInStatus!.expiresAt!).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}.{' '}
                     <button type="button" onClick={connectLinkedIn} disabled={connecting} className="font-bold underline">
                       Reconnect now
@@ -376,7 +387,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
 
               {/* Media */}
               <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white mb-1.5">Image or video</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white mb-1.5">{isFacebook ? 'Video (required)' : 'Image or video'}</p>
                 {media ? (
                   <div className="flex items-center gap-3 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                     <div className="w-16 h-12 rounded-lg overflow-hidden bg-slate-900 shrink-0">
@@ -402,7 +413,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                     onClick={openPicker}
                     className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-blue-400"
                   >
-                    <ImagePlus className="w-4 h-4" /> Add from your Gallery (optional)
+                    <ImagePlus className="w-4 h-4" /> {isFacebook ? 'Pick a video from your Gallery' : 'Add from your Gallery (optional)'}
                   </button>
                 )}
                 {pickerOpen && (
@@ -494,7 +505,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                 ) : (
                   <CalendarClock className="w-4 h-4" />
                 )}
-                {when === 'now' ? 'Post now to LinkedIn' : 'Schedule on LinkedIn'}
+                {when === 'now' ? `Post now to ${name}` : `Schedule on ${name}`}
               </button>
             </div>
 
@@ -503,7 +514,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
               <p className="text-xs font-bold text-slate-900 dark:text-white">Preview</p>
               {preview}
               <p className="text-[10px] text-slate-400">
-                Roughly how it looks on LinkedIn. LinkedIn shows the first few lines and a "...more" link.
+                {isFacebook ? 'Roughly how it looks on Facebook.' : 'Roughly how it looks on LinkedIn. LinkedIn shows the first few lines and a "...more" link.'}
               </p>
             </div>
           </div>

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { AlertCircle, Check, CreditCard, Loader2, Mail, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getMyCreditWallet, listMyCreditTransactions, requestMyPasswordReset, updateMyProfile } from '../../lib/api';
+import { CreditsBreakdown, TeamSeatsCard } from '../UsagePanels';
+import { ViewType } from '../../types';
 import type { CreditTransaction, CreditWallet } from '../../lib/api';
 
 function formatDate(iso: string | null): string {
@@ -23,7 +25,7 @@ function reasonLabel(reason: string): string {
   return labels[reason] ?? reason;
 }
 
-export const ProfileView: React.FC = () => {
+export const ProfileView: React.FC<{ onNavigate?: (view: ViewType) => void }> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
@@ -251,6 +253,12 @@ export const ProfileView: React.FC = () => {
             </>
           )}
         </div>
+      </div>
+
+      {/* Moved here from the Dashboard, which now shows numbers only */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CreditsBreakdown />
+        {onNavigate && <TeamSeatsCard onNavigate={onNavigate} />}
       </div>
     </div>
   );

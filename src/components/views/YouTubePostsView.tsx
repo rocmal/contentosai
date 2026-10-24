@@ -3,6 +3,7 @@ import { AlertTriangle, Info, Loader2, Upload, Youtube } from 'lucide-react';
 import * as api from '../../lib/api';
 import { openYouTubeUpload } from '../../lib/socialPosts';
 import { ViewType } from '../../types';
+import { ChannelDrafts } from '../social/ChannelDrafts';
 import { SocialPostList, postMedia, postText, usePlatformPosts } from '../social/SocialPostList';
 
 /**
@@ -144,6 +145,8 @@ export const YouTubePostsView: React.FC<{ onNavigate: (view: ViewType) => void }
           appear as Shorts.
         </p>
       </div>
+
+      <ChannelDrafts channel="youtube" posts={posts} onNavigate={onNavigate} />
 
       <SocialPostList
         posts={posts}

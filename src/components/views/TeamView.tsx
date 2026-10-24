@@ -13,7 +13,7 @@ import {
   TeamMember,
 } from '../../lib/api';
 import { RolesPanel } from './team/RolesPanel';
-import { seatsLeft, takeInviteRequest } from '../../lib/teamInvite';
+import { seatsLeft, seatsOver, seatSummary, takeInviteRequest } from '../../lib/teamInvite';
 
 interface TeamViewProps {
   onNavigate: (view: ViewType) => void;
@@ -94,7 +94,7 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
           <div className="flex items-center gap-3">
             {subscription !== undefined && (
               <span className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                {seatsUsed} of {seatLimit === null ? 'unlimited' : seatLimit} seat{seatLimit === 1 ? '' : 's'} used
+                {seatSummary(seatLimit, seatsUsed)}
                 {plan ? ` (${plan.name})` : ''}
               </span>
             )}
@@ -148,8 +148,9 @@ export const TeamView: React.FC<TeamViewProps> = ({ onNavigate }) => {
       {activeTab === 'members' && atSeatLimit && (
         <div className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300">
           <span>
-            You've used all {seatLimit} seat{seatLimit === 1 ? '' : 's'} on your {plan?.name ?? 'current'} plan.
-            Upgrade to add more teammates.
+            {seatsOver(seatLimit, seatsUsed) > 0
+              ? `Your workspace is ${seatSummary(seatLimit, seatsUsed).split(' · ')[1]} (${plan?.name ?? 'current'} plan). Remove a member or upgrade.`
+              : `You've used all ${seatLimit} seat${seatLimit === 1 ? '' : 's'} on your ${plan?.name ?? 'current'} plan. Upgrade to add more teammates.`}
           </span>
           <button
             onClick={() => onNavigate('billing')}

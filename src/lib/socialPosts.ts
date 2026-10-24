@@ -75,6 +75,8 @@ export interface ComposerMedia {
 }
 
 export interface ComposerRequest {
+  /** Which account the post goes to; LinkedIn when omitted. Facebook takes videos only. */
+  platform?: 'linkedin' | 'facebook';
   text?: string;
   media?: ComposerMedia;
   /** What the picture or video was made from - "Write with AI" uses it as the topic. */
