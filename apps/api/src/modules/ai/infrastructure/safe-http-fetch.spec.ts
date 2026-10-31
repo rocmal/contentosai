@@ -69,6 +69,14 @@ describe('extractPageSignals', () => {
     expect(s.text).not.toContain('color:red');
   });
 
+  it('reads the preview picture, decoding entities in its address', () => {
+    const page = '<meta property="og:image" content="https://cdn.example.com/p.jpg?a=1&amp;b=2">';
+    expect(extractPageSignals(page).image).toBe('https://cdn.example.com/p.jpg?a=1&b=2');
+    const card = '<meta name="twitter:image" content="/card.png">';
+    expect(extractPageSignals(card).image).toBe('/card.png');
+    expect(extractPageSignals('<p>No picture</p>').image).toBe('');
+  });
+
   it('ignores a theme-color that is not a hex value', () => {
     expect(extractPageSignals('<meta name="theme-color" content="red">').themeColor).toBe('');
   });

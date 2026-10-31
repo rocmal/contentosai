@@ -55,14 +55,20 @@ export class AIProviderFactory {
    * Otherwise Indian-language work (by language name, or Indic script in the
    * text) goes to Sarvam when it is configured, and everything else uses the
    * default provider - backed by the other of Gemini/OpenAI when it has a key.
+   * Work that includes pictures skips Sarvam, which cannot see them.
    */
-  getProviderFor(options: { provider?: string; language?: string; text?: string }): IAIProvider {
+  getProviderFor(options: {
+    provider?: string;
+    language?: string;
+    text?: string;
+    withPictures?: boolean;
+  }): IAIProvider {
     if (options.provider) {
       return this.getProvider(options.provider);
     }
     const indian = isIndianLanguage(options.language) || containsIndicScript(options.text);
     const fallback = this.withBackup(this.getProvider());
-    if (indian && this.configService.get<string>('ai.sarvam.apiKey')) {
+    if (indian && !options.withPictures && this.configService.get<string>('ai.sarvam.apiKey')) {
       const sarvam = this.getProvider('sarvam');
       // Sarvam is the best Indian-language writer but also the slowest; if it
       // fails, the default provider still produces something rather than an error.

@@ -47,30 +47,70 @@ export interface FetchedPage {
   html: string;
 }
 
+export interface FetchedResource {
+  finalUrl: string;
+  contentType: string;
+  body: Buffer;
+}
+
 interface FetchOptions {
   timeoutMs?: number;
   maxBytes?: number;
   maxRedirects?: number;
 }
 
-/** Fetches a public web page on behalf of a user-supplied URL without letting
+/** How much of a response to read. Past maxBytes a page can be cut (its start is enough to read it), but a
+ * picture cut short is useless, so it is refused. */
+export type ReadLimit = { refuse: string } | { maxBytes: number; whenOver: 'truncate' | 'refuse' };
+
+export interface ResourceOptions {
+  timeoutMs?: number;
+  maxRedirects?: number;
+  accept: string;
+  /** Decided from the Content-Type before the body is read: refuse it (with the message to show) or how much to read. */
+  limitFor: (contentType: string) => ReadLimit;
+}
+
+export const HTML_TYPE = /text\/html|application\/xhtml/i;
+
+/** Fetches a public web page on behalf of a user-supplied URL (see fetchPublicResource). */
+export async function fetchPublicHtml(
+  rawUrl: string,
+  options: FetchOptions = {},
+): Promise<FetchedPage> {
+  const maxBytes = options.maxBytes ?? 1_500_000;
+  const page = await fetchPublicResource(rawUrl, {
+    timeoutMs: options.timeoutMs,
+    maxRedirects: options.maxRedirects,
+    accept: 'text/html,application/xhtml+xml',
+    limitFor: (type) =>
+      HTML_TYPE.test(type)
+        ? { maxBytes, whenOver: 'truncate' }
+        : { refuse: 'That address does not return a web page.' },
+  });
+  return { finalUrl: page.finalUrl, html: page.body.toString('utf8') };
+}
+
+/** Fetches a public address on behalf of a user-supplied URL without letting
  * it reach internal services (SSRF): only http(s) on the default ports, the
  * hostname is resolved once, every resolved address must be public, and the
  * connection is pinned to that address (no DNS-rebinding window). Redirects
  * are followed manually so each hop is re-validated. The body is capped. */
-export async function fetchPublicHtml(rawUrl: string, options: FetchOptions = {}): Promise<FetchedPage> {
+export async function fetchPublicResource(
+  rawUrl: string,
+  options: ResourceOptions,
+): Promise<FetchedResource> {
   const timeoutMs = options.timeoutMs ?? 8000;
-  const maxBytes = options.maxBytes ?? 1_500_000;
   const maxRedirects = options.maxRedirects ?? 3;
 
   let current = normaliseUrl(rawUrl);
   for (let hop = 0; hop <= maxRedirects; hop++) {
-    const result = await requestOnce(current, timeoutMs, maxBytes);
+    const result = await requestOnce(current, timeoutMs, options);
     if (result.redirectTo) {
       current = normaliseUrl(new URL(result.redirectTo, current).toString());
       continue;
     }
-    return { finalUrl: current.toString(), html: result.body };
+    return { finalUrl: current.toString(), contentType: result.contentType, body: result.body };
   }
   throw new BadRequestException('The website redirected too many times.');
 }
@@ -98,7 +138,8 @@ function normaliseUrl(raw: string): URL {
 async function resolvePublicAddress(hostname: string): Promise<string> {
   const bare = hostname.replace(/^\[|\]$/g, '');
   if (net.isIP(bare)) {
-    if (isPrivateAddress(bare)) throw new BadRequestException('That website address is not allowed.');
+    if (isPrivateAddress(bare))
+      throw new BadRequestException('That website address is not allowed.');
     return bare;
   }
   let addresses: dns.LookupAddress[];
@@ -116,11 +157,15 @@ async function resolvePublicAddress(hostname: string): Promise<string> {
 async function requestOnce(
   url: URL,
   timeoutMs: number,
-  maxBytes: number,
-): Promise<{ body: string; redirectTo?: string }> {
+  options: ResourceOptions,
+): Promise<{ body: Buffer; contentType: string; redirectTo?: string }> {
   const address = await resolvePublicAddress(url.hostname);
   const isHttps = url.protocol === 'https:';
   const transport = isHttps ? https : http;
+  const tooLarge = (maxBytes: number) =>
+    new BadRequestException(
+      `That file is too large to read (over ${Math.floor(maxBytes / 1_000_000)} MB).`,
+    );
 
   return new Promise((resolve, reject) => {
     const req = transport.request(
@@ -132,8 +177,8 @@ async function requestOnce(
         servername: isHttps ? url.hostname : undefined,
         headers: {
           Host: url.host,
-          'User-Agent': 'LumoraBrandBot/1.0 (+brand profile import)',
-          Accept: 'text/html,application/xhtml+xml',
+          'User-Agent': 'LumoraBot/1.0 (+https://lumoraos.in)',
+          Accept: options.accept,
         },
         timeout: timeoutMs,
       },
@@ -141,7 +186,7 @@ async function requestOnce(
         const status = res.statusCode ?? 0;
         if ([301, 302, 303, 307, 308].includes(status) && res.headers.location) {
           res.resume();
-          resolve({ body: '', redirectTo: res.headers.location });
+          resolve({ body: Buffer.alloc(0), contentType: '', redirectTo: res.headers.location });
           return;
         }
         if (status < 200 || status >= 300) {
@@ -150,26 +195,39 @@ async function requestOnce(
           return;
         }
         const contentType = String(res.headers['content-type'] ?? '');
-        if (!/text\/html|application\/xhtml/i.test(contentType)) {
+        const limit = options.limitFor(contentType);
+        if ('refuse' in limit) {
           res.resume();
-          reject(new BadRequestException('That address does not return a web page.'));
+          reject(new BadRequestException(limit.refuse));
+          return;
+        }
+        const { maxBytes, whenOver } = limit;
+        if (whenOver === 'refuse' && Number(res.headers['content-length'] ?? 0) > maxBytes) {
+          res.resume();
+          reject(tooLarge(maxBytes));
           return;
         }
 
         const chunks: Buffer[] = [];
         let received = 0;
+        const done = () => resolve({ body: Buffer.concat(chunks), contentType });
         res.on('data', (chunk: Buffer) => {
           received += chunk.length;
           if (received > maxBytes) {
-            // Enough of the page to read its head and main copy.
             res.destroy();
-            resolve({ body: Buffer.concat(chunks).toString('utf8') });
+            if (whenOver === 'refuse') reject(tooLarge(maxBytes));
+            // Enough of the page to read its head and main copy.
+            else done();
             return;
           }
           chunks.push(chunk);
         });
-        res.on('end', () => resolve({ body: Buffer.concat(chunks).toString('utf8') }));
-        res.on('error', () => resolve({ body: Buffer.concat(chunks).toString('utf8') }));
+        res.on('end', done);
+        res.on('error', () =>
+          whenOver === 'refuse'
+            ? reject(new BadRequestException('The download was cut off. Please try again.'))
+            : done(),
+        );
       },
     );
     req.on('timeout', () => {

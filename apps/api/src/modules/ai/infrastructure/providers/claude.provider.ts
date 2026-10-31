@@ -34,7 +34,20 @@ export class ClaudeProvider extends BaseAIProvider implements IAIProvider {
         max_tokens: request.maxTokens ?? 1024,
         temperature: request.temperature ?? 0.7,
         ...(request.systemPrompt ? { system: request.systemPrompt } : {}),
-        messages: [{ role: 'user', content: request.prompt }],
+        messages: [
+          {
+            role: 'user',
+            content: request.images?.length
+              ? [
+                  ...request.images.map((image) => ({
+                    type: 'image',
+                    source: { type: 'base64', media_type: image.mimeType, data: image.base64 },
+                  })),
+                  { type: 'text', text: request.prompt },
+                ]
+              : request.prompt,
+          },
+        ],
       },
       { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     );

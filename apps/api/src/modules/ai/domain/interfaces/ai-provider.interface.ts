@@ -1,9 +1,17 @@
+/** A picture the model should look at alongside the prompt. Only formats every vision provider accepts. */
+export interface AIImageInput {
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  base64: string;
+}
+
 export interface AIGenerationRequest {
   prompt: string;
   systemPrompt?: string;
   model?: string;
   maxTokens?: number;
   temperature?: number;
+  /** Pictures sent with the prompt. Providers that cannot see pictures refuse the request rather than answer blind. */
+  images?: AIImageInput[];
 }
 
 export interface AIGenerationUsage {

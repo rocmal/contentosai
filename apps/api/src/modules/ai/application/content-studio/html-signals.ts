@@ -4,6 +4,8 @@ export interface PageSignals {
   siteName: string;
   themeColor: string;
   text: string;
+  /** The page's preview picture (og:image / twitter:image) as written in the page, possibly relative; '' if none. */
+  image: string;
 }
 
 const ENTITIES: Record<string, string> = {
@@ -56,5 +58,6 @@ export function extractPageSignals(html: string, maxTextChars = 6000): PageSigna
     siteName: metaContent(html, 'property', 'og:site_name') || metaContent(html, 'property', 'og:title'),
     themeColor: /^#[0-9a-f]{3,8}$/i.test(themeColor) ? themeColor : '',
     text,
+    image: metaContent(html, 'property', 'og:image') || metaContent(html, 'name', 'twitter:image'),
   };
 }

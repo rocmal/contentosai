@@ -418,8 +418,34 @@ export interface CopilotTurn {
   text: string;
 }
 
-export function copilotReply(input: { message: string; screen?: string; history?: CopilotTurn[] }): Promise<{ reply: string }> {
-  return apiRequest<{ reply: string }>('/ai/copilot', { method: 'POST', body: JSON.stringify(input) });
+/** What happened to a link the Co-pilot was asked to read: `kind` when it was read, `error` (plain words) when not. */
+export interface CopilotLinkResult {
+  url: string;
+  kind?: 'picture' | 'page';
+  title?: string;
+  error?: string;
+}
+
+export interface CopilotReply {
+  reply: string;
+  /** A ready-made image prompt, when the person asked for a picture to be made. */
+  imagePrompt?: string;
+  /** The shape nearest to the shared picture's own. */
+  imageAspectRatio?: ImageAspectRatio;
+  links?: CopilotLinkResult[];
+}
+
+/** At most this many links are read per message (the server reads the first two). */
+export const MAX_COPILOT_LINKS = 2;
+
+export function copilotReply(input: {
+  message: string;
+  screen?: string;
+  history?: CopilotTurn[];
+  /** Picture or web page addresses to read before answering. */
+  links?: string[];
+}): Promise<CopilotReply> {
+  return apiRequest<CopilotReply>('/ai/copilot', { method: 'POST', body: JSON.stringify(input) });
 }
 
 export interface BrandDraft {

@@ -27,9 +27,18 @@ export class OpenAIProvider extends BaseAIProvider implements IAIProvider {
     this.assertConfigured(apiKey, 'OpenAI');
 
     const model = request.model ?? this.defaultModel;
+    const userContent = request.images?.length
+      ? [
+          { type: 'text', text: request.prompt },
+          ...request.images.map((image) => ({
+            type: 'image_url',
+            image_url: { url: `data:${image.mimeType};base64,${image.base64}` },
+          })),
+        ]
+      : request.prompt;
     const messages = [
       ...(request.systemPrompt ? [{ role: 'system', content: request.systemPrompt }] : []),
-      { role: 'user', content: request.prompt },
+      { role: 'user', content: userContent },
     ];
 
     const response = await this.postJson<OpenAIChatCompletionResponse>(

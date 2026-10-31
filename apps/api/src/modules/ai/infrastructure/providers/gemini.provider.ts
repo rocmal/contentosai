@@ -35,7 +35,17 @@ export class GeminiProvider extends BaseAIProvider implements IAIProvider {
     const response = await this.postJson<GeminiGenerateContentResponse>(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
-        contents: [{ role: 'user', parts: [{ text: request.prompt }] }],
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              ...(request.images ?? []).map((image) => ({
+                inlineData: { mimeType: image.mimeType, data: image.base64 },
+              })),
+              { text: request.prompt },
+            ],
+          },
+        ],
         ...(request.systemPrompt
           ? { systemInstruction: { parts: [{ text: request.systemPrompt }] } }
           : {}),

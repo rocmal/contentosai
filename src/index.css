@@ -16,6 +16,16 @@
   }
 }
 
+/* Thin, quiet scrollbars for panels that scroll inside the page. The class was used for a long time without being
+   defined, so Windows drew its thick grey bars with arrow buttons inside small panels (the Co-pilot, the sidebar). */
+.custom-scroll { scrollbar-width: thin; scrollbar-color: rgb(148 163 184 / 0.55) transparent; }
+.dark .custom-scroll { scrollbar-color: rgb(71 85 105 / 0.8) transparent; }
+/* Safari ignores the two properties above and reads these instead. */
+.custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.custom-scroll::-webkit-scrollbar-track { background: transparent; }
+.custom-scroll::-webkit-scrollbar-thumb { background: rgb(148 163 184 / 0.55); border-radius: 9999px; }
+.dark .custom-scroll::-webkit-scrollbar-thumb { background: rgb(71 85 105 / 0.8); }
+
 /* Sign-in artwork (src/components/auth/LoginArt.tsx). Calm, slow motion; all of it stops for
    people who ask for reduced motion. */
 @keyframes lumora-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }

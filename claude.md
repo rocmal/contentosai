@@ -78,7 +78,20 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 - The title area shrinks and truncates; the header controls never shrink (the search box shows just "Search" below 1280px).
 
 - The header (`src/components/Header.tsx`) is the only place a page title and subtitle appear; screens must not repeat them. When you
-  add or rename a screen, update `viewTitles` there. The Create button is a menu (Image / Video / Voiceover).
+  add or rename a screen, update `VIEW_TITLES` in `src/lib/viewTitles.ts` (moved out of Header 2026-10-31; the Co-pilot names the
+  screen from it too). The Create button is a menu (Image / Video / Voiceover).
+- **Co-pilot** (`src/components/FloatingAIAssistant.tsx`, `POST /ai/copilot`, 1 credit a reply; redesigned 2026-10-31): a corner
+  window that can be maximized (remembered per browser, `lumora.copilot.expanded`; Esc restores, then closes), New chat, starter
+  prompts until the first message, Copy on answers. Answers are plain text (the model is told no Markdown). It **reads links**: links
+  typed in a message or added with the link button show as chips (a typed one can be switched off) and go as `links` (at most 2).
+  The server opens them through the SSRF-safe fetcher (`ai/application/copilot/read-links.ts`): a picture goes to the vision model
+  (PNG/JPEG/WebP as they are; a GIF becomes a PNG of its first frame, `ai/infrastructure/picture-input.ts`, since Gemini refuses
+  GIF), a page as its text plus its og:image. Pictures skip Sarvam (it cannot see them). Asked for a picture, the model ends with
+  `IMAGE_PROMPT:`, which the server splits off (`imagePrompt` + nearest `imageAspectRatio`); the chat shows it as a card with Create
+  image (image credits, saved to the Gallery), Edit in Image Studio and Copy. LinkedIn post pages need a sign-in, so the chat tells
+  people to paste the picture's own address (media.licdn.com links work). The phone app's Co-pilot does not read links yet.
+- `custom-scroll` (thin scrollbars, index.css) was used by the sidebar, Calendar, Co-pilot and others but never defined until
+  2026-10-31, so Windows drew thick scrollbars with arrows inside small panels.
 - **Ctrl+K (Cmd+K on a Mac)** toggles the global search from anywhere once signed in (listener in `App.tsx`,
   `src/components/CommandPalette.tsx`). It searches pages, an "Invite a teammate" action (only if allowed), video prompt templates, and
   the whole team's gallery (`/media/library?scope=team&search=`). Choosing a gallery hit opens Gallery with that search

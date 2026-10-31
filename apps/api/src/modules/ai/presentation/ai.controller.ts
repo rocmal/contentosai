@@ -1,7 +1,7 @@
 import { Body, Controller, Get, ParseFilePipeBuilder, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiConsumes, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TranscribeDto } from '../application/dto/transcribe.dto';
 import {
   TranscriptionResult,
@@ -15,7 +15,7 @@ import { GenerateContentDto } from '../application/dto/generate-content.dto';
 import { ContentStudioService, StudioGenerateResult } from '../application/services/content-studio.service';
 import { CopilotService } from '../application/services/copilot.service';
 import { BrandExtractorService, BrandExtraction } from '../application/services/brand-extractor.service';
-import { CopilotMessageDto } from '../application/dto/copilot.dto';
+import { CopilotMessageDto, CopilotReplyDto } from '../application/dto/copilot.dto';
 import { ExtractBrandDto } from '../application/dto/extract-brand.dto';
 import { StudioGenerateDto } from '../application/dto/studio-generate.dto';
 import { GenerateContentResponseDto } from '../application/dto/generate-content-response.dto';
@@ -74,8 +74,11 @@ export class AiController {
 
   @Post('copilot')
   @RequirePermissions('ai.generate')
-  @ApiOperation({ summary: 'Co-pilot chat reply, aware of the workspace Brand Brain (1 credit)' })
-  copilot(@Body() dto: CopilotMessageDto, @CurrentUser() user: AuthenticatedUser): Promise<{ reply: string }> {
+  @ApiOperation({
+    summary: 'Co-pilot chat reply, aware of the workspace Brand Brain (1 credit); reads shared picture and page links',
+  })
+  @ApiOkResponse({ type: CopilotReplyDto })
+  copilot(@Body() dto: CopilotMessageDto, @CurrentUser() user: AuthenticatedUser): Promise<CopilotReplyDto> {
     return this.copilotService.reply(dto, user);
   }
 

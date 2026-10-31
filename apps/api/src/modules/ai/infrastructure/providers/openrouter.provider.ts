@@ -25,6 +25,7 @@ export class OpenRouterProvider extends BaseAIProvider implements IAIProvider {
   async generateText(request: AIGenerationRequest): Promise<AIGenerationResult> {
     const apiKey = this.configService.get<string>('ai.openrouter.apiKey') ?? '';
     this.assertConfigured(apiKey, 'OpenRouter');
+    this.refusePictures(request, 'OpenRouter');
     const model = request.model ?? this.defaultModel;
 
     const messages = [

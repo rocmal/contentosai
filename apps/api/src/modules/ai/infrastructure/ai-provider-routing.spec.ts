@@ -45,6 +45,13 @@ describe('AIProviderFactory.getProviderFor', () => {
     expect(factory.getProviderFor({ text: 'Explain term insurance' }).name).toBe('gemini');
   });
 
+  it('keeps Hindi work with pictures on the default provider, since Sarvam cannot see them', () => {
+    const { factory } = build(configured);
+    expect(factory.getProviderFor({ text: 'इस तस्वीर जैसा पोस्टर', withPictures: true }).name).toBe(
+      'gemini',
+    );
+  });
+
   it('falls back to the default provider when Sarvam has no key', () => {
     const { factory } = build({ 'ai.defaultProvider': 'gemini' });
     expect(factory.getProviderFor({ language: 'hindi' }).name).toBe('gemini');

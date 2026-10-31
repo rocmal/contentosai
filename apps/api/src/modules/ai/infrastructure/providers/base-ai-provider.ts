@@ -1,4 +1,5 @@
-import { Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { AIGenerationRequest } from '../../domain/interfaces/ai-provider.interface';
 
 /**
  * Shared HTTP plumbing for AI provider adapters. Every provider speaks plain
@@ -46,6 +47,13 @@ export abstract class BaseAIProvider {
     }
 
     return response.json() as Promise<T>;
+  }
+
+  /** For text-only models: answering without the picture would mean making up what it shows. */
+  protected refusePictures(request: AIGenerationRequest, providerLabel: string): void {
+    if (request.images?.length) {
+      throw new BadRequestException(`${providerLabel} cannot read pictures.`);
+    }
   }
 
   protected assertConfigured(apiKey: string, providerLabel: string): void {

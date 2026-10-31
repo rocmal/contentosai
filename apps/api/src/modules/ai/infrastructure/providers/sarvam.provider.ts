@@ -38,6 +38,7 @@ export class SarvamProvider extends BaseAIProvider implements IAIProvider {
   async generateText(request: AIGenerationRequest): Promise<AIGenerationResult> {
     const apiKey = this.configService.get<string>('ai.sarvam.apiKey') ?? '';
     this.assertConfigured(apiKey, 'Sarvam AI');
+    this.refusePictures(request, 'Sarvam AI');
     const model = request.model ?? this.defaultModel;
 
     const messages = [
