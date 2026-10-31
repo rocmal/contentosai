@@ -3,6 +3,13 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
+import {
+  assertInWorkspace,
+  ownedBy,
+  tenantScope,
+  workspaceFilters,
+} from '@shared/security/tenant-scope';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { CalendarEventsService } from '../application/services/calendar-events.service';
 import { CreateCalendarEventDto } from '../application/dto/create-calendar-event.dto';
@@ -20,21 +27,25 @@ export class CalendarEventsController {
   @ApiOperation({ summary: 'Create a calendar event' })
   async create(
     @Body() dto: CreateCalendarEventDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<CalendarEventResponseDto> {
-    const calendarEvent = await this.calendarEventsService.create(dto, userId);
+    const calendarEvent = await this.calendarEventsService.create(
+      ownedBy(dto, tenantScope(user)),
+      user.id,
+    );
     return new CalendarEventResponseDto(calendarEvent);
   }
 
   @Get()
   @RequirePermissions('calendar.read')
   @ApiOperation({ summary: 'List calendar events' })
-  async findAll(@Query() query: PaginationQueryDto) {
+  async findAll(@Query() query: PaginationQueryDto, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.calendarEventsService.findAll({
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+      filters: workspaceFilters(tenantScope(user)),
     });
     return {
       items: result.items.map((calendarEvent) => new CalendarEventResponseDto(calendarEvent)),
@@ -45,8 +56,15 @@ export class CalendarEventsController {
   @Get(':id')
   @RequirePermissions('calendar.read')
   @ApiOperation({ summary: 'Get a calendar event by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<CalendarEventResponseDto> {
-    const calendarEvent = await this.calendarEventsService.findById(id);
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CalendarEventResponseDto> {
+    const calendarEvent = assertInWorkspace(
+      await this.calendarEventsService.findById(id),
+      tenantScope(user),
+      'Calendar event',
+    );
     return new CalendarEventResponseDto(calendarEvent);
   }
 
@@ -56,9 +74,14 @@ export class CalendarEventsController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdateCalendarEventDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<CalendarEventResponseDto> {
-    const calendarEvent = await this.calendarEventsService.update(id, dto, userId);
+    assertInWorkspace(
+      await this.calendarEventsService.findById(id),
+      tenantScope(user),
+      'Calendar event',
+    );
+    const calendarEvent = await this.calendarEventsService.update(id, dto, user.id);
     return new CalendarEventResponseDto(calendarEvent);
   }
 
@@ -67,9 +90,14 @@ export class CalendarEventsController {
   @ApiOperation({ summary: 'Delete a calendar event' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.calendarEventsService.remove(id, userId);
+    assertInWorkspace(
+      await this.calendarEventsService.findById(id),
+      tenantScope(user),
+      'Calendar event',
+    );
+    await this.calendarEventsService.remove(id, user.id);
     return { deleted: true };
   }
 }

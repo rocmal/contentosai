@@ -10,12 +10,18 @@ import { CreateAvatarDto } from '../application/dto/create-avatar.dto';
 import { FindAvatarsQueryDto } from '../application/dto/find-avatars-query.dto';
 import { RecordAvatarUsageDto } from '../application/dto/record-avatar-usage.dto';
 import { UpdateAvatarDto } from '../application/dto/update-avatar.dto';
+import { assertInWorkspace, ownedBy, tenantScope } from '@shared/security/tenant-scope';
 
 @ApiTags('avatars')
 @ApiBearerAuth('access-token')
 @Controller({ path: 'avatars', version: '1' })
 export class AvatarsController {
   constructor(private readonly avatarsService: AvatarsService) {}
+
+  /** Another workspace's avatar looks "not found" (platform admins reach every one). */
+  private async assertOwn(id: string, user: AuthenticatedUser): Promise<void> {
+    assertInWorkspace(await this.avatarsService.findById(id), tenantScope(user), 'Avatar');
+  }
 
   @Get()
   @RequirePermissions('avatars.read')
@@ -25,7 +31,10 @@ export class AvatarsController {
       return { items: [], meta: this.emptyMeta(query) };
     }
     const result = await this.avatarsService.findAll(query, user.workspaceId);
-    return { items: result.items.map((avatar) => new AvatarResponseDto(avatar)), meta: result.meta };
+    return {
+      items: result.items.map((avatar) => new AvatarResponseDto(avatar)),
+      meta: result.meta,
+    };
   }
 
   @Get('search')
@@ -36,7 +45,10 @@ export class AvatarsController {
       return { items: [], meta: this.emptyMeta(query) };
     }
     const result = await this.avatarsService.findAll(query, user.workspaceId);
-    return { items: result.items.map((avatar) => new AvatarResponseDto(avatar)), meta: result.meta };
+    return {
+      items: result.items.map((avatar) => new AvatarResponseDto(avatar)),
+      meta: result.meta,
+    };
   }
 
   private emptyMeta(query: FindAvatarsQueryDto) {
@@ -53,7 +65,11 @@ export class AvatarsController {
   @RequirePermissions('avatars.read')
   @ApiOperation({ summary: 'List avatar categories in the current workspace' })
   async categories(@CurrentUser() user: AuthenticatedUser): Promise<{ categories: string[] }> {
-    return { categories: user.workspaceId ? await this.avatarsService.findCategories(user.workspaceId) : [] };
+    return {
+      categories: user.workspaceId
+        ? await this.avatarsService.findCategories(user.workspaceId)
+        : [],
+    };
   }
 
   @Get('providers')
@@ -66,15 +82,28 @@ export class AvatarsController {
   @Get(':id')
   @RequirePermissions('avatars.read')
   @ApiOperation({ summary: 'Get a reusable avatar by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<AvatarResponseDto> {
-    return new AvatarResponseDto(await this.avatarsService.findById(id));
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AvatarResponseDto> {
+    const avatar = assertInWorkspace(
+      await this.avatarsService.findById(id),
+      tenantScope(user),
+      'Avatar',
+    );
+    return new AvatarResponseDto(avatar);
   }
 
   @Post()
   @RequirePermissions('avatars.create')
   @ApiOperation({ summary: 'Create a reusable avatar' })
-  async create(@Body() dto: CreateAvatarDto, @CurrentUser('id') userId: string): Promise<AvatarResponseDto> {
-    return new AvatarResponseDto(await this.avatarsService.create(dto, userId));
+  async create(
+    @Body() dto: CreateAvatarDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AvatarResponseDto> {
+    return new AvatarResponseDto(
+      await this.avatarsService.create(ownedBy(dto, tenantScope(user)), user.id),
+    );
   }
 
   @Patch(':id')
@@ -83,9 +112,10 @@ export class AvatarsController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdateAvatarDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AvatarResponseDto> {
-    return new AvatarResponseDto(await this.avatarsService.update(id, dto, userId));
+    await this.assertOwn(id, user);
+    return new AvatarResponseDto(await this.avatarsService.update(id, dto, user.id));
   }
 
   @Delete(':id')
@@ -93,9 +123,10 @@ export class AvatarsController {
   @ApiOperation({ summary: 'Delete a reusable avatar' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.avatarsService.remove(id, userId);
+    await this.assertOwn(id, user);
+    await this.avatarsService.remove(id, user.id);
     return { deleted: true };
   }
 
@@ -104,9 +135,10 @@ export class AvatarsController {
   @ApiOperation({ summary: 'Duplicate a reusable avatar' })
   async duplicate(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AvatarResponseDto> {
-    return new AvatarResponseDto(await this.avatarsService.duplicate(id, userId));
+    await this.assertOwn(id, user);
+    return new AvatarResponseDto(await this.avatarsService.duplicate(id, user.id));
   }
 
   @Post(':id/favorite')
@@ -114,9 +146,10 @@ export class AvatarsController {
   @ApiOperation({ summary: 'Mark an avatar as a favorite' })
   async favorite(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AvatarResponseDto> {
-    return new AvatarResponseDto(await this.avatarsService.setFavorite(id, true, userId));
+    await this.assertOwn(id, user);
+    return new AvatarResponseDto(await this.avatarsService.setFavorite(id, true, user.id));
   }
 
   @Post(':id/unfavorite')
@@ -124,9 +157,10 @@ export class AvatarsController {
   @ApiOperation({ summary: 'Remove an avatar from favorites' })
   async unfavorite(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AvatarResponseDto> {
-    return new AvatarResponseDto(await this.avatarsService.setFavorite(id, false, userId));
+    await this.assertOwn(id, user);
+    return new AvatarResponseDto(await this.avatarsService.setFavorite(id, false, user.id));
   }
 
   @Post(':id/archive')
@@ -134,9 +168,10 @@ export class AvatarsController {
   @ApiOperation({ summary: 'Archive an avatar' })
   async archive(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AvatarResponseDto> {
-    return new AvatarResponseDto(await this.avatarsService.archive(id, true, userId));
+    await this.assertOwn(id, user);
+    return new AvatarResponseDto(await this.avatarsService.archive(id, true, user.id));
   }
 
   @Post(':id/use')
@@ -145,9 +180,10 @@ export class AvatarsController {
   async use(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: RecordAvatarUsageDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ used: boolean }> {
-    await this.avatarsService.recordUsage(id, dto, userId);
+    await this.assertOwn(id, user);
+    await this.avatarsService.recordUsage(id, dto, user.id);
     return { used: true };
   }
 }

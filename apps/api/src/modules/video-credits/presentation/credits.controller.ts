@@ -2,12 +2,15 @@ import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
+import { PlatformAdminOnly } from '@common/decorators/platform-admin.decorator';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { VideoCreditsService } from '../application/services/credits.service';
 import { QuoteGenerationDto } from '../application/dto/quote-generation.dto';
 import { QuoteResponseDto } from '../application/dto/quote-response.dto';
 import { WalletResponseDto } from '../application/dto/wallet-response.dto';
 
+/** A second credit ledger the apps do not use; it takes any organization id, so only Lumora's platform admins may
+ * reach it. */
 @ApiTags('video-credits')
 @ApiBearerAuth('access-token')
 @Controller({ path: 'video-credits', version: '1' })
@@ -15,6 +18,7 @@ export class VideoCreditsController {
   constructor(private readonly creditsService: VideoCreditsService) {}
 
   @Get('wallet/:organizationId')
+  @PlatformAdminOnly()
   @RequirePermissions('video-credits.read')
   @ApiOperation({ summary: 'Current credit balance for an organization' })
   @ApiResponse({ status: 200, type: WalletResponseDto })
@@ -25,6 +29,7 @@ export class VideoCreditsController {
   }
 
   @Post('quote')
+  @PlatformAdminOnly()
   @RequirePermissions('video-credits.read')
   @ApiOperation({
     summary: 'Price a generation before running it',

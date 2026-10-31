@@ -325,6 +325,40 @@ In code but not used in production: Character Studio (D-ID, HeyGen, Synthesia, l
 (Runway, Kling, Pika, Luma, Gemini Omni), image (Stability, Flux; keys exist, picker hidden), voice (Edge TTS, Azure,
 Cartesia, Piper), text (Claude, OpenRouter).
 
+### Security: customers vs platform admins (2026-10-31)
+
+Every sign-up becomes `super-admin` of its own organization, and that role holds every permission slug. So a permission
+check alone never protects anything across customers. Until 2026-10-31 any registered customer could, with one request:
+add or remove credits in any workspace (`POST /credits/workspaces/:id/adjust`), set its own plan to active Enterprise
+(`PATCH /billing/subscriptions/:id`, which the renewal job turned into unlimited credits), add itself to another
+organization (`POST /organizations/:id/members`), list every user and rename or delete any (`/users`), rewrite the shared
+permission list, and read, change or delete other customers' content, projects, campaigns, brand profiles, calendar
+events, analytics, automations, settings, workspaces and avatars by id. All closed:
+- **Platform admins** are Lumora staff named by `PLATFORM_ADMIN_EMAILS` (a GitHub *secret*, comma-separated; the repo is
+  public, so the email is not in it). `AuthService.buildAuthenticatedUser` sets `isPlatformAdmin`; `/users/me` returns it.
+  `@PlatformAdminOnly()` + the global `PlatformAdminGuard` protect: credit adjustments (booked to the wallet's own
+  organization), subscription create/update/delete, listing/creating/deleting users, creating/deleting organizations and
+  workspaces, permission writes, the raw integrations table (everyone's tokens), audit logs, storage delete, and the unused
+  `video-credits` routes. `common/guards/platform-admin.guard.spec.ts` lists every one of them: add new cross-customer
+  routes there too.
+- **Everything else is scoped to the caller** with `shared/security/tenant-scope.ts`: lists filtered to the caller's
+  workspace/organization (`workspaceFilters`/`organizationFilters`), get/edit/delete of another customer's record answers
+  404 (`assertInWorkspace`/`assertInOrganization`/`assertOwnOrganization`), create ignores body org/workspace ids
+  (`ownedBy`); platform admins bypass. Users: yourself, a teammate (same organization, via the members repository -
+  `UsersModule` and `OrganizationsModule` use `forwardRef`), or a platform admin; edit only yourself. **Use these helpers in
+  every new controller** - a customer's super-admin must never reach another customer.
+- Verified 2026-10-31 against a local API with two fresh customers: 31 attacks refused, the platform admin's legitimate
+  actions work. Media, publishing, notifications, video projects, templates, custom voices and agents already checked
+  ownership in their services.
+- **Change password:** `POST /auth/change-password` (current + new) and Profile > Password; every other session is signed
+  out, this one gets fresh tokens. Refresh tokens now carry a random `jti` (two issued in the same second were identical and
+  broke the unique hash index - simultaneous tab refreshes failed); recording the sign-in time is best-effort (concurrent
+  sign-ins tripped the row's optimistic lock and failed with 500).
+- The repository is **public** and `README.md` publishes the password of `admin@lumora.ai`, which is the owner's live login
+  (LinkedIn, Facebook, Instagram connected). The owner chose on 2026-10-31 to keep those credentials; the platform admin is a
+  separate account the owner signs up with their own password. Its email is only in the GitHub secret - never write it in
+  this repository.
+
 ### Deploy and operations
 
 - Push to `main` runs GitHub Actions "Deploy (Docker)" (tests, build, migrate, seed, recreate, ops-check). "Deploy to cPanel" is
@@ -375,9 +409,16 @@ Needs the owner:
 - Razorpay live keys and KYC, Google OAuth live redirect URIs, Meta App Review, Sentry DSN, Apache 60 s timeout, GSTIN in Google billing,
   Gemini prepaid auto-reload and budget alert.
 - Lawyer review of the landing page "Who owns the content" answer.
+- Platform admin: sign up the chosen admin email on the live site with a strong password of your own, then add the GitHub
+  **secret** `PLATFORM_ADMIN_EMAILS` = that email and redeploy (ops-check then prints "platform admins: 1 set").
+  Until then nobody can adjust credits or use the admin routes. Consider making the GitHub repository private, and change
+  the `admin@lumora.ai` password (Profile > Password) when ready - it is published in the README.
 
 Code still to do:
+- An Admin page for platform admins (find a user, add credits with a reason, give or extend a plan, suspend, audit trail);
+  the routes exist and are locked to platform admins.
 - Real invite-by-email (pending invitations). Today the Team page can only add someone who already has an account.
 - Show the credit cost on avatars when Character Studio returns (the Scene Builder narration price is done).
 - Record unsaved Image Studio generations so history is complete.
-- Other modules that take ids without checking workspace ownership have not been audited (only media and publishing were fixed).
+- Audited 2026-10-31 (see "Security: customers vs platform admins"). Still unchecked: the hidden Character Studio's
+  service internals and `findMemberCandidateByEmail` (the Team invite lookup confirms whether an email has an account).

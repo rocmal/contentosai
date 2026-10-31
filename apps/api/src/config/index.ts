@@ -11,6 +11,7 @@ import monitoringConfig from './monitoring.config';
 import metaConfig from './meta.config';
 import linkedinConfig from './linkedin.config';
 import youtubeConfig from './youtube.config';
+import platformConfig from './platform.config';
 
 export const configurations = [
   appConfig,
@@ -26,6 +27,7 @@ export const configurations = [
   metaConfig,
   linkedinConfig,
   youtubeConfig,
+  platformConfig,
 ];
 
 export * from './env.validation';

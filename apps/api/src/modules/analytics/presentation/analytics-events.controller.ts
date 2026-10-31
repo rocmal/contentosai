@@ -3,6 +3,13 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
+import {
+  assertInWorkspace,
+  ownedBy,
+  tenantScope,
+  workspaceFilters,
+} from '@shared/security/tenant-scope';
 import { AnalyticsEventsService } from '../application/services/analytics-events.service';
 import { CreateAnalyticsEventDto } from '../application/dto/create-analytics-event.dto';
 import { UpdateAnalyticsEventDto } from '../application/dto/update-analytics-event.dto';
@@ -20,16 +27,24 @@ export class AnalyticsEventsController {
   @ApiOperation({ summary: 'Create an analytics event' })
   async create(
     @Body() dto: CreateAnalyticsEventDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AnalyticsEventResponseDto> {
-    const analyticsEvent = await this.analyticsEventsService.create(dto, userId);
+    const analyticsEvent = await this.analyticsEventsService.create(
+      ownedBy(dto, tenantScope(user)),
+      user.id,
+    );
     return new AnalyticsEventResponseDto(analyticsEvent);
   }
 
   @Get()
   @RequirePermissions('analytics.read')
-  @ApiOperation({ summary: 'List analytics events (pass organizationId/workspaceId to scope to one tenant)' })
-  async findAll(@Query() query: ListAnalyticsEventsQueryDto) {
+  @ApiOperation({
+    summary: 'List analytics events (pass organizationId/workspaceId to scope to one tenant)',
+  })
+  async findAll(
+    @Query() query: ListAnalyticsEventsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const filters: Record<string, string> = {};
     if (query.organizationId) filters.organizationId = query.organizationId;
     if (query.workspaceId) filters.workspaceId = query.workspaceId;
@@ -39,7 +54,7 @@ export class AnalyticsEventsController {
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
-      filters: Object.keys(filters).length ? filters : undefined,
+      filters: workspaceFilters(tenantScope(user), filters),
     });
     return {
       items: result.items.map((analyticsEvent) => new AnalyticsEventResponseDto(analyticsEvent)),
@@ -50,8 +65,15 @@ export class AnalyticsEventsController {
   @Get(':id')
   @RequirePermissions('analytics.read')
   @ApiOperation({ summary: 'Get an analytics event by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<AnalyticsEventResponseDto> {
-    const analyticsEvent = await this.analyticsEventsService.findById(id);
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<AnalyticsEventResponseDto> {
+    const analyticsEvent = assertInWorkspace(
+      await this.analyticsEventsService.findById(id),
+      tenantScope(user),
+      'Analytics event',
+    );
     return new AnalyticsEventResponseDto(analyticsEvent);
   }
 
@@ -61,9 +83,14 @@ export class AnalyticsEventsController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdateAnalyticsEventDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AnalyticsEventResponseDto> {
-    const analyticsEvent = await this.analyticsEventsService.update(id, dto, userId);
+    assertInWorkspace(
+      await this.analyticsEventsService.findById(id),
+      tenantScope(user),
+      'Analytics event',
+    );
+    const analyticsEvent = await this.analyticsEventsService.update(id, dto, user.id);
     return new AnalyticsEventResponseDto(analyticsEvent);
   }
 
@@ -72,9 +99,14 @@ export class AnalyticsEventsController {
   @ApiOperation({ summary: 'Delete an analytics event' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.analyticsEventsService.remove(id, userId);
+    assertInWorkspace(
+      await this.analyticsEventsService.findById(id),
+      tenantScope(user),
+      'Analytics event',
+    );
+    await this.analyticsEventsService.remove(id, user.id);
     return { deleted: true };
   }
 }

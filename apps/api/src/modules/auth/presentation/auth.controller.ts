@@ -13,6 +13,7 @@ import { ForgotPasswordDto } from '../application/dto/forgot-password.dto';
 import { ResetPasswordDto } from '../application/dto/reset-password.dto';
 import { VerifyEmailDto } from '../application/dto/verify-email.dto';
 import { DeleteAccountDto } from '../application/dto/delete-account.dto';
+import { ChangePasswordDto } from '../application/dto/change-password.dto';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { AuthTokensResponseDto } from '../application/dto/auth-tokens-response.dto';
 import { UserResponseDto } from '@modules/users/application/dto/user-response.dto';
@@ -99,9 +100,31 @@ export class AuthController {
 
   @ApiBearerAuth('access-token')
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      "Change the signed-in account's password (asks for the current one); signs out every other session",
+  })
+  async changePassword(
+    @Body() dto: ChangePasswordDto,
+    @CurrentUser('id') userId: string,
+  ): Promise<AuthTokensResponseDto> {
+    const result = await this.authService.changePassword(
+      userId,
+      dto.currentPassword,
+      dto.newPassword,
+    );
+    return this.toAuthResponse(result);
+  }
+
+  @ApiBearerAuth('access-token')
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('delete-account')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Permanently delete the signed-in account (asks for the password again)' })
+  @ApiOperation({
+    summary: 'Permanently delete the signed-in account (asks for the password again)',
+  })
   async deleteAccount(
     @Body() dto: DeleteAccountDto,
     @CurrentUser('id') userId: string,

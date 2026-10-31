@@ -140,6 +140,8 @@ export const envValidationSchema = Joi.object({
 
   // YouTube (video upload publishing - reuses the Google OAuth client)
   YOUTUBE_REDIRECT_URI: Joi.string().allow('').default(''),
+  // Lumora staff accounts that may manage every customer (comma-separated emails); a GitHub secret.
+  PLATFORM_ADMIN_EMAILS: Joi.string().allow('').default(''),
 
   // Razorpay (billing - primary payment gateway, India-first)
   RAZORPAY_KEY_ID: Joi.string().allow('').default(''),

@@ -60,7 +60,10 @@ describe('CreditsService.getUsageSummary', () => {
 });
 
 describe('credit prices shown before generating', () => {
-  const service = new CreditsService({} as ICreditWalletsRepository, {} as ICreditTransactionsRepository);
+  const service = new CreditsService(
+    {} as ICreditWalletsRepository,
+    {} as ICreditTransactionsRepository,
+  );
 
   it('publishes the same voice and video rates the charge uses', () => {
     const rates = service.getRates();
@@ -176,5 +179,54 @@ describe('plans: 30-day periods that start fresh', () => {
 
   it('publishes the trial size with the prices', () => {
     expect(makeService(null).service.getRates().trial.credits).toBe(TRIAL_CREDITS);
+  });
+});
+
+describe('CreditsService.adjust (platform admins)', () => {
+  it("books the change to the workspace's own organization, not the admin's", async () => {
+    const wallets = {
+      findByWorkspace: jest
+        .fn()
+        .mockResolvedValue({ workspaceId: 'ws-7', organizationId: 'org-7', balance: 10 }),
+      increment: jest
+        .fn()
+        .mockResolvedValue({ workspaceId: 'ws-7', organizationId: 'org-7', balance: 510 }),
+    } as unknown as jest.Mocked<ICreditWalletsRepository>;
+    const transactions = {
+      create: jest.fn(),
+    } as unknown as jest.Mocked<ICreditTransactionsRepository>;
+
+    await new CreditsService(wallets, transactions).adjust({
+      workspaceId: 'ws-7',
+      amount: 500,
+      actorId: 'admin-1',
+    });
+
+    expect(wallets.increment).toHaveBeenCalledWith('ws-7', 500);
+    expect(transactions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org-7',
+        workspaceId: 'ws-7',
+        amount: 500,
+        reason: CreditTransactionReason.ADMIN_ADJUSTMENT,
+        balanceAfter: 510,
+      }),
+      'admin-1',
+    );
+  });
+
+  it('refuses a workspace that has no wallet', async () => {
+    const wallets = {
+      findByWorkspace: jest.fn().mockResolvedValue(null),
+      increment: jest.fn(),
+    } as unknown as jest.Mocked<ICreditWalletsRepository>;
+    await expect(
+      new CreditsService(wallets, {} as ICreditTransactionsRepository).adjust({
+        workspaceId: 'nope',
+        amount: 5,
+        actorId: 'admin-1',
+      }),
+    ).rejects.toThrow('No credit wallet exists');
+    expect(wallets.increment).not.toHaveBeenCalled();
   });
 });

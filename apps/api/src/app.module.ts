@@ -15,6 +15,7 @@ import { CorrelationIdMiddleware } from '@common/middleware/correlation-id.middl
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { RolesGuard } from '@common/guards/roles.guard';
 import { PermissionsGuard } from '@common/guards/permissions.guard';
+import { PlatformAdminGuard } from '@common/guards/platform-admin.guard';
 
 import { AuthModule } from '@modules/auth/auth.module';
 import { UsersModule } from '@modules/users/users.module';
@@ -132,6 +133,7 @@ import { QueuesModule } from '@queues/queues.module';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
+    { provide: APP_GUARD, useClass: PlatformAdminGuard },
   ],
 })
 export class AppModule implements NestModule {

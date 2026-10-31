@@ -126,6 +126,12 @@ function checkLinkedIn() {
 }
 
 // YouTube posting: the Google client (shared with "Sign in with Google") and the YouTube redirect address.
+// Platform admins: how many accounts PLATFORM_ADMIN_EMAILS names (never which ones).
+function checkPlatformAdmins() {
+  const count = (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').map((e) => e.trim()).filter(Boolean).length;
+  out('platform admins', count ? `${count} set` : 'none set - credit adjustments and other admin tools are refused');
+}
+
 function checkYouTube() {
   out('youtube keys set', `google client id ${Boolean(process.env.GOOGLE_CLIENT_ID)}, secret ${Boolean(process.env.GOOGLE_CLIENT_SECRET)}`);
   out('youtube redirect', process.env.YOUTUBE_REDIRECT_URI || '(not set - Connect YouTube will say "not configured")');
@@ -248,6 +254,7 @@ async function checkQueue() {
   await checkGemini();
   checkLinkedIn();
   checkYouTube();
+  checkPlatformAdmins();
   await checkUser();
   await checkAvatars();
   await checkTemplates();

@@ -3,6 +3,13 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
+import {
+  assertInWorkspace,
+  ownedBy,
+  tenantScope,
+  workspaceFilters,
+} from '@shared/security/tenant-scope';
 import { AutomationWorkflowsService } from '../application/services/automation-workflows.service';
 import { CreateAutomationWorkflowDto } from '../application/dto/create-automation-workflow.dto';
 import { UpdateAutomationWorkflowDto } from '../application/dto/update-automation-workflow.dto';
@@ -20,16 +27,24 @@ export class AutomationWorkflowsController {
   @ApiOperation({ summary: 'Create an automation workflow' })
   async create(
     @Body() dto: CreateAutomationWorkflowDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AutomationWorkflowResponseDto> {
-    const automationWorkflow = await this.automationWorkflowsService.create(dto, userId);
+    const automationWorkflow = await this.automationWorkflowsService.create(
+      ownedBy(dto, tenantScope(user)),
+      user.id,
+    );
     return new AutomationWorkflowResponseDto(automationWorkflow);
   }
 
   @Get()
   @RequirePermissions('automation.read')
-  @ApiOperation({ summary: 'List automation workflows (pass organizationId/workspaceId to scope to one tenant)' })
-  async findAll(@Query() query: ListAutomationWorkflowsQueryDto) {
+  @ApiOperation({
+    summary: 'List automation workflows (pass organizationId/workspaceId to scope to one tenant)',
+  })
+  async findAll(
+    @Query() query: ListAutomationWorkflowsQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const filters: Record<string, string> = {};
     if (query.organizationId) filters.organizationId = query.organizationId;
     if (query.workspaceId) filters.workspaceId = query.workspaceId;
@@ -39,7 +54,7 @@ export class AutomationWorkflowsController {
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
-      filters: Object.keys(filters).length ? filters : undefined,
+      filters: workspaceFilters(tenantScope(user), filters),
     });
     return {
       items: result.items.map(
@@ -54,8 +69,13 @@ export class AutomationWorkflowsController {
   @ApiOperation({ summary: 'Get an automation workflow by id' })
   async findOne(
     @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AutomationWorkflowResponseDto> {
-    const automationWorkflow = await this.automationWorkflowsService.findById(id);
+    const automationWorkflow = assertInWorkspace(
+      await this.automationWorkflowsService.findById(id),
+      tenantScope(user),
+      'Workflow',
+    );
     return new AutomationWorkflowResponseDto(automationWorkflow);
   }
 
@@ -65,9 +85,14 @@ export class AutomationWorkflowsController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdateAutomationWorkflowDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<AutomationWorkflowResponseDto> {
-    const automationWorkflow = await this.automationWorkflowsService.update(id, dto, userId);
+    assertInWorkspace(
+      await this.automationWorkflowsService.findById(id),
+      tenantScope(user),
+      'Workflow',
+    );
+    const automationWorkflow = await this.automationWorkflowsService.update(id, dto, user.id);
     return new AutomationWorkflowResponseDto(automationWorkflow);
   }
 
@@ -76,9 +101,14 @@ export class AutomationWorkflowsController {
   @ApiOperation({ summary: 'Delete an automation workflow' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.automationWorkflowsService.remove(id, userId);
+    assertInWorkspace(
+      await this.automationWorkflowsService.findById(id),
+      tenantScope(user),
+      'Workflow',
+    );
+    await this.automationWorkflowsService.remove(id, user.id);
     return { deleted: true };
   }
 }

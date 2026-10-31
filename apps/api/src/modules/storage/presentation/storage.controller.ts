@@ -11,6 +11,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
+import { PlatformAdminOnly } from '@common/decorators/platform-admin.decorator';
 import { StorageService } from '../application/services/storage.service';
 
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
@@ -43,6 +44,7 @@ export class StorageController {
   }
 
   @Delete(':key(.*)')
+  @PlatformAdminOnly()
   @RequirePermissions('storage.delete')
   @ApiOperation({ summary: 'Delete a stored file' })
   async remove(@Param('key') key: string): Promise<{ deleted: boolean }> {

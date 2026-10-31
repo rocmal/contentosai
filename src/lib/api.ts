@@ -49,6 +49,8 @@ export interface AuthUser {
   workspaceId: string | null;
   /** What this person may do, e.g. 'organizations.manage-members'. */
   permissions?: string[];
+  /** Lumora staff (PLATFORM_ADMIN_EMAILS on the server): may use the tools that act across customers. */
+  isPlatformAdmin?: boolean;
 }
 
 interface TokenPair {
@@ -1198,6 +1200,25 @@ export function confirmEmailVerification(token: string): Promise<{ verified: boo
 /** Reuses the existing forgot-password email flow as the self-service
  * "change my password" action - there is no separate authenticated
  * change-password endpoint, and this one already works end to end. */
+/**
+ * Changes the signed-in account's password (the current one is asked again). Every other session is signed out; this
+ * browser carries on with the fresh tokens the server returns. The session is renewed first through a normal request,
+ * then the change is sent without apiRequest's renew-and-retry: a mistyped current password also answers 401.
+ */
+export async function changeMyPassword(currentPassword: string, newPassword: string): Promise<void> {
+  await getCurrentUser();
+  const tokens = readTokens();
+  const result = await rawRequest<{ accessToken: string; refreshToken: string }>('/auth/change-password', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(tokens?.accessToken ? { Authorization: `Bearer ${tokens.accessToken}` } : {}),
+    },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  writeTokens({ accessToken: result.accessToken, refreshToken: result.refreshToken });
+}
+
 export function requestMyPasswordReset(email: string): Promise<{ sent: boolean }> {
   return rawRequest<{ sent: boolean }>('/auth/forgot-password', {
     method: 'POST',

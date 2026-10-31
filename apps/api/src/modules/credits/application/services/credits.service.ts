@@ -250,17 +250,21 @@ export class CreditsService {
   /** Manual support/admin correction - not guarded by balance-sufficiency
    * (a deliberate deduction can take a wallet negative to correct an error). */
   async adjust(params: {
-    organizationId: string;
     workspaceId: string;
     amount: number;
     actorId: string;
     note?: string;
   }): Promise<CreditWallet> {
+    // The workspace's own organization, never the admin's - the record belongs to the customer.
+    const existing = await this.walletsRepository.findByWorkspace(params.workspaceId);
+    if (!existing) {
+      throw new NotFoundException(`No credit wallet exists for workspace "${params.workspaceId}"`);
+    }
     const wallet = await this.walletsRepository.increment(params.workspaceId, params.amount);
 
     await this.transactionsRepository.create(
       {
-        organizationId: params.organizationId,
+        organizationId: existing.organizationId,
         workspaceId: params.workspaceId,
         userId: params.actorId,
         amount: params.amount,

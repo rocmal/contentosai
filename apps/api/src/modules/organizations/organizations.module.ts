@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { UsersModule } from '@modules/users/users.module';
 import { RolesModule } from '@modules/roles/roles.module';
@@ -15,7 +15,7 @@ import { OrganizationsController } from './presentation/organizations.controller
 @Module({
   imports: [
     SequelizeModule.forFeature([OrganizationModel, OrganizationMemberModel]),
-    UsersModule,
+    forwardRef(() => UsersModule),
     RolesModule,
     BillingModule,
   ],

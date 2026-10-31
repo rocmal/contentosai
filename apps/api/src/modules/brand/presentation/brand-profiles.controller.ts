@@ -3,6 +3,13 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
+import {
+  assertInWorkspace,
+  ownedBy,
+  tenantScope,
+  workspaceFilters,
+} from '@shared/security/tenant-scope';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { BrandProfilesService } from '../application/services/brand-profiles.service';
 import { CreateBrandProfileDto } from '../application/dto/create-brand-profile.dto';
@@ -20,21 +27,25 @@ export class BrandProfilesController {
   @ApiOperation({ summary: 'Create a brand profile' })
   async create(
     @Body() dto: CreateBrandProfileDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<BrandProfileResponseDto> {
-    const brandProfile = await this.brandProfilesService.create(dto, userId);
+    const brandProfile = await this.brandProfilesService.create(
+      ownedBy(dto, tenantScope(user)),
+      user.id,
+    );
     return new BrandProfileResponseDto(brandProfile);
   }
 
   @Get()
   @RequirePermissions('brand.read')
   @ApiOperation({ summary: 'List brand profiles' })
-  async findAll(@Query() query: PaginationQueryDto) {
+  async findAll(@Query() query: PaginationQueryDto, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.brandProfilesService.findAll({
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+      filters: workspaceFilters(tenantScope(user)),
     });
     return {
       items: result.items.map((brandProfile) => new BrandProfileResponseDto(brandProfile)),
@@ -45,8 +56,15 @@ export class BrandProfilesController {
   @Get(':id')
   @RequirePermissions('brand.read')
   @ApiOperation({ summary: 'Get a brand profile by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<BrandProfileResponseDto> {
-    const brandProfile = await this.brandProfilesService.findById(id);
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<BrandProfileResponseDto> {
+    const brandProfile = assertInWorkspace(
+      await this.brandProfilesService.findById(id),
+      tenantScope(user),
+      'Brand profile',
+    );
     return new BrandProfileResponseDto(brandProfile);
   }
 
@@ -56,9 +74,14 @@ export class BrandProfilesController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdateBrandProfileDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<BrandProfileResponseDto> {
-    const brandProfile = await this.brandProfilesService.update(id, dto, userId);
+    assertInWorkspace(
+      await this.brandProfilesService.findById(id),
+      tenantScope(user),
+      'Brand profile',
+    );
+    const brandProfile = await this.brandProfilesService.update(id, dto, user.id);
     return new BrandProfileResponseDto(brandProfile);
   }
 
@@ -67,9 +90,14 @@ export class BrandProfilesController {
   @ApiOperation({ summary: 'Delete a brand profile' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.brandProfilesService.remove(id, userId);
+    assertInWorkspace(
+      await this.brandProfilesService.findById(id),
+      tenantScope(user),
+      'Brand profile',
+    );
+    await this.brandProfilesService.remove(id, user.id);
     return { deleted: true };
   }
 }

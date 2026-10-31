@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
+import { PlatformAdminOnly } from '@common/decorators/platform-admin.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
@@ -28,7 +29,9 @@ export class CreditsController {
 
   @Get('rates')
   @RequirePermissions('credits.read')
-  @ApiOperation({ summary: 'Credit prices for voice and video, so a cost can be shown before generating' })
+  @ApiOperation({
+    summary: 'Credit prices for voice and video, so a cost can be shown before generating',
+  })
   getRates() {
     return this.creditsService.getRates();
   }
@@ -59,22 +62,25 @@ export class CreditsController {
     };
   }
 
+  /** Lumora staff only: until 2026-10-31 every workspace owner held credits.manage, so anyone could give themselves
+   * credits - or take them from any other workspace. */
   @Post('workspaces/:workspaceId/adjust')
+  @PlatformAdminOnly()
   @RequirePermissions('credits.manage')
   @ApiOperation({
-    summary: "Manually adjust a workspace's credit balance (support/admin correction)",
+    summary:
+      "Manually adjust a workspace's credit balance (platform admins: support/admin correction)",
   })
   async adjust(
     @Param('workspaceId', ParseUuidParamPipe) workspaceId: string,
     @Body() dto: AdjustCreditsDto,
     @CurrentUser('id') actorId: string,
-    @CurrentUser('organizationId') organizationId: string,
   ): Promise<CreditWalletResponseDto> {
     const wallet = await this.creditsService.adjust({
-      organizationId,
       workspaceId,
       amount: dto.amount,
       actorId,
+      note: dto.note,
     });
     return new CreditWalletResponseDto(wallet);
   }

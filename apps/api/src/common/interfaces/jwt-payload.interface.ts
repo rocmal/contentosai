@@ -16,4 +16,7 @@ export interface AuthenticatedUser {
   workspaceId: string | null;
   roles: string[];
   permissions: string[];
+  /** Lumora staff (PLATFORM_ADMIN_EMAILS): may act across customers. Never set from the token - worked out from
+   * the database and settings on every request. */
+  isPlatformAdmin?: boolean;
 }

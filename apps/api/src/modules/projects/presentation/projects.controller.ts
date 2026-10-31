@@ -3,6 +3,13 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
+import {
+  assertInWorkspace,
+  ownedBy,
+  tenantScope,
+  workspaceFilters,
+} from '@shared/security/tenant-scope';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { ProjectsService } from '../application/services/projects.service';
 import { CreateProjectDto } from '../application/dto/create-project.dto';
@@ -20,25 +27,28 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Create a project' })
   async create(
     @Body() dto: CreateProjectDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<ProjectResponseDto> {
-    const project = await this.projectsService.create(dto, userId);
+    const project = await this.projectsService.create(ownedBy(dto, tenantScope(user)), user.id);
     return new ProjectResponseDto(project);
   }
 
   @Get()
   @RequirePermissions('projects.read')
   @ApiOperation({ summary: 'List projects' })
-  async findAll(@Query() query: PaginationQueryDto) {
+  async findAll(@Query() query: PaginationQueryDto, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.projectsService.findAll({
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+      filters: workspaceFilters(tenantScope(user)),
     });
     const counts = await this.projectsService.contentCounts(result.items);
     return {
-      items: result.items.map((project) => new ProjectResponseDto(project, counts[project.id] ?? 0)),
+      items: result.items.map(
+        (project) => new ProjectResponseDto(project, counts[project.id] ?? 0),
+      ),
       meta: result.meta,
     };
   }
@@ -46,8 +56,15 @@ export class ProjectsController {
   @Get(':id')
   @RequirePermissions('projects.read')
   @ApiOperation({ summary: 'Get a project by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<ProjectResponseDto> {
-    const project = await this.projectsService.findById(id);
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ProjectResponseDto> {
+    const project = assertInWorkspace(
+      await this.projectsService.findById(id),
+      tenantScope(user),
+      'Project',
+    );
     const counts = await this.projectsService.contentCounts([project]);
     return new ProjectResponseDto(project, counts[project.id] ?? 0);
   }
@@ -58,9 +75,10 @@ export class ProjectsController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdateProjectDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<ProjectResponseDto> {
-    const project = await this.projectsService.update(id, dto, userId);
+    assertInWorkspace(await this.projectsService.findById(id), tenantScope(user), 'Project');
+    const project = await this.projectsService.update(id, dto, user.id);
     return new ProjectResponseDto(project);
   }
 
@@ -69,9 +87,10 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Delete a project' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.projectsService.remove(id, userId);
+    assertInWorkspace(await this.projectsService.findById(id), tenantScope(user), 'Project');
+    await this.projectsService.remove(id, user.id);
     return { deleted: true };
   }
 }

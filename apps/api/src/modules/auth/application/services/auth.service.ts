@@ -1,4 +1,12 @@
-import { BadRequestException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  Optional,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { IPasswordHasher, PASSWORD_HASHER } from '@shared/security/password-hasher.interface';
 import { UsersService } from '@modules/users/application/services/users.service';
@@ -15,7 +23,10 @@ import {
   IWorkspacesRepository,
   WORKSPACES_REPOSITORY,
 } from '@modules/workspaces/domain/repositories/workspace-repository.interface';
-import { ROLES_REPOSITORY, IRolesRepository } from '@modules/roles/domain/repositories/role-repository.interface';
+import {
+  ROLES_REPOSITORY,
+  IRolesRepository,
+} from '@modules/roles/domain/repositories/role-repository.interface';
 import { RolesService } from '@modules/roles/application/services/roles.service';
 import {
   ISubscriptionsRepository,
@@ -76,7 +87,14 @@ export class AuthService {
     private readonly emailVerificationTokensRepository: IEmailVerificationTokensRepository,
     @Inject(PASSWORD_RESET_TOKENS_REPOSITORY)
     private readonly passwordResetTokensRepository: IPasswordResetTokensRepository,
+    @Optional() private readonly configService?: ConfigService,
   ) {}
+
+  /** Lumora staff, named by PLATFORM_ADMIN_EMAILS (platform.config.ts). */
+  private isPlatformAdmin(email: string): boolean {
+    const admins = this.configService?.get<string[]>('platform.adminEmails') ?? [];
+    return admins.includes(email.trim().toLowerCase());
+  }
 
   async register(dto: RegisterDto): Promise<IssuedTokens> {
     const safeUser = await this.usersService.create({
@@ -130,7 +148,13 @@ export class AuthService {
     );
 
     try {
-      await this.creditsService.grantInitial(organization.id, workspace.id, DEFAULT_PLAN, userId, TRIAL_CREDITS);
+      await this.creditsService.grantInitial(
+        organization.id,
+        workspace.id,
+        DEFAULT_PLAN,
+        userId,
+        TRIAL_CREDITS,
+      );
     } catch (err) {
       // The org/workspace/subscription are real and usable even if this one
       // step fails - don't fail the whole signup over it, but don't hide it either.
@@ -142,7 +166,11 @@ export class AuthService {
     }
   }
 
-  private async createOrganizationWithUniqueSlug(firstName: string, email: string, ownerId: string) {
+  private async createOrganizationWithUniqueSlug(
+    firstName: string,
+    email: string,
+    ownerId: string,
+  ) {
     const base = slugify(firstName) || slugify(email.split('@')[0]) || 'workspace';
     const displayName = firstName ? `${firstName}'s Workspace` : 'My Workspace';
 
@@ -170,7 +198,15 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    await this.usersService.recordLogin(user.id);
+    // Only a "last signed in" time: two sign-ins at the same instant clash on the row's version, which must not
+    // fail the sign-in itself.
+    try {
+      await this.usersService.recordLogin(user.id);
+    } catch (error) {
+      this.logger.warn(
+        `Could not record the sign-in time: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     return this.issueTokensForUser(user.id);
   }
 
@@ -253,6 +289,28 @@ export class AuthService {
   }
 
   /**
+   * Changes the password of the signed-in account (the current one is asked again). Every other session is signed
+   * out - a leaked password stops working everywhere at once - and this one gets fresh tokens.
+   */
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.usersService.findEntityById(userId);
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'This account signs in with Google or GitHub and has no password yet. Use "Email me a reset link" to set one.',
+      );
+    }
+    if (!(await this.passwordHasher.compare(currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('Pick a new password that is different from the current one.');
+    }
+    await this.usersService.setPassword(userId, newPassword);
+    await this.refreshTokensRepository.revokeAllForUser(userId);
+    return this.issueTokensForUser(userId);
+  }
+
+  /**
    * Self-service account deletion (required by the App Store when an app offers sign-up).
    * The password is asked again so a borrowed, unlocked phone cannot delete the account.
    * An owner whose organization still has other members must hand it over first, otherwise
@@ -261,7 +319,9 @@ export class AuthService {
   async deleteAccount(userId: string, password: string | undefined): Promise<void> {
     const user = await this.usersService.findEntityById(userId);
     if (user.passwordHash) {
-      const passwordMatches = password ? await this.passwordHasher.compare(password, user.passwordHash) : false;
+      const passwordMatches = password
+        ? await this.passwordHasher.compare(password, user.passwordHash)
+        : false;
       if (!passwordMatches) {
         throw new UnauthorizedException('Password is incorrect');
       }
@@ -271,7 +331,9 @@ export class AuthService {
     for (const membership of memberships) {
       const organization = await this.organizationsRepository.findById(membership.organizationId);
       if (organization?.ownerId !== userId) continue;
-      const members = await this.organizationMembersRepository.listByOrganization(membership.organizationId);
+      const members = await this.organizationMembersRepository.listByOrganization(
+        membership.organizationId,
+      );
       if (members.some((m) => m.userId !== userId)) {
         throw new BadRequestException(
           `You own "${organization.name}", which still has other members. Remove them or ask support to transfer ownership first.`,
@@ -314,6 +376,7 @@ export class AuthService {
       workspaceId: workspaces[0]?.id ?? null,
       roles: Array.from(roleSlugs),
       permissions: Array.from(permissionSlugs),
+      isPlatformAdmin: this.isPlatformAdmin(user.email),
     };
   }
 

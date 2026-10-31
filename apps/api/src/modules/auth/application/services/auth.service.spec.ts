@@ -1,4 +1,5 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { AuthService } from './auth.service';
 import { TRIAL_CREDITS } from '@modules/credits/credits.constants';
@@ -285,10 +286,20 @@ describe('AuthService', () => {
         activeUser.id,
       );
       expect(subscriptionsRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ organizationId: 'org-1', plan: 'starter', status: SubscriptionStatus.TRIALING }),
+        expect.objectContaining({
+          organizationId: 'org-1',
+          plan: 'starter',
+          status: SubscriptionStatus.TRIALING,
+        }),
         activeUser.id,
       );
-      expect(creditsService.grantInitial).toHaveBeenCalledWith('org-1', 'workspace-1', 'starter', activeUser.id, TRIAL_CREDITS);
+      expect(creditsService.grantInitial).toHaveBeenCalledWith(
+        'org-1',
+        'workspace-1',
+        'starter',
+        activeUser.id,
+        TRIAL_CREDITS,
+      );
     });
 
     it('does not fail registration when the initial credit grant errors', async () => {
@@ -333,12 +344,19 @@ describe('AuthService', () => {
   });
 
   describe('deleteAccount', () => {
-    const membership = { id: 'member-1', organizationId: 'org-1', userId: 'user-1', roleId: 'role-1' };
+    const membership = {
+      id: 'member-1',
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleId: 'role-1',
+    };
 
     beforeEach(() => {
       usersService.findEntityById.mockResolvedValue(activeUser);
       (usersService as unknown as { anonymizeAndRemove: jest.Mock }).anonymizeAndRemove = jest.fn();
-      (organizationMembersRepository as unknown as { listByOrganization: jest.Mock }).listByOrganization = jest.fn();
+      (
+        organizationMembersRepository as unknown as { listByOrganization: jest.Mock }
+      ).listByOrganization = jest.fn();
       (organizationMembersRepository as unknown as { delete: jest.Mock }).delete = jest.fn();
       (organizationsRepository as unknown as { findById: jest.Mock }).findById = jest.fn();
     });
@@ -346,25 +364,35 @@ describe('AuthService', () => {
     it('refuses a wrong password and deletes nothing', async () => {
       passwordHasher.compare.mockResolvedValue(false);
 
-      await expect(authService.deleteAccount('user-1', 'wrong')).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(authService.deleteAccount('user-1', 'wrong')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
       expect(usersService.anonymizeAndRemove).not.toHaveBeenCalled();
     });
 
     it('refuses a missing password when the account has one', async () => {
-      await expect(authService.deleteAccount('user-1', undefined)).rejects.toBeInstanceOf(UnauthorizedException);
+      await expect(authService.deleteAccount('user-1', undefined)).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
       expect(passwordHasher.compare).not.toHaveBeenCalled();
     });
 
     it('refuses an owner whose organization still has other members', async () => {
       passwordHasher.compare.mockResolvedValue(true);
       organizationMembersRepository.listByUser.mockResolvedValue([membership] as never);
-      (organizationsRepository.findById as jest.Mock).mockResolvedValue({ id: 'org-1', name: 'Acme', ownerId: 'user-1' });
+      (organizationsRepository.findById as jest.Mock).mockResolvedValue({
+        id: 'org-1',
+        name: 'Acme',
+        ownerId: 'user-1',
+      });
       (organizationMembersRepository.listByOrganization as jest.Mock).mockResolvedValue([
         membership,
         { ...membership, id: 'member-2', userId: 'user-2' },
       ]);
 
-      await expect(authService.deleteAccount('user-1', 'secret')).rejects.toThrow(/still has other members/);
+      await expect(authService.deleteAccount('user-1', 'secret')).rejects.toThrow(
+        /still has other members/,
+      );
       expect(organizationMembersRepository.delete).not.toHaveBeenCalled();
       expect(usersService.anonymizeAndRemove).not.toHaveBeenCalled();
     });
@@ -372,13 +400,90 @@ describe('AuthService', () => {
     it('removes memberships, signs out everywhere and anonymizes the user', async () => {
       passwordHasher.compare.mockResolvedValue(true);
       organizationMembersRepository.listByUser.mockResolvedValue([membership] as never);
-      (organizationsRepository.findById as jest.Mock).mockResolvedValue({ id: 'org-1', name: 'Acme', ownerId: 'someone-else' });
+      (organizationsRepository.findById as jest.Mock).mockResolvedValue({
+        id: 'org-1',
+        name: 'Acme',
+        ownerId: 'someone-else',
+      });
 
       await authService.deleteAccount('user-1', 'secret');
 
       expect(organizationMembersRepository.delete).toHaveBeenCalledWith('member-1', 'user-1');
       expect(refreshTokensRepository.revokeAllForUser).toHaveBeenCalledWith('user-1');
       expect(usersService.anonymizeAndRemove).toHaveBeenCalledWith('user-1');
+    });
+  });
+
+  describe('changePassword', () => {
+    it('changes it, signs every session out and keeps this one signed in', async () => {
+      passwordHasher.compare.mockResolvedValue(true);
+
+      const result = await authService.changePassword('user-1', 'old-password', 'a-new-password');
+
+      expect(usersService.setPassword).toHaveBeenCalledWith('user-1', 'a-new-password');
+      expect(refreshTokensRepository.revokeAllForUser).toHaveBeenCalledWith('user-1');
+      expect(result.accessToken).toBe('access-token');
+    });
+
+    it('refuses a wrong current password and changes nothing', async () => {
+      passwordHasher.compare.mockResolvedValue(false);
+
+      await expect(
+        authService.changePassword('user-1', 'wrong', 'a-new-password'),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(usersService.setPassword).not.toHaveBeenCalled();
+      expect(refreshTokensRepository.revokeAllForUser).not.toHaveBeenCalled();
+    });
+
+    it('refuses the same password again', async () => {
+      passwordHasher.compare.mockResolvedValue(true);
+
+      await expect(
+        authService.changePassword('user-1', 'same-password', 'same-password'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(usersService.setPassword).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('platform admins', () => {
+    const withAdmins = (emails: string[]) =>
+      new AuthService(
+        usersService,
+        rolesService,
+        tokenService,
+        eventEmitter,
+        creditsService,
+        passwordHasher,
+        organizationMembersRepository,
+        organizationsRepository,
+        workspacesRepository,
+        rolesRepository,
+        subscriptionsRepository,
+        refreshTokensRepository,
+        emailVerificationTokensRepository,
+        passwordResetTokensRepository,
+        {
+          get: (key: string) => (key === 'platform.adminEmails' ? emails : undefined),
+        } as unknown as ConfigService,
+      );
+
+    it('marks only the accounts named in PLATFORM_ADMIN_EMAILS, whatever their case', async () => {
+      await expect(
+        withAdmins(['jane@lumora.ai']).buildAuthenticatedUser('user-1'),
+      ).resolves.toEqual(expect.objectContaining({ isPlatformAdmin: true }));
+      usersService.findEntityById.mockResolvedValue({ ...activeUser, email: 'JANE@Lumora.ai' });
+      await expect(
+        withAdmins(['jane@lumora.ai']).buildAuthenticatedUser('user-1'),
+      ).resolves.toEqual(expect.objectContaining({ isPlatformAdmin: true }));
+      await expect(
+        withAdmins(['someone@else.in']).buildAuthenticatedUser('user-1'),
+      ).resolves.toEqual(expect.objectContaining({ isPlatformAdmin: false }));
+    });
+
+    it('makes nobody a platform admin when the setting is missing', async () => {
+      await expect(authService.buildAuthenticatedUser('user-1')).resolves.toEqual(
+        expect.objectContaining({ isPlatformAdmin: false }),
+      );
     });
   });
 });

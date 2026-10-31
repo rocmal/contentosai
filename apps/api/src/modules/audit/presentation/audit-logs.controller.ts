@@ -2,11 +2,13 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
+import { PlatformAdminOnly } from '@common/decorators/platform-admin.decorator';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { AuditLogService } from '../application/services/audit-log.service';
 import { AuditLogResponseDto } from '../application/dto/audit-log-response.dto';
 
 // Read-only: writes only happen internally via AuditLogService.record().
+/** The audit log covers every customer, so it is for Lumora's platform admins. */
 @ApiTags('audit')
 @ApiBearerAuth('access-token')
 @Controller({ path: 'audit-logs', version: '1' })
@@ -14,6 +16,7 @@ export class AuditLogsController {
   constructor(private readonly auditLogService: AuditLogService) {}
 
   @Get()
+  @PlatformAdminOnly()
   @RequirePermissions('audit.read')
   @ApiOperation({ summary: 'List audit log entries' })
   async findAll(@Query() query: PaginationQueryDto) {
@@ -30,6 +33,7 @@ export class AuditLogsController {
   }
 
   @Get(':id')
+  @PlatformAdminOnly()
   @RequirePermissions('audit.read')
   @ApiOperation({ summary: 'Get an audit log entry by id' })
   async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<AuditLogResponseDto> {

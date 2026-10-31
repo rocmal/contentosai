@@ -33,9 +33,11 @@ export class TokenService {
     });
   }
 
+  /** `jti` makes every refresh token unique: two issued for the same user in the same second (two tabs renewing at
+   * once, or signing in right after changing the password) were identical and broke the unique token-hash index. */
   signRefreshToken(userId: string): string {
     return this.jwtService.sign(
-      { sub: userId },
+      { sub: userId, jti: randomBytes(16).toString('hex') },
       {
         secret: this.configService.get<string>('jwt.refreshSecret'),
         expiresIn: this.configService.get<string>('jwt.refreshExpiresIn'),

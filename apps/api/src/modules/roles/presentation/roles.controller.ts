@@ -1,8 +1,20 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  NotFoundException,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { RolesService } from '../application/services/roles.service';
 import { CreateRoleDto } from '../application/dto/create-role.dto';
@@ -36,17 +48,23 @@ export class RolesController {
 
   @Get()
   @RequirePermissions('roles.read')
-  @ApiOperation({ summary: "List roles available to the caller's organization (system roles + their own custom ones)" })
+  @ApiOperation({
+    summary:
+      "List roles available to the caller's organization (system roles + their own custom ones)",
+  })
   async findAll(
     @Query() query: PaginationQueryDto,
     @CurrentUser('organizationId') organizationId: string | null,
   ) {
-    const result = await this.rolesService.findAllForOrganization(requireOrganizationId(organizationId), {
-      page: query.page,
-      limit: query.limit,
-      sortBy: query.sortBy,
-      sortOrder: query.sortOrder,
-    });
+    const result = await this.rolesService.findAllForOrganization(
+      requireOrganizationId(organizationId),
+      {
+        page: query.page,
+        limit: query.limit,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+      },
+    );
     return {
       items: result.items.map((role) => new RoleResponseDto(role)),
       meta: result.meta,
@@ -56,8 +74,19 @@ export class RolesController {
   @Get(':id')
   @RequirePermissions('roles.read')
   @ApiOperation({ summary: 'Get a role by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<RoleResponseDto> {
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<RoleResponseDto> {
     const role = await this.rolesService.findById(id);
+    // The shared system roles, or one of your own organization's; another customer's role looks "not found".
+    if (
+      role.organizationId &&
+      role.organizationId !== user.organizationId &&
+      !user.isPlatformAdmin
+    ) {
+      throw new NotFoundException(`Role with id "${id}" not found`);
+    }
     return new RoleResponseDto(role);
   }
 
@@ -70,7 +99,12 @@ export class RolesController {
     @CurrentUser('organizationId') organizationId: string | null,
     @CurrentUser('id') userId: string,
   ): Promise<RoleResponseDto> {
-    const role = await this.rolesService.update(id, dto, requireOrganizationId(organizationId), userId);
+    const role = await this.rolesService.update(
+      id,
+      dto,
+      requireOrganizationId(organizationId),
+      userId,
+    );
     return new RoleResponseDto(role);
   }
 

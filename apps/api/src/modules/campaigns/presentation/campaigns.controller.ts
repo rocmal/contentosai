@@ -3,6 +3,13 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { AuthenticatedUser } from '@common/interfaces/jwt-payload.interface';
+import {
+  assertInWorkspace,
+  ownedBy,
+  tenantScope,
+  workspaceFilters,
+} from '@shared/security/tenant-scope';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { CampaignsService } from '../application/services/campaigns.service';
 import { CreateCampaignDto } from '../application/dto/create-campaign.dto';
@@ -20,21 +27,22 @@ export class CampaignsController {
   @ApiOperation({ summary: 'Create a campaign' })
   async create(
     @Body() dto: CreateCampaignDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<CampaignResponseDto> {
-    const campaign = await this.campaignsService.create(dto, userId);
+    const campaign = await this.campaignsService.create(ownedBy(dto, tenantScope(user)), user.id);
     return new CampaignResponseDto(campaign);
   }
 
   @Get()
   @RequirePermissions('campaigns.read')
   @ApiOperation({ summary: 'List campaigns' })
-  async findAll(@Query() query: PaginationQueryDto) {
+  async findAll(@Query() query: PaginationQueryDto, @CurrentUser() user: AuthenticatedUser) {
     const result = await this.campaignsService.findAll({
       page: query.page,
       limit: query.limit,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+      filters: workspaceFilters(tenantScope(user)),
     });
     return {
       items: result.items.map((campaign) => new CampaignResponseDto(campaign)),
@@ -45,8 +53,15 @@ export class CampaignsController {
   @Get(':id')
   @RequirePermissions('campaigns.read')
   @ApiOperation({ summary: 'Get a campaign by id' })
-  async findOne(@Param('id', ParseUuidParamPipe) id: string): Promise<CampaignResponseDto> {
-    const campaign = await this.campaignsService.findById(id);
+  async findOne(
+    @Param('id', ParseUuidParamPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<CampaignResponseDto> {
+    const campaign = assertInWorkspace(
+      await this.campaignsService.findById(id),
+      tenantScope(user),
+      'Campaign',
+    );
     return new CampaignResponseDto(campaign);
   }
 
@@ -56,9 +71,10 @@ export class CampaignsController {
   async update(
     @Param('id', ParseUuidParamPipe) id: string,
     @Body() dto: UpdateCampaignDto,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<CampaignResponseDto> {
-    const campaign = await this.campaignsService.update(id, dto, userId);
+    assertInWorkspace(await this.campaignsService.findById(id), tenantScope(user), 'Campaign');
+    const campaign = await this.campaignsService.update(id, dto, user.id);
     return new CampaignResponseDto(campaign);
   }
 
@@ -67,9 +83,10 @@ export class CampaignsController {
   @ApiOperation({ summary: 'Delete a campaign' })
   async remove(
     @Param('id', ParseUuidParamPipe) id: string,
-    @CurrentUser('id') userId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<{ deleted: boolean }> {
-    await this.campaignsService.remove(id, userId);
+    assertInWorkspace(await this.campaignsService.findById(id), tenantScope(user), 'Campaign');
+    await this.campaignsService.remove(id, user.id);
     return { deleted: true };
   }
 }

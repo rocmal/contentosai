@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestj
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ParseUuidParamPipe } from '@common/pipes/parse-uuid-param.pipe';
 import { RequirePermissions } from '@common/decorators/permissions.decorator';
+import { PlatformAdminOnly } from '@common/decorators/platform-admin.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { PaginationQueryDto } from '@common/dto/pagination-query.dto';
 import { PermissionsService } from '../application/services/permissions.service';
@@ -9,6 +10,8 @@ import { CreatePermissionDto } from '../application/dto/create-permission.dto';
 import { UpdatePermissionDto } from '../application/dto/update-permission.dto';
 import { PermissionResponseDto } from '../application/dto/permission-response.dto';
 
+/** The permission list is shared by every customer: anyone may read it (the Team screen does), only Lumora's
+ * platform admins may change it. */
 @ApiTags('permissions')
 @ApiBearerAuth('access-token')
 @Controller({ path: 'permissions', version: '1' })
@@ -16,6 +19,7 @@ export class PermissionsController {
   constructor(private readonly permissionsService: PermissionsService) {}
 
   @Post()
+  @PlatformAdminOnly()
   @RequirePermissions('permissions.create')
   @ApiOperation({ summary: 'Create a permission' })
   async create(
@@ -51,6 +55,7 @@ export class PermissionsController {
   }
 
   @Patch(':id')
+  @PlatformAdminOnly()
   @RequirePermissions('permissions.update')
   @ApiOperation({ summary: 'Update a permission' })
   async update(
@@ -63,6 +68,7 @@ export class PermissionsController {
   }
 
   @Delete(':id')
+  @PlatformAdminOnly()
   @RequirePermissions('permissions.delete')
   @ApiOperation({ summary: 'Delete a permission' })
   async remove(

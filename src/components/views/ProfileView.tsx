@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Check, CreditCard, Loader2, Mail, User as UserIcon } from 'lucide-react';
+import { AlertCircle, Check, CreditCard, KeyRound, Loader2, Mail, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getMyCreditWallet, listMyCreditTransactions, requestMyPasswordReset, updateMyProfile } from '../../lib/api';
+import {
+  ApiError,
+  changeMyPassword,
+  getMyCreditWallet,
+  listMyCreditTransactions,
+  requestMyPasswordReset,
+  updateMyProfile,
+} from '../../lib/api';
 import { CreditsBreakdown, TeamSeatsCard } from '../UsagePanels';
 import { ViewType } from '../../types';
 import type { CreditTransaction, CreditWallet } from '../../lib/api';
@@ -24,6 +31,132 @@ function reasonLabel(reason: string): string {
   };
   return labels[reason] ?? reason;
 }
+
+const field =
+  'w-full text-xs px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500';
+
+/** Change the password (current + new). The server signs every other device out; this one stays signed in. */
+const PasswordCard: React.FC<{ onForgot: () => void; resetSending: boolean; resetSent: boolean }> = ({
+  onForgot,
+  resetSending,
+  resetSent,
+}) => {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const problem =
+    next && next.length < 8
+      ? 'The new password needs at least 8 characters.'
+      : confirm && confirm !== next
+        ? 'The two new passwords do not match.'
+        : next && next === current
+          ? 'Pick a new password that is different from the current one.'
+          : null;
+  const canSave = !!current && next.length >= 8 && confirm === next && next !== current && !busy;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSave) return;
+    setBusy(true);
+    setError(null);
+    setDone(false);
+    try {
+      await changeMyPassword(current, next);
+      setCurrent('');
+      setNext('');
+      setConfirm('');
+      setDone(true);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Could not change the password. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={submit}
+      className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3 shadow-xs"
+    >
+      <h3 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+        <KeyRound className="w-3.5 h-3.5" /> Password
+      </h3>
+      <div>
+        <label htmlFor="current-password" className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+          Current password
+        </label>
+        <input
+          id="current-password"
+          type="password"
+          autoComplete="current-password"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+          className={field}
+        />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label htmlFor="new-password" className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+            New password
+          </label>
+          <input
+            id="new-password"
+            type="password"
+            autoComplete="new-password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            className={field}
+          />
+        </div>
+        <div>
+          <label htmlFor="confirm-password" className="block text-xs font-bold text-slate-900 dark:text-white mb-1">
+            New password again
+          </label>
+          <input
+            id="confirm-password"
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            className={field}
+          />
+        </div>
+      </div>
+      {(problem || error) && (
+        <p className="flex items-center gap-1.5 text-[11px] text-red-500 font-semibold">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {error ?? problem}
+        </p>
+      )}
+      {done && (
+        <p className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+          <Check className="w-3.5 h-3.5 shrink-0" /> Password changed. Every other device has been signed out.
+        </p>
+      )}
+      <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <button
+          type="submit"
+          disabled={!canSave}
+          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center gap-2 shadow-sm disabled:opacity-50"
+        >
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />}
+          {busy ? 'Changing...' : 'Change password'}
+        </button>
+        <button
+          type="button"
+          onClick={onForgot}
+          disabled={resetSending || resetSent}
+          className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-60"
+        >
+          {resetSent ? 'Reset link sent to your email' : resetSending ? 'Sending...' : 'Forgot it? Email me a reset link'}
+        </button>
+      </div>
+    </form>
+  );
+};
 
 export const ProfileView: React.FC<{ onNavigate?: (view: ViewType) => void }> = ({ onNavigate }) => {
   const { user } = useAuth();
@@ -161,17 +294,14 @@ export const ProfileView: React.FC<{ onNavigate?: (view: ViewType) => void }> = 
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : null}
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Changes'}
             </button>
-
-            <button
-              type="button"
-              onClick={handlePasswordReset}
-              disabled={resetSending || resetSent}
-              className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-60"
-            >
-              {resetSent ? 'Password reset email sent' : resetSending ? 'Sending...' : 'Change password'}
-            </button>
           </div>
         </form>
+
+        <PasswordCard
+          onForgot={handlePasswordReset}
+          resetSending={resetSending}
+          resetSent={resetSent}
+        />
 
         {/* PLAN & USAGE CARD */}
         <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
