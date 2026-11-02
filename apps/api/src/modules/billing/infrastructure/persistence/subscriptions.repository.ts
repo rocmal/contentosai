@@ -40,6 +40,7 @@ export class SubscriptionsRepository
       currentPeriodEnd: plain.currentPeriodEnd,
       renewalReminderPeriodEnd: plain.renewalReminderPeriodEnd ?? null,
       renewalReminderStage: plain.renewalReminderStage ?? 0,
+      prepaidPeriods: plain.prepaidPeriods ?? 0,
       createdAt: plain.createdAt,
       updatedAt: plain.updatedAt,
       deletedAt: plain.deletedAt,

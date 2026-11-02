@@ -102,13 +102,26 @@ export class UsersService {
     await this.usersRepository.update(id, {
       isEmailVerified: true,
       emailVerifiedAt: new Date(),
-      status: UserStatus.ACTIVE,
+      status: await this.activatedStatus(id),
     });
   }
 
   async setPassword(id: string, plainTextPassword: string): Promise<void> {
     const passwordHash = await this.passwordHasher.hash(plainTextPassword);
-    await this.usersRepository.update(id, { passwordHash, status: UserStatus.ACTIVE });
+    await this.usersRepository.update(id, { passwordHash, status: await this.activatedStatus(id) });
+  }
+
+  /** Suspending or reactivating an account is for Lumora's platform admins (AdminService). */
+  async setStatus(id: string, status: UserStatus, actorId?: string): Promise<SafeUser> {
+    await this.findEntityById(id);
+    return toSafeUser(await this.usersRepository.update(id, { status }, actorId));
+  }
+
+  /** Setting a password or verifying the email activates an invited account, but never lifts a suspension: until
+   * 2026-11-02 "Forgot password" turned a suspended account back on. */
+  private async activatedStatus(id: string): Promise<UserStatus> {
+    const user = await this.findEntityById(id);
+    return user.status === UserStatus.SUSPENDED ? UserStatus.SUSPENDED : UserStatus.ACTIVE;
   }
 
   async recordLogin(id: string): Promise<void> {

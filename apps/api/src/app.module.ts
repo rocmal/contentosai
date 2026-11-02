@@ -53,6 +53,7 @@ import { VideoProjectsModule } from '@modules/video-projects/video-projects.modu
 import { VoiceTemplatesModule } from '@modules/voice-templates/voice-templates.module';
 import { CustomVoicesModule } from '@modules/custom-voices/custom-voices.module';
 import { AuditModule } from '@modules/audit/audit.module';
+import { AdminModule } from '@modules/admin/admin.module';
 import { SettingsModule } from '@modules/settings/settings.module';
 import { HealthModule } from '@modules/health/health.module';
 import { QueuesModule } from '@queues/queues.module';
@@ -122,6 +123,7 @@ import { QueuesModule } from '@queues/queues.module';
     VoiceTemplatesModule,
     CustomVoicesModule,
     AuditModule,
+    AdminModule,
     SettingsModule,
 
     HealthModule,

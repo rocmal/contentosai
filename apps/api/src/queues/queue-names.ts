@@ -14,6 +14,7 @@ export enum VideoJobName {
 export enum EmailJobName {
   VERIFICATION = 'send-verification-email',
   PASSWORD_RESET = 'send-password-reset-email',
+  ACCOUNT_CREATED = 'send-account-created-email',
 }
 
 export enum SocialPublishJobName {

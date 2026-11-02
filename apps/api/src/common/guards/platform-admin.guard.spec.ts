@@ -15,6 +15,7 @@ import { IntegrationsController } from '@modules/integrations/presentation/integ
 import { AuditLogsController } from '@modules/audit/presentation/audit-logs.controller';
 import { StorageController } from '@modules/storage/presentation/storage.controller';
 import { VideoCreditsController } from '@modules/video-credits/presentation/credits.controller';
+import { AdminController } from '@modules/admin/presentation/admin.controller';
 
 const ADMIN_ONLY: [string, { prototype: object }, string[]][] = [
   ['credits', CreditsController, ['adjust']],
@@ -73,5 +74,11 @@ describe('routes that act across customers are platform-admin only', () => {
         true,
       ]);
     }
+  });
+});
+
+describe('the Admin page API', () => {
+  it('is platform-admin only as a whole, so a route added later cannot be left open', () => {
+    expect(Reflect.getMetadata(PLATFORM_ADMIN_KEY, AdminController)).toBe(true);
   });
 });

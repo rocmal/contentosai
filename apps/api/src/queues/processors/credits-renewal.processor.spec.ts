@@ -8,6 +8,7 @@ function makeProcessor(subscriptions: unknown[]) {
   const subscriptionsService = {
     findAll: jest.fn().mockResolvedValue({ items: subscriptions, meta: { totalPages: 1 } }),
     update: jest.fn().mockResolvedValue(undefined),
+    startPrepaidPeriod: jest.fn().mockResolvedValue(undefined),
   };
   const workspacesService = { findByOrganization: jest.fn().mockResolvedValue([{ id: 'ws-1' }]) };
   const creditsService = {
@@ -49,6 +50,33 @@ describe('CreditsRenewalProcessor', () => {
     expect(renewalReminders.notifyExpired).toHaveBeenCalledWith(
       expect.objectContaining({ id: 's1' }),
     );
+  });
+
+  it('starts the next period a platform admin gave in advance, with fresh credits, instead of lapsing', async () => {
+    const { processor, subscriptionsService, creditsService, renewalReminders } = makeProcessor([
+      {
+        id: 's7',
+        organizationId: 'org-7',
+        plan: 'starter',
+        status: SubscriptionStatus.ACTIVE,
+        currentPeriodEnd: past,
+        prepaidPeriods: 2,
+      },
+    ]);
+
+    await processor.process({} as never);
+
+    const nextEnd = new Date(past.getTime() + 30 * 86_400_000);
+    expect(creditsService.grantMonthlyRenewal).toHaveBeenCalledWith(
+      'org-7',
+      'ws-1',
+      'starter',
+      expect.any(Date),
+      nextEnd,
+    );
+    expect(subscriptionsService.startPrepaidPeriod).toHaveBeenCalledWith('s7', nextEnd);
+    expect(creditsService.expire).not.toHaveBeenCalled();
+    expect(renewalReminders.notifyExpired).not.toHaveBeenCalled();
   });
 
   it('keeps rolling invoice-billed (enterprise) plans', async () => {

@@ -1,5 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Subscription, SubscriptionStatus } from '../../domain/entities/subscription.entity';
+import {
+  accessUntil,
+  Subscription,
+  SubscriptionStatus,
+} from '../../domain/entities/subscription.entity';
 
 export class SubscriptionResponseDto {
   @ApiProperty() id: string;
@@ -10,6 +14,13 @@ export class SubscriptionResponseDto {
   @ApiProperty({ nullable: true }) gatewayCustomerId: string | null;
   @ApiProperty({ nullable: true }) gatewaySubscriptionId: string | null;
   @ApiProperty({ nullable: true }) currentPeriodEnd: Date | null;
+  @ApiProperty({ description: '30-day periods already given after the current one' })
+  prepaidPeriods: number;
+  @ApiProperty({
+    nullable: true,
+    description: 'Last day of access, counting the periods already given',
+  })
+  accessUntil: Date | null;
   @ApiProperty() createdAt: Date;
   @ApiProperty() updatedAt: Date;
 
@@ -22,6 +33,8 @@ export class SubscriptionResponseDto {
     this.gatewayCustomerId = subscription.gatewayCustomerId;
     this.gatewaySubscriptionId = subscription.gatewaySubscriptionId;
     this.currentPeriodEnd = subscription.currentPeriodEnd;
+    this.prepaidPeriods = subscription.prepaidPeriods;
+    this.accessUntil = accessUntil(subscription);
     this.createdAt = subscription.createdAt;
     this.updatedAt = subscription.updatedAt;
   }

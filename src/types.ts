@@ -22,7 +22,8 @@ export type ViewType =
   | 'billing'
   | 'settings'
   | 'profile'
-  | 'help';
+  | 'help'
+  | 'admin';
 
 export type ThemeMode = 'light' | 'dark';
 

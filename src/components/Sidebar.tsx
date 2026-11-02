@@ -12,6 +12,7 @@ import {
   LogOut,
   Mic,
   Settings,
+  ShieldCheck,
   Sparkles,
   Users,
   Video,
@@ -120,6 +121,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'integrations', label: 'Integrations', icon: Layers },
     { id: 'settings', label: 'Settings', icon: Settings },
     { id: 'help', label: 'Help & Tutorial', icon: HelpCircle },
+    // Lumora staff only (PLATFORM_ADMIN_EMAILS); the server refuses the page's calls for anyone else.
+    ...(user?.isPlatformAdmin ? [{ id: 'admin' as const, label: 'Admin', icon: ShieldCheck }] : []),
   ];
 
   const handleNavClick = (view: ViewType) => {

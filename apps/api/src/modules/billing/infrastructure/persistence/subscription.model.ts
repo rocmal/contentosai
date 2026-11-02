@@ -37,4 +37,7 @@ export class SubscriptionModel extends BaseModel {
 
   @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
   declare renewalReminderStage: number;
+
+  @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
+  declare prepaidPeriods: number;
 }

@@ -927,6 +927,10 @@ export interface Subscription {
   plan: string;
   status: 'trialing' | 'active' | 'past_due' | 'canceled';
   currentPeriodEnd: string | null;
+  /** 30-day periods a Lumora admin already gave after the current one; each starts with fresh credits. */
+  prepaidPeriods?: number;
+  /** Last day of access, counting those periods. */
+  accessUntil?: string | null;
 }
 
 export async function getMySubscription(): Promise<Subscription | null> {

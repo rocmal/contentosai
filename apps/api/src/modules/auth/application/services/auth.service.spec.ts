@@ -247,6 +247,64 @@ describe('AuthService', () => {
       });
     });
 
+    it('opens an account for a customer without a password, with a 7-day link to choose one', async () => {
+      const result = await authService.createAccountForCustomer(
+        {
+          email: activeUser.email,
+          firstName: 'Jane',
+          lastName: 'Doe',
+          organizationName: 'Doe Insurance',
+          sendEmail: true,
+        },
+        'admin-1',
+      );
+
+      expect(usersService.create).toHaveBeenCalledWith(
+        { email: activeUser.email, firstName: 'Jane', lastName: 'Doe' },
+        'admin-1',
+      );
+      expect(organizationsRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Doe Insurance',
+          slug: expect.stringMatching(/^doe-insurance-/),
+        }),
+        activeUser.id,
+      );
+      expect(creditsService.grantInitial).toHaveBeenCalledWith(
+        'org-1',
+        'workspace-1',
+        expect.any(String),
+        activeUser.id,
+        TRIAL_CREDITS,
+      );
+      expect(tokenService.getOpaqueTokenExpiryDate).toHaveBeenCalledWith('7d');
+      expect(passwordResetTokensRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: activeUser.id, tokenHash: 'hashed-token' }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'auth.account-created-for-customer',
+        expect.objectContaining({ email: activeUser.email, token: 'raw-token' }),
+      );
+      expect(result).toEqual({
+        userId: activeUser.id,
+        organizationId: 'org-1',
+        setPasswordLink: '/reset-password?token=raw-token&welcome=1',
+      });
+      // Nobody is signed in as the new customer.
+      expect(refreshTokensRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('can open an account without emailing (the admin shares the link)', async () => {
+      await authService.createAccountForCustomer(
+        { email: activeUser.email, firstName: 'Jane', lastName: '', sendEmail: false },
+        'admin-1',
+      );
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+        'auth.account-created-for-customer',
+        expect.anything(),
+      );
+    });
+
     it('creates the user, requests email verification and issues tokens', async () => {
       const result = await authService.register({
         email: activeUser.email,
@@ -484,6 +542,37 @@ describe('AuthService', () => {
       await expect(authService.buildAuthenticatedUser('user-1')).resolves.toEqual(
         expect.objectContaining({ isPlatformAdmin: false }),
       );
+    });
+  });
+
+  describe('suspended accounts', () => {
+    beforeEach(() => {
+      usersService.findEntityById.mockResolvedValue({
+        ...activeUser,
+        status: UserStatus.SUSPENDED,
+      });
+    });
+
+    it('are refused on every request, not only at sign-in', async () => {
+      await expect(authService.buildAuthenticatedUser('user-1')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    });
+
+    it('cannot renew a session that was still open', async () => {
+      tokenService.verifyRefreshToken.mockReturnValue({ sub: 'user-1' });
+      refreshTokensRepository.findByTokenHash.mockResolvedValue({
+        id: 'rt-1',
+        userId: 'user-1',
+        tokenHash: 'hashed-refresh-token',
+        expiresAt: new Date(Date.now() + 60_000),
+        revokedAt: null,
+      } as never);
+
+      await expect(authService.refreshTokens('refresh-token')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+      expect(refreshTokensRepository.create).not.toHaveBeenCalled();
     });
   });
 });

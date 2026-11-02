@@ -15,6 +15,17 @@ interface PasswordResetEmailJobData {
   token: string;
 }
 
+interface AccountCreatedEmailJobData {
+  to: string;
+  token: string;
+  firstName: string;
+}
+
+/** The name was typed by a platform admin: never let it add markup to the email. */
+function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+}
+
 @Processor(QueueName.EMAIL)
 export class EmailProcessor extends WorkerHost {
   constructor(
@@ -30,6 +41,8 @@ export class EmailProcessor extends WorkerHost {
         return this.sendVerificationEmail(job.data as VerificationEmailJobData);
       case EmailJobName.PASSWORD_RESET:
         return this.sendPasswordResetEmail(job.data as PasswordResetEmailJobData);
+      case EmailJobName.ACCOUNT_CREATED:
+        return this.sendAccountCreatedEmail(job.data as AccountCreatedEmailJobData);
       default:
         throw new Error(`Unknown email job "${job.name}"`);
     }
@@ -52,6 +65,21 @@ export class EmailProcessor extends WorkerHost {
       to: data.to,
       subject: 'Reset your Lumora password',
       html: `<p>Reset your password by visiting <a href="${resetLink}">${resetLink}</a>. This link expires in 1 hour.</p>`,
+    });
+  }
+
+  private async sendAccountCreatedEmail(data: AccountCreatedEmailJobData): Promise<void> {
+    const appUrl = this.configService.get<string>('app.url');
+    const link = `${appUrl}/reset-password?token=${data.token}&welcome=1`;
+    const greeting = data.firstName ? `Hi ${escapeHtml(data.firstName)},` : 'Hello,';
+    await this.mailer.send({
+      to: data.to,
+      subject: 'Your Lumora account is ready',
+      html: [
+        `<p>${greeting}</p>`,
+        `<p>The Lumora team has opened an account for you. Choose your password here: <a href="${link}">${link}</a></p>`,
+        `<p>The link works for 7 days. After that, use "Forgot password" on the sign-in page with this email address.</p>`,
+      ].join(''),
     });
   }
 }

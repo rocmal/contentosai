@@ -24,6 +24,7 @@ function subscription(overrides: Partial<Subscription> = {}): Subscription {
     currentPeriodEnd: inHours(60),
     renewalReminderPeriodEnd: null,
     renewalReminderStage: 0,
+    prepaidPeriods: 0,
     ...overrides,
   } as Subscription;
 }
@@ -120,6 +121,14 @@ describe('RenewalReminderService', () => {
     await expect(
       service.remindIfDue(subscription({ currentPeriodEnd: inHours(200) }), now),
     ).resolves.toBe(false);
+    expect(mailer.send).not.toHaveBeenCalled();
+  });
+
+  it('does not ask to renew while months given in advance are left (the plan carries on)', async () => {
+    const { service, mailer } = build();
+    await expect(service.remindIfDue(subscription({ prepaidPeriods: 2 }), now)).resolves.toBe(
+      false,
+    );
     expect(mailer.send).not.toHaveBeenCalled();
   });
 

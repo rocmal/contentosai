@@ -65,6 +65,24 @@ export class CreditsRenewalProcessor extends WorkerHost {
             subscription.organizationId,
           );
 
+          // Months a platform admin gave in advance: start the next period (fresh credits) instead of lapsing.
+          if (isPurchasablePlan(subscription.plan) && subscription.prepaidPeriods > 0) {
+            const cycleStartAt = subscription.currentPeriodEnd as Date;
+            const cycleEndAt = addBillingPeriod(cycleStartAt);
+            for (const workspace of workspaces) {
+              await this.creditsService.grantMonthlyRenewal(
+                subscription.organizationId,
+                workspace.id,
+                subscription.plan,
+                now,
+                cycleEndAt,
+              );
+            }
+            await this.subscriptionsService.startPrepaidPeriod(subscription.id, cycleEndAt);
+            renewed += 1;
+            continue;
+          }
+
           if (isPurchasablePlan(subscription.plan)) {
             for (const workspace of workspaces) {
               await this.creditsService.expire(subscription.organizationId, workspace.id);

@@ -4,6 +4,7 @@ import { AuditLog } from '../../domain/entities/audit-log.entity';
 import {
   AUDIT_LOGS_REPOSITORY,
   IAuditLogsRepository,
+  ListRecentAuditLogsOptions,
 } from '../../domain/repositories/audit-log-repository.interface';
 
 export interface RecordAuditLogInput {
@@ -37,6 +38,10 @@ export class AuditLogService {
 
   async findAll(options?: FindAllOptions): Promise<PaginatedResult<AuditLog>> {
     return this.auditLogsRepository.findAll(options);
+  }
+
+  async listRecent(options: ListRecentAuditLogsOptions): Promise<AuditLog[]> {
+    return this.auditLogsRepository.listRecent(options);
   }
 
   async findById(id: string): Promise<AuditLog> {

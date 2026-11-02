@@ -53,6 +53,7 @@ import {
 } from '../../domain/repositories/password-reset-token-repository.interface';
 import { EmailVerificationRequestedEvent } from '../events/email-verification-requested.event';
 import { PasswordResetRequestedEvent } from '../events/password-reset-requested.event';
+import { AccountCreatedForCustomerEvent } from '../events/account-created-for-customer.event';
 
 export interface IssuedTokens {
   accessToken: string;
@@ -91,7 +92,7 @@ export class AuthService {
   ) {}
 
   /** Lumora staff, named by PLATFORM_ADMIN_EMAILS (platform.config.ts). */
-  private isPlatformAdmin(email: string): boolean {
+  isPlatformAdmin(email: string): boolean {
     const admins = this.configService?.get<string[]>('platform.adminEmails') ?? [];
     return admins.includes(email.trim().toLowerCase());
   }
@@ -110,6 +111,53 @@ export class AuthService {
     return this.issueTokensForUser(safeUser.id);
   }
 
+  /**
+   * A platform admin opening an account for a customer (Admin page): the same organization, workspace, trial and
+   * credits as a sign-up, but no password. The person chooses one with the returned link, which is also emailed when
+   * asked and stays valid for 7 days; until then the account is "invited" and cannot sign in.
+   */
+  async createAccountForCustomer(
+    input: {
+      email: string;
+      firstName: string;
+      lastName: string;
+      organizationName?: string;
+      sendEmail: boolean;
+    },
+    actorId: string,
+  ): Promise<{ userId: string; organizationId: string; setPasswordLink: string }> {
+    const user = await this.usersService.create(
+      { email: input.email, firstName: input.firstName, lastName: input.lastName },
+      actorId,
+    );
+    const organizationId = await this.provisionPersonalWorkspace(
+      user.id,
+      user.email,
+      input.firstName,
+      input.organizationName,
+    );
+
+    const { token, hash } = this.tokenService.generateOpaqueToken();
+    await this.passwordResetTokensRepository.create({
+      userId: user.id,
+      tokenHash: hash,
+      expiresAt: this.tokenService.getOpaqueTokenExpiryDate('7d'),
+    });
+    if (input.sendEmail) {
+      this.eventEmitter.emit(
+        'auth.account-created-for-customer',
+        new AccountCreatedForCustomerEvent(user.id, user.email, input.firstName, token),
+      );
+    }
+
+    const appUrl = this.configService?.get<string>('app.url') ?? '';
+    return {
+      userId: user.id,
+      organizationId,
+      setPasswordLink: `${appUrl}/reset-password?token=${token}&welcome=1`,
+    };
+  }
+
   /** New signups previously got no organization/workspace at all - every
    * "create X" action in the app (campaigns, brand profile, credits, ...)
    * requires one, so a self-registered user landed in the dashboard with
@@ -122,7 +170,9 @@ export class AuthService {
     userId: string,
     email: string,
     firstName: string,
-  ): Promise<void> {
+    /** Instead of "<first name>'s Workspace" (an account a platform admin opens for a business). */
+    organizationName?: string,
+  ): Promise<string> {
     const superAdminRole = await this.rolesRepository.findBySlug(null, 'super-admin');
     if (!superAdminRole) {
       throw new Error(
@@ -130,7 +180,12 @@ export class AuthService {
       );
     }
 
-    const organization = await this.createOrganizationWithUniqueSlug(firstName, email, userId);
+    const organization = await this.createOrganizationWithUniqueSlug(
+      firstName,
+      email,
+      userId,
+      organizationName,
+    );
 
     const workspace = await this.workspacesRepository.create(
       { organizationId: organization.id, name: 'Default', slug: 'default', description: null },
@@ -164,15 +219,24 @@ export class AuthService {
         }`,
       );
     }
+    return organization.id;
   }
 
   private async createOrganizationWithUniqueSlug(
     firstName: string,
     email: string,
     ownerId: string,
+    organizationName?: string,
   ) {
-    const base = slugify(firstName) || slugify(email.split('@')[0]) || 'workspace';
-    const displayName = firstName ? `${firstName}'s Workspace` : 'My Workspace';
+    // Kept short: the slug column holds 150 characters and a random suffix is added.
+    const base = (
+      slugify(organizationName ?? '') ||
+      slugify(firstName) ||
+      slugify(email.split('@')[0]) ||
+      'workspace'
+    ).slice(0, 60);
+    const displayName =
+      organizationName?.trim() || (firstName ? `${firstName}'s Workspace` : 'My Workspace');
 
     for (let attempt = 0; attempt < 5; attempt++) {
       const slug = `${base}-${randomSlugSuffix()}`;
@@ -348,8 +412,18 @@ export class AuthService {
     await this.usersService.anonymizeAndRemove(userId);
   }
 
+  /** Ends every session of this person (used when a platform admin suspends the account). */
+  async signOutEverywhere(userId: string): Promise<void> {
+    await this.refreshTokensRepository.revokeAllForUser(userId);
+  }
+
+  /** Runs on every request (JwtStrategy), every token renewal and every sign-in, so a suspension takes effect at once
+   * - the password check in login() alone let a signed-in person carry on until they signed out. */
   async buildAuthenticatedUser(userId: string): Promise<AuthenticatedUser> {
     const user = await this.usersService.findEntityById(userId);
+    if (user.status === UserStatus.SUSPENDED) {
+      throw new UnauthorizedException('This account has been suspended');
+    }
     const memberships = await this.organizationMembersRepository.listByUser(userId);
 
     const roleSlugs = new Set<string>();

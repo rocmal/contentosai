@@ -4,6 +4,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { EmailVerificationRequestedEvent } from '@modules/auth/application/events/email-verification-requested.event';
 import { PasswordResetRequestedEvent } from '@modules/auth/application/events/password-reset-requested.event';
+import { AccountCreatedForCustomerEvent } from '@modules/auth/application/events/account-created-for-customer.event';
 import { EmailJobName, QueueName } from '../queue-names';
 
 /**
@@ -38,6 +39,15 @@ export class EmailEventsListener {
     await this.emailQueue.add(
       EmailJobName.PASSWORD_RESET,
       { to: event.email, token: event.token },
+      EMAIL_JOB_OPTIONS,
+    );
+  }
+
+  @OnEvent('auth.account-created-for-customer')
+  async onAccountCreatedForCustomer(event: AccountCreatedForCustomerEvent): Promise<void> {
+    await this.emailQueue.add(
+      EmailJobName.ACCOUNT_CREATED,
+      { to: event.email, token: event.token, firstName: event.firstName },
       EMAIL_JOB_OPTIONS,
     );
   }

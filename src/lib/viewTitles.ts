@@ -99,4 +99,8 @@ export const VIEW_TITLES: Record<ViewType, { title: string; subtitle: string }> 
     title: 'Help Center',
     subtitle: 'Step-by-step guides and answers to common questions.',
   },
+  admin: {
+    title: 'Admin',
+    subtitle: 'Lumora staff only: find a customer, add credits, give a plan, suspend or help with sign-in.',
+  },
 };

@@ -11,6 +11,7 @@ export interface CreateSubscriptionData {
   currentPeriodEnd?: Date | null;
   renewalReminderPeriodEnd?: Date | null;
   renewalReminderStage?: number;
+  prepaidPeriods?: number;
 }
 
 export type UpdateSubscriptionData = Partial<Omit<CreateSubscriptionData, 'organizationId'>>;

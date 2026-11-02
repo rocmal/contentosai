@@ -37,6 +37,7 @@ import { ProjectsView } from './components/views/ProjectsView';
 import { SettingsView } from './components/views/SettingsView';
 import { ProfileView } from './components/views/ProfileView';
 import { TeamView } from './components/views/TeamView';
+import { AdminView } from './components/views/AdminView';
 import { VideoStudioView } from './components/views/VideoStudioView';
 import { VoiceStudioView } from './components/views/VoiceStudioView';
 import { CharacterStudioView } from './components/views/CharacterStudioView';
@@ -74,6 +75,7 @@ const VIEW_TYPES: ViewType[] = [
   'settings',
   'profile',
   'help',
+  'admin',
 ];
 
 function isViewType(value: string): value is ViewType {
@@ -409,6 +411,8 @@ export function App() {
               onNavigate={(v) => setCurrentView(v)}
             />
           )}
+
+          {currentView === 'admin' && <AdminView />}
 
           {currentView === 'team' && (
             <TeamView onNavigate={(v) => setCurrentView(v)} />

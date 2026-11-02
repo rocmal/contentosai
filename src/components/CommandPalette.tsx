@@ -15,6 +15,7 @@ import {
   Settings,
   User as UserIcon,
   UserPlus,
+  ShieldCheck,
   Users,
   Video,
   Wand2,
@@ -112,6 +113,9 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
       { id: 'p-settings', group: 'Go to', label: 'Settings', keywords: 'theme dark workspace', icon: Settings, run: go('settings') },
       { id: 'p-profile', group: 'Go to', label: 'Profile', keywords: 'account password name', icon: UserIcon, run: go('profile') },
       { id: 'p-help', group: 'Go to', label: 'Help Center', keywords: 'faq guide tour support how', icon: HelpCircle, run: go('help') },
+      ...(user?.isPlatformAdmin
+        ? [{ id: 'p-admin', group: 'Go to' as const, label: 'Admin', keywords: 'customers credits plan suspend staff support', icon: ShieldCheck, run: go('admin') }]
+        : []),
     ];
 
     const postAction: Entry = {
@@ -188,7 +192,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose,
     const staticEntries = words.length === 0 ? [...pages, ...actions] : [...pages, ...actions, ...templates].filter(matches);
     const merged = [...staticEntries, ...gallery];
     return GROUP_ORDER.flatMap((group) => merged.filter((entry) => entry.group === group)).slice(0, 24);
-  }, [term, galleryHits, canInvite, onNavigate]);
+  }, [term, galleryHits, canInvite, user?.isPlatformAdmin, onNavigate]);
 
   useEffect(() => {
     setActive(0);

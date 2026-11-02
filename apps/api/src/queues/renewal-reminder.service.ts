@@ -64,6 +64,8 @@ export class RenewalReminderService {
   /** Sends the "plan ends soon" reminder if one is due and not yet sent. Never throws. */
   async remindIfDue(subscription: Subscription, now: Date): Promise<boolean> {
     if (!isPurchasablePlan(subscription.plan) || !subscription.currentPeriodEnd) return false;
+    // Further periods are already given: the plan carries on by itself, so there is nothing to renew yet.
+    if (subscription.prepaidPeriods > 0) return false;
     const stage = reminderStageFor(subscription.currentPeriodEnd, now);
     if (stage === null || !shouldSendReminder(subscription, stage)) return false;
 

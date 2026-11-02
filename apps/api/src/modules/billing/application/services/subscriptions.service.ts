@@ -72,6 +72,15 @@ export class SubscriptionsService {
     );
   }
 
+  /** The renewal job starting the next of the periods a platform admin gave in advance (see CheckoutService.grantPeriods). */
+  async startPrepaidPeriod(id: string, periodEnd: Date): Promise<Subscription> {
+    const subscription = await this.findById(id);
+    return this.subscriptionsRepository.update(id, {
+      currentPeriodEnd: periodEnd,
+      prepaidPeriods: Math.max(0, subscription.prepaidPeriods - 1),
+    });
+  }
+
   /** Records that a renewal reminder went out, so it is not sent again for the same period. */
   async markRenewalReminderSent(id: string, periodEnd: Date, stage: number): Promise<void> {
     await this.subscriptionsRepository.update(id, {

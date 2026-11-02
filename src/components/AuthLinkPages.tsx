@@ -31,6 +31,8 @@ interface AuthLinkPageProps {
 
 export const ResetPasswordPage: React.FC<AuthLinkPageProps> = ({ onContinue }) => {
   const token = tokenFromUrl();
+  // An account a Lumora admin opened for you (the "Your Lumora account is ready" email or a shared link).
+  const welcome = new URLSearchParams(window.location.search).get('welcome') === '1';
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -76,8 +78,10 @@ export const ResetPasswordPage: React.FC<AuthLinkPageProps> = ({ onContinue }) =
     return (
       <Shell>
         <CheckCircle2 className="w-8 h-8 text-emerald-500" />
-        <p className="text-sm font-bold text-slate-900 dark:text-white">Password updated</p>
-        <p className="text-xs text-slate-500">You can now sign in with your new password.</p>
+        <p className="text-sm font-bold text-slate-900 dark:text-white">{welcome ? 'Your password is set' : 'Password updated'}</p>
+        <p className="text-xs text-slate-500">
+          {welcome ? 'Sign in with your email address and this password.' : 'You can now sign in with your new password.'}
+        </p>
         <button
           onClick={onContinue}
           className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs"
@@ -91,7 +95,9 @@ export const ResetPasswordPage: React.FC<AuthLinkPageProps> = ({ onContinue }) =
   return (
     <Shell>
       <div>
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">Choose a new password</h2>
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          {welcome ? 'Welcome to Lumora - choose your password' : 'Choose a new password'}
+        </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Use at least 8 characters.</p>
       </div>
       <form onSubmit={handleSubmit} className="space-y-3">
@@ -126,7 +132,7 @@ export const ResetPasswordPage: React.FC<AuthLinkPageProps> = ({ onContinue }) =
           className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-          {submitting ? 'Saving...' : 'Update password'}
+          {submitting ? 'Saving...' : welcome ? 'Set password' : 'Update password'}
         </button>
       </form>
     </Shell>

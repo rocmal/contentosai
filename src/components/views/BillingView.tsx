@@ -224,7 +224,14 @@ export const BillingView: React.FC<BillingViewProps> = ({ autoCheckoutPlan, onAu
                 of credits is added as soon as payment clears.
               </p>
             )}
-            {subscription?.status === 'active' && subscription.currentPeriodEnd && (
+            {subscription?.status === 'active' && subscription.currentPeriodEnd && (subscription.prepaidPeriods ?? 0) > 0 && (
+              <p className="text-xs text-slate-300">
+                Your plan runs until {new Date(subscription.accessUntil ?? subscription.currentPeriodEnd).toLocaleDateString()}.
+                Your credits start again on {new Date(subscription.currentPeriodEnd).toLocaleDateString()} and every 30 days
+                after that (unused credits do not carry over). Nothing to pay until then.
+              </p>
+            )}
+            {subscription?.status === 'active' && subscription.currentPeriodEnd && !(subscription.prepaidPeriods ?? 0) && (
               <p className="text-xs text-slate-300">
                 Paid through {new Date(subscription.currentPeriodEnd).toLocaleDateString()}. Each plan runs for 30 days and
                 does not renew automatically. Renew before this date to keep generating; each period starts with a fresh

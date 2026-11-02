@@ -155,6 +155,7 @@ describe('OrganizationsService', () => {
         currentPeriodEnd: null,
         renewalReminderPeriodEnd: null,
         renewalReminderStage: 0,
+        prepaidPeriods: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,

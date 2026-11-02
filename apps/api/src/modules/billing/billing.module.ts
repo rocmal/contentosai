@@ -23,6 +23,11 @@ import { PaymentProviderFactory } from './infrastructure/payment-provider.factor
     RazorpayProvider,
     PaymentProviderFactory,
   ],
-  exports: [SubscriptionsService, SUBSCRIPTIONS_REPOSITORY, PaymentProviderFactory],
+  exports: [
+    SubscriptionsService,
+    CheckoutService,
+    SUBSCRIPTIONS_REPOSITORY,
+    PaymentProviderFactory,
+  ],
 })
 export class BillingModule {}

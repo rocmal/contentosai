@@ -55,7 +55,7 @@ in Amritsar, so AI output is treated as a draft and compliance wording matters.
 - Main: Dashboard, Calendar
 - Creation: Video Studio, Image Studio, Voice Studio, Gallery (view id `media-library`), LinkedIn Posts (view id
   `linkedin-posts`, added 2026-10-21), YouTube (view id `youtube-posts`, added 2026-10-23)
-- Management: Team, Integrations, Settings, Help & Tutorial
+- Management: Team, Integrations, Settings, Help & Tutorial, and **Admin** (view id `admin`) for platform admins only
 - **Hidden on purpose, code and routes kept** (still reachable by typing the hash, e.g. `#ai-studio`): AI Studio, Brand Brain,
   Projects, Campaigns, Character Studio (also removed from the mobile Studio chip row and Profile menu). To bring one back, add
   its one-line entry to `mainNav` / `creationNav` in Sidebar.tsx.
@@ -358,6 +358,31 @@ events, analytics, automations, settings, workspaces and avatars by id. All clos
   (LinkedIn, Facebook, Instagram connected). The owner chose on 2026-10-31 to keep those credentials; the platform admin is a
   separate account the owner signs up with their own password. Its email is only in the GitHub secret - never write it in
   this repository.
+- **Admin page** (2026-11-02; `src/components/views/AdminView.tsx` + `views/admin/`, API `modules/admin`, all under
+  `/admin`, the whole controller `@PlatformAdminOnly()`): shown in the sidebar and Ctrl+K only when `isPlatformAdmin`.
+  Find a customer by organization name, email, name or exact id (`CustomerDirectoryRepository`, a read model over
+  several modules' tables; changes always go through the owning service). Per customer: add or remove credits (never
+  below 0, at most 100,000 at once, not on unlimited wallets), give Starter or Pro for 1-12 months without a payment
+  (see below; Enterprise is not offered), suspend / reactivate a person, send the usual reset link. Every change needs
+  a reason, which goes only
+  to the audit log (`admin.*` actions, `changes.by` = the admin's email); the page lists the customer's activity and
+  the latest admin actions. Admins cannot suspend themselves or another platform admin.
+- **Open an account** (Admin page "New account", `POST /admin/customers`; until the payment gateway is live): name,
+  email, optional business name, Trial / Starter / Pro for 1-12 months, reason. `AuthService.createAccountForCustomer`
+  makes what a sign-up makes (own organization, workspace, trial) but no password: the person is "invited" until they
+  open the set-password link (`/reset-password?token=...&welcome=1`, a password-reset token valid 7 days, single use).
+  The link is emailed ("Your Lumora account is ready", optional) and shown to the admin once to copy, e.g. to
+  WhatsApp, since email delivery on live is not confirmed. It is built from the server's `APP_URL`.
+- **Months given in advance** (`subscriptions.prepaidPeriods`, migration 20261102000001): `CheckoutService.
+  grantPeriods`. The same plan still running is extended (periods added after the ones it has, credits untouched);
+  anything else starts today with the plan's credits. At each period end the renewal job starts the next given period
+  with fresh credits (no carry-over, same rule as paying) and lapses the plan only after the last; no "renew" reminder
+  is sent while given periods remain. Billing tells the customer how long the plan runs. A payment leaves given periods
+  alone. `accessUntil` = current period end + given periods x 30 days.
+- **Suspension now works:** `AuthService.buildAuthenticatedUser` refuses a suspended account, so it is signed out on
+  its next request and cannot renew or sign in (before, only the password sign-in checked it). Setting a password or
+  verifying the email no longer turns a suspended account back on (`UsersService.activatedStatus`; "Forgot password"
+  used to). Verified 2026-11-02 against a local API: 38 checks, plus 28 for opening accounts and giving months.
 
 ### Deploy and operations
 
@@ -411,12 +436,12 @@ Needs the owner:
 - Lawyer review of the landing page "Who owns the content" answer.
 - Platform admin: sign up the chosen admin email on the live site with a strong password of your own, then add the GitHub
   **secret** `PLATFORM_ADMIN_EMAILS` = that email and redeploy (ops-check then prints "platform admins: 1 set").
-  Until then nobody can adjust credits or use the admin routes. Consider making the GitHub repository private, and change
+  Until then nobody can use the Admin page or the admin routes. Consider making the GitHub repository private, and change
   the `admin@lumora.ai` password (Profile > Password) when ready - it is published in the README.
 
 Code still to do:
-- An Admin page for platform admins (find a user, add credits with a reason, give or extend a plan, suspend, audit trail);
-  the routes exist and are locked to platform admins.
+- Admin page, later: Enterprise (unlimited) plans and ending a plan early are still done by hand; suspending a whole
+  organization (`organizations.status` exists but nothing checks it) - today each person is suspended.
 - Real invite-by-email (pending invitations). Today the Team page can only add someone who already has an account.
 - Show the credit cost on avatars when Character Studio returns (the Scene Builder narration price is done).
 - Record unsaved Image Studio generations so history is complete.

@@ -15,8 +15,18 @@ export type UpdateAuditLogData = Partial<CreateAuditLogData>;
 
 export const AUDIT_LOGS_REPOSITORY = Symbol('AUDIT_LOGS_REPOSITORY');
 
-export type IAuditLogsRepository = IBaseRepository<
+export interface ListRecentAuditLogsOptions {
+  organizationId?: string;
+  /** e.g. 'admin.' for what Lumora's platform admins did. */
+  actionPrefix?: string;
+  limit: number;
+}
+
+export interface IAuditLogsRepository extends IBaseRepository<
   AuditLog,
   CreateAuditLogData,
   UpdateAuditLogData
->;
+> {
+  /** Newest first. */
+  listRecent(options: ListRecentAuditLogsOptions): Promise<AuditLog[]>;
+}
