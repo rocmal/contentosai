@@ -142,6 +142,8 @@ export const envValidationSchema = Joi.object({
   YOUTUBE_REDIRECT_URI: Joi.string().allow('').default(''),
   // Lumora staff accounts that may manage every customer (comma-separated emails); a GitHub secret.
   PLATFORM_ADMIN_EMAILS: Joi.string().allow('').default(''),
+  // Checked in code (too short = skipped with a warning) so a bad value never stops the API from starting.
+  PLATFORM_ADMIN_INITIAL_PASSWORD: Joi.string().allow('').default(''),
 
   // Razorpay (billing - primary payment gateway, India-first)
   RAZORPAY_KEY_ID: Joi.string().allow('').default(''),

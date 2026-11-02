@@ -504,7 +504,7 @@ describe('AuthService', () => {
   });
 
   describe('platform admins', () => {
-    const withAdmins = (emails: string[]) =>
+    const withAdmins = (emails: string[], initialPassword = '') =>
       new AuthService(
         usersService,
         rolesService,
@@ -521,7 +521,12 @@ describe('AuthService', () => {
         emailVerificationTokensRepository,
         passwordResetTokensRepository,
         {
-          get: (key: string) => (key === 'platform.adminEmails' ? emails : undefined),
+          get: (key: string) =>
+            key === 'platform.adminEmails'
+              ? emails
+              : key === 'platform.initialPassword'
+                ? initialPassword
+                : undefined,
         } as unknown as ConfigService,
       );
 
@@ -542,6 +547,59 @@ describe('AuthService', () => {
       await expect(authService.buildAuthenticatedUser('user-1')).resolves.toEqual(
         expect.objectContaining({ isPlatformAdmin: false }),
       );
+    });
+
+    it('needs a verified email: a stranger who signed up with the address first is not an admin', async () => {
+      usersService.findEntityById.mockResolvedValue({ ...activeUser, isEmailVerified: false });
+      await expect(
+        withAdmins(['jane@lumora.ai']).buildAuthenticatedUser('user-1'),
+      ).resolves.toEqual(expect.objectContaining({ isPlatformAdmin: false }));
+    });
+
+    describe('creating the admin accounts from the secrets', () => {
+      beforeEach(() => {
+        usersService.findByEmail.mockResolvedValue(null);
+        usersService.create.mockResolvedValue({
+          ...activeUser,
+          id: 'admin-1',
+          email: 'staff@x.in',
+        });
+        organizationsRepository.create.mockResolvedValue({ id: 'org-a' } as never);
+        workspacesRepository.create.mockResolvedValue({ id: 'ws-a' } as never);
+      });
+
+      it('creates a verified account with the initial password for an admin email that has none', async () => {
+        await expect(
+          withAdmins(['staff@x.in'], 'Initial-pass-1').ensurePlatformAdminAccounts(),
+        ).resolves.toEqual({ created: 1, unverified: 0 });
+
+        expect(usersService.create).toHaveBeenCalledWith({
+          email: 'staff@x.in',
+          firstName: 'Lumora',
+          lastName: 'Admin',
+          password: 'Initial-pass-1',
+        });
+        expect(organizationsRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'Lumora Admin' }),
+          'admin-1',
+        );
+        expect(usersService.markEmailVerified).toHaveBeenCalledWith('admin-1');
+      });
+
+      it('never changes an account that exists, and reports one that is not verified', async () => {
+        usersService.findByEmail.mockResolvedValue({ ...activeUser, isEmailVerified: false });
+        await expect(
+          withAdmins(['jane@lumora.ai'], 'Initial-pass-1').ensurePlatformAdminAccounts(),
+        ).resolves.toEqual({ created: 0, unverified: 1 });
+        expect(usersService.create).not.toHaveBeenCalled();
+        expect(usersService.setPassword).not.toHaveBeenCalled();
+      });
+
+      it('does nothing without a password, or with one shorter than 8 characters', async () => {
+        await withAdmins(['staff@x.in']).ensurePlatformAdminAccounts();
+        await withAdmins(['staff@x.in'], 'short').ensurePlatformAdminAccounts();
+        expect(usersService.create).not.toHaveBeenCalled();
+      });
     });
   });
 

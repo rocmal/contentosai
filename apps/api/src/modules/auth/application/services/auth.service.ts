@@ -97,6 +97,59 @@ export class AuthService {
     return admins.includes(email.trim().toLowerCase());
   }
 
+  /**
+   * Run when the API starts (PlatformAdminAccountsBootstrap): every PLATFORM_ADMIN_EMAILS address that has no account
+   * yet gets one, signed in with PLATFORM_ADMIN_INITIAL_PASSWORD and marked verified (the address came from our own
+   * secret). Accounts that exist are never changed, so a password changed in Profile stays. Never throws for one
+   * address; logs counts only, never addresses or the password.
+   */
+  async ensurePlatformAdminAccounts(): Promise<{ created: number; unverified: number }> {
+    const emails = this.configService?.get<string[]>('platform.adminEmails') ?? [];
+    const password = this.configService?.get<string>('platform.initialPassword') ?? '';
+    const result = { created: 0, unverified: 0 };
+    if (emails.length === 0 || !password) return result;
+    if (password.length < 8) {
+      this.logger.warn(
+        'PLATFORM_ADMIN_INITIAL_PASSWORD is shorter than 8 characters: no admin account was created.',
+      );
+      return result;
+    }
+
+    for (const email of emails) {
+      try {
+        const existing = await this.usersService.findByEmail(email);
+        if (existing) {
+          if (!existing.isEmailVerified) result.unverified += 1;
+          continue;
+        }
+        const user = await this.usersService.create({
+          email,
+          firstName: 'Lumora',
+          lastName: 'Admin',
+          password,
+        });
+        await this.provisionPersonalWorkspace(user.id, user.email, 'Lumora', 'Lumora Admin');
+        await this.usersService.markEmailVerified(user.id);
+        result.created += 1;
+      } catch (err) {
+        this.logger.error(
+          `Could not create a platform admin account: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+
+    if (result.created > 0) {
+      this.logger.log(`Created ${result.created} platform admin account(s)`);
+    }
+    if (result.unverified > 0) {
+      this.logger.warn(
+        `${result.unverified} platform admin email(s) belong to an account whose email is not verified: ` +
+          'not an admin until it is verified.',
+      );
+    }
+    return result;
+  }
+
   async register(dto: RegisterDto): Promise<IssuedTokens> {
     const safeUser = await this.usersService.create({
       email: dto.email,
@@ -450,7 +503,9 @@ export class AuthService {
       workspaceId: workspaces[0]?.id ?? null,
       roles: Array.from(roleSlugs),
       permissions: Array.from(permissionSlugs),
-      isPlatformAdmin: this.isPlatformAdmin(user.email),
+      // A verified email too: sign-up does not check the address, so whoever signed up with an admin email first
+      // (before it was named) would otherwise become an admin the moment it is.
+      isPlatformAdmin: user.isEmailVerified && this.isPlatformAdmin(user.email),
     };
   }
 

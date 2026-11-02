@@ -29,6 +29,7 @@ import { GoogleStrategy } from './infrastructure/strategies/google.strategy';
 import { GithubStrategy } from './infrastructure/strategies/github.strategy';
 import { MicrosoftStrategy } from './infrastructure/strategies/microsoft.strategy';
 import { AuthController } from './presentation/auth.controller';
+import { PlatformAdminAccountsBootstrap } from './infrastructure/platform-admin-accounts.bootstrap';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { AuthController } from './presentation/auth.controller';
     GoogleStrategy,
     GithubStrategy,
     MicrosoftStrategy,
+    PlatformAdminAccountsBootstrap,
     { provide: REFRESH_TOKENS_REPOSITORY, useClass: RefreshTokensRepository },
     { provide: EMAIL_VERIFICATION_TOKENS_REPOSITORY, useClass: EmailVerificationTokensRepository },
     { provide: PASSWORD_RESET_TOKENS_REPOSITORY, useClass: PasswordResetTokensRepository },

@@ -130,6 +130,33 @@ function checkLinkedIn() {
 function checkPlatformAdmins() {
   const count = (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').map((e) => e.trim()).filter(Boolean).length;
   out('platform admins', count ? `${count} set` : 'none set - credit adjustments and other admin tools are refused');
+  out('platform admin initial password', process.env.PLATFORM_ADMIN_INITIAL_PASSWORD ? 'set' : 'not set');
+}
+
+// How many of those emails have an account, and how many of those are verified (only verified ones are admins).
+async function checkPlatformAdminAccounts() {
+  const emails = (process.env.PLATFORM_ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+  if (emails.length === 0) return;
+  let conn;
+  try {
+    conn = await require('mysql2/promise').createConnection({
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+    });
+    const [rows] = await conn.query(
+      'SELECT isEmailVerified FROM users WHERE deletedAt IS NULL AND LOWER(email) IN (?)',
+      [emails],
+    );
+    const verified = rows.filter((r) => Number(r.isEmailVerified) === 1).length;
+    out('platform admin accounts', `${rows.length} of ${emails.length} exist, ${verified} verified (only verified ones are admins)`);
+  } catch (err) {
+    out('platform admin accounts', `could not check: ${err.message}`);
+  } finally {
+    if (conn) await conn.end().catch(() => {});
+  }
 }
 
 function checkYouTube() {
@@ -255,6 +282,7 @@ async function checkQueue() {
   checkLinkedIn();
   checkYouTube();
   checkPlatformAdmins();
+  await checkPlatformAdminAccounts();
   await checkUser();
   await checkAvatars();
   await checkTemplates();

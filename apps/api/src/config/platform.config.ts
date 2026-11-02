@@ -9,4 +9,8 @@ export default registerAs('platform', () => ({
     .split(',')
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean),
+  /** PLATFORM_ADMIN_INITIAL_PASSWORD (a GitHub secret): when the API starts, every admin email above that has no
+   * account yet gets one with this password (AuthService.ensurePlatformAdminAccounts). Existing accounts are never
+   * touched, so changing the password in Profile afterwards is safe. */
+  initialPassword: process.env.PLATFORM_ADMIN_INITIAL_PASSWORD ?? '',
 }));

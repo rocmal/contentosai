@@ -229,6 +229,7 @@ jobs:
             GEMINI_API_KEY SARVAM_API_KEY OPENAI_API_KEY STABILITY_API_KEY FLUX_API_KEY
             ELEVENLABS_API_KEY SMTP_PASSWORD GOOGLE_CLIENT_SECRET RAZORPAY_KEY_SECRET
             RAZORPAY_WEBHOOK_SECRET SENTRY_DSN BREVO_API_KEY LINKEDIN_CLIENT_SECRET PLATFORM_ADMIN_EMAILS
+            PLATFORM_ADMIN_INITIAL_PASSWORD
             MAIL_TRANSPORT AI_DEFAULT_PROVIDER OPENAI_IMAGE_MODEL SMTP_HOST SMTP_PORT SMTP_USERNAME
             SMTP_FROM GOOGLE_CLIENT_ID RAZORPAY_KEY_ID TRUST_PROXY
             LINKEDIN_CLIENT_ID LINKEDIN_REDIRECT_URI LINKEDIN_API_VERSION YOUTUBE_REDIRECT_URI
@@ -249,6 +250,9 @@ jobs:
           # Lumora staff accounts (comma-separated emails) that may manage every customer. A secret so nobody
           # reading this public repository knows which account to go after.
           PLATFORM_ADMIN_EMAILS: ${{ secrets.PLATFORM_ADMIN_EMAILS }}
+          # First password of a platform admin account the API creates when that email has none yet; existing
+          # accounts are never changed. Change it in Profile > Password after the first sign-in.
+          PLATFORM_ADMIN_INITIAL_PASSWORD: ${{ secrets.PLATFORM_ADMIN_INITIAL_PASSWORD }}
           # Variables (not sensitive)
           MAIL_TRANSPORT: ${{ vars.MAIL_TRANSPORT }}
           AI_DEFAULT_PROVIDER: ${{ vars.AI_DEFAULT_PROVIDER }}

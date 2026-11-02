@@ -362,6 +362,14 @@ events, analytics, automations, settings, workspaces and avatars by id. All clos
   (LinkedIn, Facebook, Instagram connected). The owner chose on 2026-10-31 to keep those credentials; the platform admin is a
   separate account the owner signs up with their own password. Its email is only in the GitHub secret - never write it in
   this repository.
+- **Admin accounts come from secrets, never from code** (2026-11-02): `PLATFORM_ADMIN_INITIAL_PASSWORD` (GitHub secret).
+  When the API starts, `PlatformAdminAccountsBootstrap` -> `AuthService.ensurePlatformAdminAccounts` gives every
+  `PLATFORM_ADMIN_EMAILS` address that has no account one with that password (verified, own "Lumora Admin" workspace).
+  Existing accounts are never changed (a password changed in Profile stays). Not a seeder on purpose: seeders run once
+  per database, so one that ran before the secrets existed would never run again. Logs and ops-check show counts only.
+  Never put an admin email or password in a seeder or any file here: the repository is public.
+- **A platform admin also needs a verified email** (`isPlatformAdmin = isEmailVerified && named`): sign-up does not check
+  the address, so whoever signed up with a guessable admin address first would otherwise become admin once it is named.
 - **Admin page** (2026-11-02; `src/components/views/AdminView.tsx` + `views/admin/`, API `modules/admin`, all under
   `/admin`, the whole controller `@PlatformAdminOnly()`): shown in the sidebar and Ctrl+K only when `isPlatformAdmin`.
   Find a customer by organization name, email, name or exact id (`CustomerDirectoryRepository`, a read model over
@@ -438,8 +446,9 @@ Needs the owner:
 - Razorpay live keys and KYC, Google OAuth live redirect URIs, Meta App Review, Sentry DSN, Apache 60 s timeout, GSTIN in Google billing,
   Gemini prepaid auto-reload and budget alert.
 - Lawyer review of the landing page "Who owns the content" answer.
-- Platform admin: sign up the chosen admin email on the live site with a strong password of your own, then add the GitHub
-  **secret** `PLATFORM_ADMIN_EMAILS` = that email and redeploy (ops-check then prints "platform admins: 1 set").
+- Platform admin: add the GitHub **secrets** `PLATFORM_ADMIN_EMAILS` (the admin email) and `PLATFORM_ADMIN_INITIAL_PASSWORD`
+  (8+ characters), then run Deploy (Docker); ops-check then prints "platform admin accounts: 1 of 1 exist, 1 verified".
+  Sign in with them and change the password in Profile > Password.
   Until then nobody can use the Admin page or the admin routes. Consider making the GitHub repository private, and change
   the `admin@lumora.ai` password (Profile > Password) when ready - it is published in the README.
 
