@@ -19,6 +19,8 @@ import { CopilotMessageDto, CopilotReplyDto } from '../application/dto/copilot.d
 import { ExtractBrandDto } from '../application/dto/extract-brand.dto';
 import { StudioGenerateDto } from '../application/dto/studio-generate.dto';
 import { GenerateContentResponseDto } from '../application/dto/generate-content-response.dto';
+import { WritePostDto, WritePostResultDto } from '../application/dto/write-post.dto';
+import { PostWriterService } from '../application/services/post-writer.service';
 
 // A short dictated prompt: a minute of compressed audio is well under this.
 const MAX_RECORDING_BYTES = 5 * 1024 * 1024;
@@ -33,6 +35,7 @@ export class AiController {
     private readonly copilotService: CopilotService,
     private readonly brandExtractorService: BrandExtractorService,
     private readonly transcriptionService: TranscriptionService,
+    private readonly postWriterService: PostWriterService,
   ) {}
 
   @Post('generate')
@@ -70,6 +73,21 @@ export class AiController {
     @Body() dto: TranscribeDto,
   ): Promise<TranscriptionResult> {
     return this.transcriptionService.transcribe(file.buffer, file.mimetype, dto.language);
+  }
+
+  @Post('post-text')
+  @RequirePermissions('ai.generate')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @ApiOperation({
+    summary:
+      'Write or improve a social post; reads the attached Gallery picture and writes from what it shows (free)',
+  })
+  @ApiOkResponse({ type: WritePostResultDto })
+  writePost(
+    @Body() dto: WritePostDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<WritePostResultDto> {
+    return this.postWriterService.write(dto, user);
   }
 
   @Post('copilot')

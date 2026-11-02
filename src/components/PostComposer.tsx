@@ -28,13 +28,6 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const AI_SYSTEM_PROMPT =
-  'You write social media posts for a small business or professional in India (often an insurance advisor). ' +
-  'Write ONE post of 80-180 words: a strong first line, short paragraphs, a clear call to action, and 3 to 5 ' +
-  'relevant hashtags on the last line. Plain text only - no markdown, at most two emojis. Do not invent facts, ' +
-  'figures, returns, guarantees or claims; where a number is needed write a placeholder such as [premium]. ' +
-  'Reply with only the post.';
-
 /** A datetime-local value ("2026-10-20T09:00") for a Date, in this computer's time. */
 function toLocalInput(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -82,6 +75,8 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
   const [doneAt, setDoneAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [aiBusy, setAiBusy] = useState(false);
+  /** The last AI text was written from the attached picture. */
+  const [fromPicture, setFromPicture] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [galleryItems, setGalleryItems] = useState<api.MediaAsset[] | null>(null);
 
@@ -133,22 +128,25 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
     }
   };
 
+  /** The server reads an attached image itself (by Gallery id) and writes from what it shows. */
   const writeWithAi = async () => {
-    const topic = trimmed || request.topic?.trim();
-    if (!topic) {
-      setError('Type a few words about what you want to say, then press Write with AI.');
+    // The opener's topic describes the item it opened with, not one picked since.
+    const topic = media?.assetId === request.media?.assetId ? request.topic?.trim() : undefined;
+    if (!trimmed && !topic && !media) {
+      setError('Type a few words about what you want to say, or add a picture, then press Write with AI.');
       return;
     }
     setAiBusy(true);
     setError(null);
     try {
-      const result = await api.generateText({
-        prompt: trimmed
-          ? `Improve this ${name} post. Keep its meaning and any facts exactly as they are:\n\n${trimmed}`
-          : `Write a ${name} post to go with ${kind === 'video' ? 'a video' : kind === 'image' ? 'an image' : 'nothing else'} about: ${topic}`,
-        systemPrompt: AI_SYSTEM_PROMPT,
+      const result = await api.writePostText({
+        platform,
+        draft: trimmed || undefined,
+        topic: topic || undefined,
+        mediaAssetId: media?.assetId,
       });
-      setText(result.text.trim());
+      setText(result.text);
+      setFromPicture(result.readPicture);
     } catch (err) {
       setError(err instanceof api.ApiError ? err.message : 'Could not reach Lumora. Please try again.');
     } finally {
@@ -171,6 +169,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
 
   const pick = (item: api.MediaAsset) => {
     setMedia({ assetId: item.id, type: item.type === 'image' ? 'image' : 'video', url: item.url, name: item.fileName });
+    setFromPicture(false);
     setPickerOpen(false);
   };
 
@@ -360,7 +359,11 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                       className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50"
                     >
                       {aiBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                      {trimmed ? 'Improve with AI' : 'Write with AI'}
+                      {aiBusy && kind === 'image'
+                        ? 'Reading your picture...'
+                        : trimmed
+                          ? 'Improve with AI'
+                          : 'Write with AI'}
                     </button>
                   </div>
                 </div>
@@ -371,14 +374,20 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={textHistory.onKeyDown}
                   placeholder={
-                    request.topic
-                      ? 'Write your post, or press Write with AI to draft one from what you made.'
-                      : 'Share a tip, an offer or some news. Put hashtags at the end, e.g. #TermInsurance'
+                    kind === 'image'
+                      ? 'Press Write with AI: it looks at your picture and writes the post and hashtags. Or type a few words first to steer it, e.g. "for small business owners, ask them to DM me".'
+                      : request.topic
+                        ? 'Write your post, or press Write with AI to draft one from what you made.'
+                        : 'Share a tip, an offer or some news. Put hashtags at the end, e.g. #TermInsurance'
                   }
                   className="w-full text-sm p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none focus:border-blue-500"
                 />
                 <div className="flex items-center justify-between text-[10px] mt-1">
-                  <span className="text-slate-400">AI text is a draft: check facts, figures and any insurance claims.</span>
+                  <span className="text-slate-400">
+                    {fromPicture
+                      ? 'Written from your picture. It is a draft: check names, figures and any insurance claims.'
+                      : 'AI text is a draft: check facts, figures and any insurance claims.'}
+                  </span>
                   <span className={overLimit ? 'text-red-600 font-bold' : 'text-slate-400'}>
                     {trimmed.length.toLocaleString('en-IN')} / {limit.toLocaleString('en-IN')}
                   </span>
@@ -403,7 +412,14 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                     <button type="button" onClick={openPicker} className="text-[11px] font-semibold text-blue-600">
                       Change
                     </button>
-                    <button type="button" onClick={() => setMedia(null)} className="text-[11px] font-semibold text-slate-500 hover:text-red-600">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMedia(null);
+                        setFromPicture(false);
+                      }}
+                      className="text-[11px] font-semibold text-slate-500 hover:text-red-600"
+                    >
                       Remove
                     </button>
                   </div>

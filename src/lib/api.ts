@@ -1252,6 +1252,22 @@ export async function generateText(input: {
   });
 }
 
+/** The post composer's Write / Improve with AI (free). With a Gallery image attached, the AI looks at the picture and
+ * writes the post and hashtags from what it shows; a video is not watched, so its prompt is used. */
+export async function writePostText(input: {
+  platform: 'linkedin' | 'facebook';
+  /** What is in the text box: a post to improve, or a short note to follow. */
+  draft?: string;
+  /** What the picture or video was made from. */
+  topic?: string;
+  mediaAssetId?: string;
+}): Promise<{ text: string; readPicture: boolean }> {
+  return apiRequest<{ text: string; readPicture: boolean }>('/ai/post-text', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export interface ProviderStatus {
   name: string;
   available: boolean;
