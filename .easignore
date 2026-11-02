@@ -36,3 +36,7 @@ example
 # Editor and assistant settings, not needed to build
 /apps/mobile/.vscode/
 /apps/mobile/.claude/
+
+# Phone app builds (made locally or downloaded from EAS) - not source, never commit
+*.apk
+*.aab

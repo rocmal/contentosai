@@ -6,3 +6,7 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Phone app builds (made locally or downloaded from EAS) - not source, never commit
+*.apk
+*.aab
