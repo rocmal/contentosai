@@ -229,8 +229,12 @@ Full guide (setup, use, internals, troubleshooting): `docs/LINKEDIN-INTEGRATION.
 Posting is not a studio: one **post composer** (`src/components/PostComposer.tsx`, rendered once by App) opens with
 `openPostComposer()` (`src/lib/socialPosts.ts`) from the Calendar ("New post"), Gallery cards and preview ("Post"), Image Studio
 after saving, Video Studio's finished screen, the header and phone-width Create menus ("LinkedIn post"), Ctrl+K and the
-LinkedIn Posts page. It takes text (Speak, Write/Improve with AI - free, uses `/ai/generate`), one Gallery image or video,
-and Post now or Schedule. **LinkedIn only** (2026-10-21): the composer shows one LinkedIn row with Connect/Reconnect instead
+LinkedIn Posts page. It takes text (Speak, Write/Improve with AI - free), one Gallery image or video,
+and Post now or Schedule. **Write with AI reads the attached picture** (2026-11-02): `POST /ai/post-text`
+(`PostWriterService`; the writing rules moved from the browser to `ai/application/post-writer/post-prompt.ts`) takes the
+Gallery item id, loads the file from storage in the caller's workspace and sends it to the vision model, which writes
+the post and hashtags from what the picture shows (typed words steer it). Videos are not watched: their prompt is used.
+The YouTube uploader still uses `/ai/generate`. **LinkedIn only** (2026-10-21): the composer shows one LinkedIn row with Connect/Reconnect instead
 of account tiles, and always sends `platforms: ['linkedin']`; the phone's PostSheet offers only LinkedIn too. The API
 still accepts the other platforms. The Calendar and LinkedIn Posts refresh themselves after a post (`useOnPostCreated`).
 - **LinkedIn Posts page** (`src/components/views/LinkedInPostsView.tsx`): connection (name, "reconnect by", Connect /

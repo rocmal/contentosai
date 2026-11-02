@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { BrandModule } from '@modules/brand/brand.module';
 import { CreditsModule } from '@modules/credits/credits.module';
+import { MediaModule } from '@modules/media/media.module';
+import { StorageModule } from '@modules/storage/storage.module';
 import { OpenAIProvider } from './infrastructure/providers/openai.provider';
 import { GeminiProvider } from './infrastructure/providers/gemini.provider';
 import { ClaudeProvider } from './infrastructure/providers/claude.provider';
@@ -12,10 +14,11 @@ import { CopilotService } from './application/services/copilot.service';
 import { BrandExtractorService } from './application/services/brand-extractor.service';
 import { AiService } from './application/services/ai.service';
 import { TranscriptionService } from './application/services/transcription.service';
+import { PostWriterService } from './application/services/post-writer.service';
 import { AiController } from './presentation/ai.controller';
 
 @Module({
-  imports: [BrandModule, CreditsModule],
+  imports: [BrandModule, CreditsModule, MediaModule, StorageModule],
   controllers: [AiController],
   providers: [
     OpenAIProvider,
@@ -29,6 +32,7 @@ import { AiController } from './presentation/ai.controller';
     CopilotService,
     BrandExtractorService,
     TranscriptionService,
+    PostWriterService,
   ],
   exports: [AiService, AIProviderFactory],
 })

@@ -151,10 +151,18 @@ and scheduled LinkedIn posts then fail until someone connects again.
   image or a video.
 - **Text:** up to 3,000 characters on LinkedIn (the counter turns red past the limit). Put hashtags at the end, e.g.
   `#TermInsurance`; they stay clickable on LinkedIn, Hindi and Punjabi hashtags included.
-- **Speak** types what you say. **Write with AI** drafts a post from what you made (the image's or video's prompt) or
-  from a few words you typed; **Improve with AI** rewrites your draft. Both are free. AI text is a draft: check facts,
-  figures and any insurance claims before posting; the writer is told not to invent numbers or guarantees and leaves
-  placeholders such as `[premium]` instead.
+- **Speak** types what you say. **Write with AI** drafts the post and its hashtags. With an **image** attached it looks
+  at the picture itself (headline, words and numbers on it, people, products, setting) and writes from what it shows,
+  so any Gallery image works, uploads included; type a few words first to steer it ("for small business owners, ask
+  them to DM me"). A **video** is not watched: its prompt, or the words you typed, are used. **Improve with AI**
+  rewrites your draft, using the picture for context. Both are free. AI text is a draft: check facts, figures and any
+  insurance claims before posting; the writer may use figures printed on the picture but is told not to invent numbers
+  or guarantees and leaves placeholders such as `[premium]` instead.
+  - How it works: `POST /ai/post-text` (`PostWriterService`, `ai/application/post-writer/post-prompt.ts` holds the
+    writing rules). The browser sends the Gallery item's id, never a picture address; the server checks the item is in
+    the caller's workspace (`MediaAssetsService.findForActor`), reads the file from storage, and sends it to the vision
+    model (Gemini, OpenAI as backup; Sarvam is skipped because it cannot see pictures). Pictures over 10 MB are refused
+    with a plain message. Limited to 20 requests a minute per person.
 - **Image or video:** optional; pick one from your Gallery.
 - **Preview:** roughly how it will look on LinkedIn, which shows the first few lines and a "...more" link.
 - **When:** **Post now**, or **Schedule** and pick a time at least a minute ahead (the website suggests tomorrow 9:00,
