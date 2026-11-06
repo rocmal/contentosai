@@ -294,6 +294,31 @@ describe('AuthService', () => {
       expect(refreshTokensRepository.create).not.toHaveBeenCalled();
     });
 
+    it('with a password set by the admin, the account works at once and no link is made', async () => {
+      const result = await authService.createAccountForCustomer(
+        {
+          email: activeUser.email,
+          firstName: 'Jane',
+          lastName: '',
+          password: 'Chosen-pass-1',
+          sendEmail: true,
+        },
+        'admin-1',
+      );
+
+      expect(usersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ email: activeUser.email, password: 'Chosen-pass-1' }),
+        'admin-1',
+      );
+      expect(passwordResetTokensRepository.create).not.toHaveBeenCalled();
+      expect(result.setPasswordLink).toBeNull();
+      // The "account is ready" email carries no link and never the password.
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        'auth.account-created-for-customer',
+        expect.objectContaining({ email: activeUser.email, token: null }),
+      );
+    });
+
     it('can open an account without emailing (the admin shares the link)', async () => {
       await authService.createAccountForCustomer(
         { email: activeUser.email, firstName: 'Jane', lastName: '', sendEmail: false },

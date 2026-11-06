@@ -94,7 +94,7 @@ export class AdminGivePlanDto extends AdminReasonDto {
 export type AdminAccountPlan = 'trial' | PurchasablePlan;
 
 /** Opening an account for someone, until the payment gateway is live. */
-export class AdminCreateCustomerDto extends AdminReasonDto {
+export class AdminCreateCustomerDto {
   @ApiProperty({ example: 'advisor@example.com' })
   @IsEmail()
   @MaxLength(255)
@@ -139,4 +139,20 @@ export class AdminCreateCustomerDto extends AdminReasonDto {
   @IsOptional()
   @IsBoolean()
   sendEmail = true;
+
+  @ApiPropertyOptional({
+    description:
+      'Set their password now (they can sign in at once). Omit to send them a link to choose their own.',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  password?: string;
+
+  @ApiPropertyOptional({ example: 'Paid by bank transfer', description: 'Kept in the audit log' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  reason?: string;
 }

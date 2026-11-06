@@ -166,7 +166,8 @@ export class AuthService {
 
   /**
    * A platform admin opening an account for a customer (Admin page): the same organization, workspace, trial and
-   * credits as a sign-up, but no password. The person chooses one with the returned link, which is also emailed when
+   * credits as a sign-up. Either the admin sets the password (the account works at once; the email, if sent, never
+   * contains it), or there is none yet and the person chooses one with the returned link, which is also emailed when
    * asked and stays valid for 7 days; until then the account is "invited" and cannot sign in.
    */
   async createAccountForCustomer(
@@ -175,12 +176,19 @@ export class AuthService {
       firstName: string;
       lastName: string;
       organizationName?: string;
+      /** Set by the admin; omitted = the person chooses one with the link. */
+      password?: string;
       sendEmail: boolean;
     },
     actorId: string,
-  ): Promise<{ userId: string; organizationId: string; setPasswordLink: string }> {
+  ): Promise<{ userId: string; organizationId: string; setPasswordLink: string | null }> {
     const user = await this.usersService.create(
-      { email: input.email, firstName: input.firstName, lastName: input.lastName },
+      {
+        email: input.email,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        password: input.password,
+      },
       actorId,
     );
     const organizationId = await this.provisionPersonalWorkspace(
@@ -190,12 +198,16 @@ export class AuthService {
       input.organizationName,
     );
 
-    const { token, hash } = this.tokenService.generateOpaqueToken();
-    await this.passwordResetTokensRepository.create({
-      userId: user.id,
-      tokenHash: hash,
-      expiresAt: this.tokenService.getOpaqueTokenExpiryDate('7d'),
-    });
+    let token: string | null = null;
+    if (!input.password) {
+      const opaque = this.tokenService.generateOpaqueToken();
+      token = opaque.token;
+      await this.passwordResetTokensRepository.create({
+        userId: user.id,
+        tokenHash: opaque.hash,
+        expiresAt: this.tokenService.getOpaqueTokenExpiryDate('7d'),
+      });
+    }
     if (input.sendEmail) {
       this.eventEmitter.emit(
         'auth.account-created-for-customer',
@@ -207,7 +219,7 @@ export class AuthService {
     return {
       userId: user.id,
       organizationId,
-      setPasswordLink: `${appUrl}/reset-password?token=${token}&welcome=1`,
+      setPasswordLink: token ? `${appUrl}/reset-password?token=${token}&welcome=1` : null,
     };
   }
 

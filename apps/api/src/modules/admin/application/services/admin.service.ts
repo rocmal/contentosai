@@ -174,8 +174,8 @@ export class AdminService {
 
   /**
    * Opens an account for someone (until the payment gateway is live): a sign-up's organization, workspace and trial,
-   * then the plan if one is chosen. The person sets their password with the link, which is returned once to copy
-   * (e.g. to WhatsApp) and emailed when asked.
+   * then the plan if one is chosen. Either the admin sets the password (the account works at once), or the person
+   * sets it with the link, which is returned once to copy (e.g. to WhatsApp) and emailed when asked.
    */
   async createCustomer(
     admin: AuthenticatedUser,
@@ -186,16 +186,19 @@ export class AdminService {
       organizationName?: string;
       plan: 'trial' | PurchasablePlan;
       months: number;
+      /** Omitted: the person chooses one with the set-password link. */
+      password?: string;
       sendEmail: boolean;
-      reason: string;
+      reason?: string;
     },
-  ): Promise<{ customer: CustomerView; setPasswordLink: string }> {
+  ): Promise<{ customer: CustomerView; setPasswordLink: string | null }> {
     const { organizationId, setPasswordLink } = await this.authService.createAccountForCustomer(
       {
         email: input.email.trim(),
         firstName: input.firstName.trim(),
         lastName: input.lastName.trim(),
         organizationName: input.organizationName?.trim() || undefined,
+        password: input.password || undefined,
         sendEmail: input.sendEmail,
       },
       admin.id,
@@ -221,7 +224,9 @@ export class AdminService {
         months: granted ? input.months : null,
         accessUntil: granted ? (accessUntil(granted)?.toISOString() ?? null) : null,
         emailed: input.sendEmail,
-        reason: input.reason,
+        // Whether the admin chose it - never the password itself.
+        passwordSetByAdmin: Boolean(input.password),
+        reason: input.reason?.trim() || null,
       },
     });
     return { customer: await this.getCustomer(organizationId), setPasswordLink };

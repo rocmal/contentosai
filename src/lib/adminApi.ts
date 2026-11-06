@@ -145,15 +145,18 @@ export interface NewAdminCustomer {
   organizationName?: string;
   plan: "trial" | AdminGivablePlan;
   months: number;
-  /** Email them the set-password link (it is also returned to copy). */
+  /** Set their password now (8+ characters); omit to send them a link to choose their own. */
+  password?: string;
+  /** Email them the set-password link, or that the account is ready when you set the password (never the password). */
   sendEmail: boolean;
-  reason: string;
+  /** Optional note, kept in the audit log. */
+  reason?: string;
 }
 
-/** Opens an account for someone. The link lets them choose a password (valid 7 days); it is shown only now. */
+/** Opens an account for someone. Without a password, the link lets them choose one (valid 7 days); it is shown only now. */
 export function createAdminCustomer(
   input: NewAdminCustomer,
-): Promise<{ customer: AdminCustomer; setPasswordLink: string }> {
+): Promise<{ customer: AdminCustomer; setPasswordLink: string | null }> {
   return apiRequest("/admin/customers", {
     method: "POST",
     body: JSON.stringify(input),

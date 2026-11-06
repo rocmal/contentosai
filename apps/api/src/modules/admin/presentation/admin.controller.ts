@@ -50,8 +50,9 @@ export class AdminController {
       organizationName: dto.organizationName,
       plan: dto.plan,
       months: dto.months,
+      password: dto.password,
       sendEmail: dto.sendEmail,
-      reason: dto.reason.trim(),
+      reason: dto.reason,
     });
   }
 

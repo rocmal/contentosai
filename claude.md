@@ -379,9 +379,11 @@ events, analytics, automations, settings, workspaces and avatars by id. All clos
   a reason, which goes only
   to the audit log (`admin.*` actions, `changes.by` = the admin's email); the page lists the customer's activity and
   the latest admin actions. Admins cannot suspend themselves or another platform admin.
-- **Open an account** (Admin page "New account", `POST /admin/customers`; until the payment gateway is live): name,
-  email, optional business name, Trial / Starter / Pro for 1-12 months, reason. `AuthService.createAccountForCustomer`
-  makes what a sign-up makes (own organization, workspace, trial) but no password: the person is "invited" until they
+- **Open an account** (Admin page "New account", `POST /admin/customers`; until the payment gateway is live): first
+  name, email (last name, business name and a note are optional), Trial / Starter / Pro for 1-12 months, and either a
+  password the admin sets (8+ characters; active at once, no link; the email only says the account is ready; the audit
+  log records `passwordSetByAdmin`, never the password) or none. `AuthService.createAccountForCustomer`
+  makes what a sign-up makes (own organization, workspace, trial); without a password the person is "invited" until they
   open the set-password link (`/reset-password?token=...&welcome=1`, a password-reset token valid 7 days, single use).
   The link is emailed ("Your Lumora account is ready", optional) and shown to the admin once to copy, e.g. to
   WhatsApp, since email delivery on live is not confirmed. It is built from the server's `APP_URL`.

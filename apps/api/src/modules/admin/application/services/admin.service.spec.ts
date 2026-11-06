@@ -235,6 +235,24 @@ describe('AdminService', () => {
       );
     });
 
+    it('passes a password the admin set, keeps it out of the audit log, and does not need a reason', async () => {
+      await service.createCustomer(admin, {
+        ...input,
+        password: 'Chosen-pass-1',
+        reason: undefined,
+      });
+
+      expect(authService.createAccountForCustomer).toHaveBeenCalledWith(
+        expect.objectContaining({ password: 'Chosen-pass-1' }),
+        ADMIN_ID,
+      );
+      const logged = auditLogService.record.mock.calls[0][0];
+      expect(logged.changes).toEqual(
+        expect.objectContaining({ passwordSetByAdmin: true, reason: null }),
+      );
+      expect(JSON.stringify(logged)).not.toContain('Chosen-pass-1');
+    });
+
     it('leaves a trial account on the usual trial', async () => {
       await service.createCustomer(admin, { ...input, plan: 'trial' });
       expect(checkoutService.grantPeriods).not.toHaveBeenCalled();

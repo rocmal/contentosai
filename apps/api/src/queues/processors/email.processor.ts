@@ -17,7 +17,8 @@ interface PasswordResetEmailJobData {
 
 interface AccountCreatedEmailJobData {
   to: string;
-  token: string;
+  /** null when the admin set the password: the email then only says the account is ready. */
+  token: string | null;
   firstName: string;
 }
 
@@ -70,8 +71,21 @@ export class EmailProcessor extends WorkerHost {
 
   private async sendAccountCreatedEmail(data: AccountCreatedEmailJobData): Promise<void> {
     const appUrl = this.configService.get<string>('app.url');
-    const link = `${appUrl}/reset-password?token=${data.token}&welcome=1`;
     const greeting = data.firstName ? `Hi ${escapeHtml(data.firstName)},` : 'Hello,';
+    if (!data.token) {
+      const signIn = `${appUrl}/login`;
+      await this.mailer.send({
+        to: data.to,
+        subject: 'Your Lumora account is ready',
+        html: [
+          `<p>${greeting}</p>`,
+          `<p>The Lumora team has opened an account for you. Sign in at <a href="${signIn}">${signIn}</a> with this email address and the password they gave you.</p>`,
+          `<p>You can change the password after signing in, under Profile.</p>`,
+        ].join(''),
+      });
+      return;
+    }
+    const link = `${appUrl}/reset-password?token=${data.token}&welcome=1`;
     await this.mailer.send({
       to: data.to,
       subject: 'Your Lumora account is ready',

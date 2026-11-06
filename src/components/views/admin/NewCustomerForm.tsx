@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { ArrowLeft, Check, Copy, Loader2, UserPlus } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Eye,
+  EyeOff,
+  Loader2,
+  UserPlus,
+} from "lucide-react";
 import {
   AdminCustomer,
   createAdminCustomer,
@@ -23,11 +31,17 @@ interface NewCustomerFormProps {
 
 const label =
   "block text-[11px] font-semibold text-slate-600 dark:text-slate-300 mb-1";
+const optional = "font-normal text-slate-400";
+
+/** Same minimum as sign-up and Profile > Password. */
+const MIN_PASSWORD = 8;
+
+type PasswordMode = "link" | "set";
 
 /**
  * Opens an account for someone until the payment gateway is live: their own workspace with the trial or a plan given
- * for some months. They choose their password with a link (valid 7 days) that is emailed and shown here once to copy,
- * e.g. into WhatsApp, in case the email does not arrive.
+ * for some months. Either the admin sets their password now (they can sign in at once), or they choose it with a link
+ * (valid 7 days) that is emailed and shown here once to copy, e.g. into WhatsApp, in case the email does not arrive.
  */
 export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
   onCreated,
@@ -44,11 +58,15 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
     sendEmail: true,
     reason: "",
   });
+  const [passwordMode, setPasswordMode] = useState<PasswordMode>("link");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{
     customer: AdminCustomer;
-    link: string;
+    /** null when the admin set the password. */
+    link: string | null;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -56,10 +74,16 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
     key: K,
     value: NewAdminCustomer[K],
   ) => setForm((prev) => ({ ...prev, [key]: value }));
-  const valid =
-    /^\S+@\S+\.\S+$/.test(form.email.trim()) &&
-    form.firstName.trim().length > 0 &&
-    form.reason.trim().length >= 3;
+
+  // Said under the button, so a greyed-out button is never a mystery.
+  const missing = [
+    form.firstName.trim().length === 0 && "first name",
+    !/^\S+@\S+\.\S+$/.test(form.email.trim()) && "a valid email",
+    passwordMode === "set" &&
+      password.length < MIN_PASSWORD &&
+      `a password of at least ${MIN_PASSWORD} characters`,
+  ].filter((item): item is string => Boolean(item));
+  const valid = missing.length === 0;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +94,8 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
       const result = await createAdminCustomer({
         ...form,
         organizationName: form.organizationName?.trim() || undefined,
-        reason: form.reason.trim(),
+        password: passwordMode === "set" ? password : undefined,
+        reason: form.reason?.trim() || undefined,
       });
       setCreated({ customer: result.customer, link: result.setPasswordLink });
       onCreated(result.customer);
@@ -86,7 +111,7 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
   };
 
   const copy = async () => {
-    if (!created) return;
+    if (!created?.link) return;
     try {
       await navigator.clipboard.writeText(created.link);
       setCopied(true);
@@ -97,39 +122,56 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
   };
 
   if (created) {
-    const person = created.customer.people[0];
+    const email = created.customer.people[0]?.email ?? form.email;
     return (
       <section className={`${card} p-4 space-y-3`}>
         <h3 className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white">
           <Check className="w-4 h-4 text-emerald-600" /> Account opened for{" "}
-          {person?.email ?? form.email}
+          {email}
         </h3>
-        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
-          {form.sendEmail ? "We emailed them this link. " : ""}Send it to them
-          (for example on WhatsApp) so they can choose a password. It works for
-          7 days and is shown only now; after that they can use "Forgot
-          password", or you can send a reset link from their page.
-        </p>
-        <div className="flex gap-2">
-          <input
-            readOnly
-            value={created.link}
-            onFocus={(e) => e.target.select()}
-            className={`${field} font-mono`}
-          />
-          <button
-            type="button"
-            onClick={copy}
-            className={`${primaryButton} shrink-0`}
-          >
-            {copied ? (
-              <Check className="w-3.5 h-3.5" />
-            ) : (
-              <Copy className="w-3.5 h-3.5" />
-            )}
-            {copied ? "Copied" : "Copy"}
-          </button>
-        </div>
+        {created.link ? (
+          <>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+              {form.sendEmail ? "We emailed them this link. " : ""}Send it to
+              them (for example on WhatsApp) so they can choose a password. It
+              works for 7 days and is shown only now; after that they can use
+              "Forgot password", or you can send a reset link from their page.
+            </p>
+            <div className="flex gap-2">
+              <input
+                readOnly
+                value={created.link}
+                onFocus={(e) => e.target.select()}
+                className={`${field} font-mono`}
+              />
+              <button
+                type="button"
+                onClick={copy}
+                className={`${primaryButton} shrink-0`}
+              >
+                {copied ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5" />
+                )}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+            They can sign in now at{" "}
+            <span className="font-semibold">
+              {window.location.origin}/login
+            </span>{" "}
+            with <span className="font-semibold">{email}</span> and the password
+            you set. Share the password with them privately
+            {form.sendEmail
+              ? " - the email we sent says the account is ready but does not include it"
+              : ""}
+            . They can change it under Profile.
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -174,7 +216,9 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
             />
           </div>
           <div>
-            <label className={label}>Last name</label>
+            <label className={label}>
+              Last name <span className={optional}>(optional)</span>
+            </label>
             <input
               value={form.lastName}
               maxLength={100}
@@ -194,7 +238,9 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
           />
         </div>
         <div>
-          <label className={label}>Business name (optional)</label>
+          <label className={label}>
+            Business name <span className={optional}>(optional)</span>
+          </label>
           <input
             value={form.organizationName}
             maxLength={150}
@@ -243,7 +289,64 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
           </div>
         </div>
         <div>
-          <label className={label}>Reason (kept in the audit log)</label>
+          <span className={label}>Password</span>
+          <div className="space-y-1.5 text-[11px] text-slate-700 dark:text-slate-200">
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="password-mode"
+                checked={passwordMode === "link"}
+                onChange={() => setPasswordMode("link")}
+              />
+              Send them a link to choose their own (recommended)
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                name="password-mode"
+                checked={passwordMode === "set"}
+                onChange={() => setPasswordMode("set")}
+              />
+              Set a password for them now
+            </label>
+          </div>
+          {passwordMode === "set" && (
+            <div className="mt-2">
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  value={password}
+                  maxLength={128}
+                  placeholder={`At least ${MIN_PASSWORD} characters`}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${field} pr-9`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+              <p className="mt-1 text-[10px] text-slate-500">
+                They can sign in at once. Share it privately; they can change it
+                under Profile.
+              </p>
+            </div>
+          )}
+        </div>
+        <div>
+          <label className={label}>
+            Note{" "}
+            <span className={optional}>(optional, kept in the audit log)</span>
+          </label>
           <input
             value={form.reason}
             maxLength={300}
@@ -258,12 +361,14 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
             checked={form.sendEmail}
             onChange={(e) => set("sendEmail", e.target.checked)}
           />
-          Email them the link to choose a password (you also get it to copy)
+          {passwordMode === "set"
+            ? "Email them that their account is ready (the password is not included)"
+            : "Email them the link to choose a password (you also get it to copy)"}
         </label>
         {error && (
           <p className="text-[11px] text-red-600 dark:text-red-400">{error}</p>
         )}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="submit"
             disabled={!valid || busy}
@@ -275,6 +380,11 @@ export const NewCustomerForm: React.FC<NewCustomerFormProps> = ({
           <button type="button" onClick={onCancel} className={quietButton}>
             Cancel
           </button>
+          {!valid && (
+            <span className="text-[10px] text-slate-500">
+              Still needed: {missing.join(", ")}
+            </span>
+          )}
         </div>
       </form>
     </section>
