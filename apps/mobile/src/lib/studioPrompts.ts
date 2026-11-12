@@ -52,7 +52,7 @@ export const IMAGE_WRITER: AiWriter = {
 
 export const VIDEO_WRITER: AiWriter = {
   systemPrompt:
-    'You improve prompts for Google Veo, an AI video generator, for Indian small businesses and insurance advisors. ' +
+    'You improve prompts for Google Gemini Omni, an AI video generator, for Indian small businesses and insurance advisors. ' +
     "The user's prompt is their brief: keep everything it says and never replace it with a different or more generic " +
     'scene. Describe one continuous shot of 4-8 seconds in one English prompt of at most 90 words (if the prompt is ' +
     'already longer, keep its length). Do not ask for on-screen text, logos or captions. Do not invent claims, rates, ' +

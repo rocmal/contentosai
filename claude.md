@@ -166,7 +166,13 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   the formats use those lengths (5 was rendered as 6 anyway).
 - **Image Studio:** OpenAI gpt-image-2 only (picker hidden); platform sizes FB/IG/YouTube/LinkedIn/WhatsApp (X and Pinterest removed);
   Improve with AI; mic dictation; "No text" default with a warning when the prompt asks for text.
-- **Video Studio:** Google Veo 3.1 Fast through the Gemini key (VEO_API_KEY optional override); only Veo offered in production;
+- **Google retired Veo 3.1 Fast (preview) on 2026-10-22** and every prompt video failed with "temporarily unavailable on our side"
+  until 2026-11-12, when `veo.provider.ts` moved to **Gemini Omni 1.2 Flash** (`POST /v1beta/interactions` with
+  `background: true`, polled by id, the clip read from the interaction; 3-15 s, 16:9 or 9:16, sound included, about
+  $0.07/s at 720p). The provider keeps the name `veo` because the website and installed phone apps send it. The model
+  is the GitHub variable `GOOGLE_VIDEO_MODEL` (default `gemini-omni-1.2-flash`), and ops-check prints whether Google
+  still has it: when it says NOT AVAILABLE, set the variable to Google's replacement and redeploy.
+- **Video Studio:** Google Gemini Omni through the Gemini key (VEO_API_KEY optional override); only that is offered in production;
   17 prompt templates (`src/lib/videoPromptTemplates.ts`); Improve with AI; same prompt+length+format by the same user returns
   the saved clip free (`cacheKey`, `fresh` forces a new one); result and edit previews no longer loop.
   Veo makes only 16:9 or 9:16, so every format is one of those (Feed Post and Product Ad are vertical, like the phone app).
@@ -307,7 +313,7 @@ deleted 2026-10-19).
 | Feature | Vendor and model | Server key |
 | --- | --- | --- |
 | Image Studio pictures | OpenAI `gpt-image-2` (`OPENAI_IMAGE_MODEL`) | `OPENAI_API_KEY` |
-| Video Studio prompt videos | Google Veo 3.1 Fast (`veo-3.1-fast-generate-preview`) | `GEMINI_API_KEY` (`VEO_API_KEY` overrides) |
+| Video Studio prompt videos | Google Gemini Omni 1.2 Flash (`gemini-omni-1.2-flash`, Interactions API; provider still named `veo`) | `GEMINI_API_KEY` (`VEO_API_KEY` overrides); model: variable `GOOGLE_VIDEO_MODEL` |
 | Scene Builder, text overlays, video editor | No vendor: rendered in the person's browser (`src/lib/videoCompositor.ts`) | - |
 | Voice Studio, Scene Builder narration (website and phone) | Sarvam `bulbul:v3` | `SARVAM_API_KEY` |
 | Record your own voice → speak new scripts | ElevenLabs instant clone (not live yet: no key) | `ELEVENLABS_API_KEY` |

@@ -11,43 +11,56 @@ import {
   VideoGenerationResult,
 } from '../../domain/interfaces/video-provider.interface';
 
-const VEO_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
-/** A long-running operation name as Veo returns it: "models/<model>/operations/<id>" (or just "operations/<id>"). */
-const VEO_OPERATION_ID = /^(models\/[\w.-]+\/)?operations\/[\w-]+$/;
+const GOOGLE_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
+const INTERACTIONS_URL = `${GOOGLE_API_BASE}/interactions`;
+/** Google's video model. Veo 3.1 Fast (preview) was shut down on 2026-10-22 and every video failed until this changed;
+ * when Google renames it again, set GOOGLE_VIDEO_MODEL instead of changing code. */
+export const DEFAULT_GOOGLE_VIDEO_MODEL = 'gemini-omni-1.2-flash';
+/** An interaction id as the Interactions API hands it out (e.g. "v1_ChdJ..."): it goes into a Google address sent
+ * with our key, so only letters, digits, "_" and "-". */
+const INTERACTION_ID = /^[\w-]{1,200}$/;
 
-interface VeoVideoRef {
-  video?: { uri?: string };
+interface InteractionBlock {
+  type: string;
+  mime_type?: string;
+  data?: string;
+  uri?: string;
+  text?: string;
 }
 
-interface VeoOperationResponse {
-  name: string;
-  done?: boolean;
-  response?: {
-    generateVideoResponse?: {
-      generatedSamples?: VeoVideoRef[];
-      raiMediaFilteredReasons?: string[];
-    };
-    generatedVideos?: VeoVideoRef[];
-  };
+interface InteractionResponse {
+  id: string;
+  status?: string;
+  steps?: { type: string; content?: InteractionBlock[] }[];
   error?: { message?: string };
 }
 
-/** Veo only renders 4, 6 or 8 second clips, so a requested length snaps to the nearest one up. */
-export function veoDurationSeconds(requested?: number): number {
-  if (!requested || requested <= 4) return 4;
-  if (requested <= 6) return 6;
-  return 8;
+/** Gemini Omni makes whole seconds from 3 to 15; the app asks for 4, 6 or 8. */
+export function videoDurationSeconds(requested?: number): number {
+  return Math.min(15, Math.max(3, Math.round(requested ?? 8)));
 }
 
-/** Google Veo through the Gemini API. It uses the same Google key as Gemini text
- * (VEO_API_KEY only overrides it) and needs billing on that Google project. */
+function findVideo(body: InteractionResponse): InteractionBlock | null {
+  for (const step of body.steps ?? []) {
+    if (step.type !== 'model_output') continue;
+    const video = (step.content ?? []).find((block) => block.type === 'video');
+    if (video && (video.data || video.uri)) return video;
+  }
+  return null;
+}
+
+/**
+ * Google video through the Gemini API, now Gemini Omni Flash (Interactions API). Still named "veo": that is the
+ * provider the website and the phone app send, and installed phone apps cannot be changed. Same Google key as Gemini
+ * text (VEO_API_KEY only overrides it), paid from the Google AI Studio prepaid credit.
+ *
+ * A job is a background interaction: submitJob returns its id at once (the live Apache cuts requests at 60 s and a
+ * clip takes about a minute), getJobStatus polls it, and fetchVideo reads the finished clip out of the interaction.
+ */
 @Injectable()
 export class VeoProvider implements IVideoProvider {
   readonly name = 'veo';
   private readonly logger = new Logger(VeoProvider.name);
-  // The "fast" variant is about a quarter of the standard model's price; the
-  // credit table in credits.constants.ts is priced against it.
-  private readonly defaultModel = 'veo-3.1-fast-generate-preview';
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -59,21 +72,30 @@ export class VeoProvider implements IVideoProvider {
     );
   }
 
+  private get model(): string {
+    return this.configService.get<string>('ai.video.veo.model') || DEFAULT_GOOGLE_VIDEO_MODEL;
+  }
+
   async submitJob(request: VideoGenerationRequest): Promise<VideoGenerationResult> {
     if (!this.apiKey) {
       throw new ServiceUnavailableException('Video generation is not set up on this server yet.');
     }
-    const model = request.model ?? this.defaultModel;
+    // The model is ours to choose: old requests may still name a retired Veo model.
+    const model = this.model;
 
-    const response = await fetch(`${VEO_API_BASE}/models/${model}:predictLongRunning`, {
+    const response = await fetch(INTERACTIONS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': this.apiKey },
       body: JSON.stringify({
-        instances: [{ prompt: request.prompt }],
-        parameters: {
-          durationSeconds: veoDurationSeconds(request.durationSeconds),
-          aspectRatio: request.aspectRatio ?? '16:9',
+        model,
+        input: request.prompt,
+        response_format: {
+          type: 'video',
+          aspect_ratio: request.aspectRatio ?? '16:9',
+          duration: `${videoDurationSeconds(request.durationSeconds)}s`,
         },
+        background: true,
+        store: true,
       }),
     });
 
@@ -81,55 +103,88 @@ export class VeoProvider implements IVideoProvider {
       throw await this.toException(response);
     }
 
-    const body = (await response.json()) as VeoOperationResponse;
-    return { provider: this.name, model, jobId: body.name, status: 'processing' };
+    const body = (await response.json()) as InteractionResponse;
+    if (body.error || !body.id) {
+      this.logger.error(`Google video request failed: ${body.error?.message ?? 'no interaction id'}`);
+      throw new ServiceUnavailableException(
+        'Video generation is temporarily unavailable on our side. Please try again later - no credits were used.',
+      );
+    }
+    return { provider: this.name, model, jobId: body.id, status: 'processing' };
   }
 
   async getJobStatus(jobId: string): Promise<VideoGenerationResult> {
-    // The id goes into a Google address sent with our key, so accept only the shape Veo hands out.
-    if (!VEO_OPERATION_ID.test(jobId)) {
+    if (!INTERACTION_ID.test(jobId)) {
       throw new BadRequestException('That is not a video job id.');
     }
-    const response = await fetch(`${VEO_API_BASE}/${jobId}`, {
+    const model = this.model;
+    const response = await fetch(`${INTERACTIONS_URL}/${jobId}`, {
       headers: { 'x-goog-api-key': this.apiKey },
     });
     if (!response.ok) {
-      this.logger.error(`Veo status check failed (${response.status})`);
+      this.logger.error(`Google video status check failed (${response.status})`);
       throw new ServiceUnavailableException('Could not check the video status. Please try again.');
     }
 
-    const body = (await response.json()) as VeoOperationResponse;
-    if (body.error) {
-      this.logger.error(`Veo job failed: ${body.error.message ?? 'unknown'}`);
-      return { provider: this.name, model: this.defaultModel, jobId, status: 'failed' };
+    const body = (await response.json()) as InteractionResponse;
+    if (body.error || body.status === 'failed' || body.status === 'cancelled') {
+      this.logger.error(`Google video job failed: ${body.error?.message ?? body.status}`);
+      return { provider: this.name, model, jobId, status: 'failed' };
     }
-    if (!body.done) {
-      return { provider: this.name, model: this.defaultModel, jobId, status: 'processing' };
+    if (body.status !== 'completed') {
+      return { provider: this.name, model, jobId, status: 'processing' };
     }
-
-    const samples =
-      body.response?.generateVideoResponse?.generatedSamples ??
-      body.response?.generatedVideos ??
-      [];
-    const videoUrl = samples[0]?.video?.uri;
-    if (!videoUrl) {
-      // Finished but nothing came back - Google's safety filter blocked the prompt or output.
-      const reasons = body.response?.generateVideoResponse?.raiMediaFilteredReasons ?? [];
-      this.logger.warn(`Veo job ${jobId} finished without a video. ${reasons.join('; ')}`);
-      return { provider: this.name, model: this.defaultModel, jobId, status: 'failed' };
+    if (!findVideo(body)) {
+      // Finished without a clip: usually the safety rules declined the prompt; the model says why in text.
+      const said = (body.steps ?? [])
+        .flatMap((step) => step.content ?? [])
+        .map((block) => block.text ?? '')
+        .join(' ')
+        .slice(0, 300);
+      this.logger.warn(`Google video job ${jobId} finished without a video. ${said}`);
+      return { provider: this.name, model, jobId, status: 'failed' };
     }
-    return { provider: this.name, model: this.defaultModel, jobId, status: 'completed', videoUrl };
+    // The clip is read from the interaction itself when it is saved (fetchVideo).
+    return {
+      provider: this.name,
+      model,
+      jobId,
+      status: 'completed',
+      videoUrl: `${INTERACTIONS_URL}/${jobId}`,
+    };
   }
 
-  /** The video link Google returns only works with the API key, so we download it ourselves. */
-  fetchVideo(url: string): Promise<Response> {
-    return fetch(url, { headers: { 'x-goog-api-key': this.apiKey }, redirect: 'follow' });
+  /** Reads the finished clip: inside the interaction as base64, or at a Google file address that needs our key.
+   * The key is only ever sent to Google's own API address. */
+  async fetchVideo(url: string): Promise<Response> {
+    if (!url.startsWith(`${INTERACTIONS_URL}/`)) {
+      throw new BadRequestException('That is not a video address.');
+    }
+    const response = await fetch(url, { headers: { 'x-goog-api-key': this.apiKey } });
+    if (!response.ok) return response;
+
+    const video = findVideo((await response.json()) as InteractionResponse);
+    if (video?.data) {
+      return new Response(new Uint8Array(Buffer.from(video.data, 'base64')), {
+        status: 200,
+        headers: { 'content-type': video.mime_type ?? 'video/mp4' },
+      });
+    }
+    if (video?.uri?.startsWith(`${GOOGLE_API_BASE}/`)) {
+      return fetch(video.uri, { headers: { 'x-goog-api-key': this.apiKey }, redirect: 'follow' });
+    }
+    return new Response(null, { status: 502 });
   }
 
   /** Log Google's detail for us; give customers a plain message that never carries vendor text or keys. */
   private async toException(response: Response): Promise<ServiceUnavailableException> {
     const detail = (await response.text().catch(() => '')).slice(0, 300);
-    this.logger.error(`Veo request failed (${response.status}): ${detail}`);
+    this.logger.error(`Google video request failed (${response.status}): ${detail}`);
+    if (response.status === 404) {
+      this.logger.error(
+        `Google does not know the video model "${this.model}" - it may have been retired. Set GOOGLE_VIDEO_MODEL.`,
+      );
+    }
     if (response.status === 429) {
       return new ServiceUnavailableException(
         'Video generation is busy or temporarily out of quota. Please try again in a few minutes - no credits were used.',

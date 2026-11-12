@@ -63,9 +63,10 @@ export const VOICE_CREDITS_PER_MINUTE: Record<string, number> = {
   default: 10,
 };
 
-/** Credits per 10 seconds of AI video, by provider. Veo 3.1 Fast (the app's
- * default model) is $0.10 per second on the Gemini API -> Rs 88 per 10 s ->
- * 180 credits. Runway/Kling/Pika/Luma are unverified and use the same
+/** Credits per 10 seconds of AI video, by provider. "veo" is Google's video
+ * model: Veo 3.1 Fast ($0.10/s) until it was shut down on 2026-10-22, now
+ * Gemini Omni 1.2 Flash at 720p, about $0.07/s -> Rs 62 per 10 s -> at least
+ * 127 credits; 180 is kept, so the margin is above the 50% target. Runway/Kling/Pika/Luma are unverified and use the same
  * conservative rate. The mock provider (development only) has no vendor cost, so it is free. */
 export const VIDEO_CREDITS_PER_10_SECONDS: Record<string, number> = {
   mock: 0,

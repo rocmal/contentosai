@@ -226,7 +226,7 @@ export const PromptPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
             <p className="text-[10px] text-slate-400 mt-1.5">
               {import.meta.env.PROD
                 ? 'AI video uses more credits than images or voice.'
-                : 'Veo needs a paid Google key configured on the backend; Mock always works and is meant for trying the flow out.'}
+                : 'Google video needs a paid Google key configured on the backend; Mock always works and is meant for trying the flow out.'}
             </p>
           </div>
         )}

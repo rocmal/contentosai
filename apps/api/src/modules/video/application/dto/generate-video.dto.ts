@@ -35,11 +35,12 @@ export class GenerateVideoDto {
   @IsUrl()
   imageUrl?: string;
 
-  @ApiPropertyOptional({ default: 5, minimum: 1, maximum: 60 })
+  // Google makes at most 15 s (Gemini Omni Flash); a longer ask was charged for seconds it could never get.
+  @ApiPropertyOptional({ default: 5, minimum: 1, maximum: 15 })
   @IsOptional()
   @IsInt()
   @Min(1)
-  @Max(60)
+  @Max(15)
   durationSeconds?: number;
 
   @ApiPropertyOptional({ enum: ['16:9', '9:16'], default: '16:9' })

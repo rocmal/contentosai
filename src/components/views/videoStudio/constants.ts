@@ -109,7 +109,7 @@ export const SELECTABLE_VIDEO_PROVIDERS: api.VideoProvider[] = import.meta.env.P
 
 export const PROVIDER_LABELS: Record<api.VideoProvider, string> = {
   mock: 'Mock (local, no cost)',
-  veo: 'Google Veo',
+  veo: 'Google Gemini Omni',
   runway: 'Runway',
   kling: 'Kling',
   pika: 'Pika',

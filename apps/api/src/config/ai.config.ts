@@ -8,7 +8,11 @@ export default registerAs('ai', () => ({
   openrouter: { apiKey: process.env.OPENROUTER_API_KEY ?? '' },
   sarvam: { apiKey: process.env.SARVAM_API_KEY ?? '' },
   video: {
-    veo: { apiKey: process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || '' },
+    veo: {
+      apiKey: process.env.VEO_API_KEY || process.env.GEMINI_API_KEY || '',
+      // Empty = the default in veo.provider.ts (gemini-omni-1.2-flash). Set when Google renames or retires it.
+      model: process.env.GOOGLE_VIDEO_MODEL || '',
+    },
     runway: { apiKey: process.env.RUNWAY_API_KEY ?? '' },
     kling: { apiKey: process.env.KLING_API_KEY ?? '' },
     pika: { apiKey: process.env.PIKA_API_KEY ?? '' },

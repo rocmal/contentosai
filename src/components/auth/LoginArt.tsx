@@ -103,7 +103,7 @@ export const StudioShowcase: React.FC = () => (
       <div className="mt-2.5 h-1 rounded-full bg-white/15 overflow-hidden">
         <div className="lumora-progress h-full rounded-full bg-gradient-to-r from-blue-400 to-violet-400" />
       </div>
-      <p className="text-[11px] font-semibold text-white/85 px-0.5 pt-2">Reel · 9:16 · Veo</p>
+      <p className="text-[11px] font-semibold text-white/85 px-0.5 pt-2">Reel · 9:16 · Gemini Omni</p>
     </div>
 
     {/* Voice Studio */}

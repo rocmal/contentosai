@@ -19,7 +19,7 @@ export class JobStatusQueryDto {
  * server's Apache does not pass to the API, so the browser got the website's HTML back and waited forever.
  */
 export class JobStatusByIdQueryDto extends JobStatusQueryDto {
-  @ApiProperty({ example: 'models/veo-3.1-fast-generate-preview/operations/abc123' })
+  @ApiProperty({ example: 'v1_ChdJbnRlcmFjdGlvbklk' })
   // Letters, digits and . _ - / only, and never "..": the id ends up in the provider's address.
   @Matches(/^(?!.*\.\.)[\w./-]{1,300}$/)
   jobId!: string;

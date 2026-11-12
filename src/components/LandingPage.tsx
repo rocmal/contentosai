@@ -56,7 +56,7 @@ const STEPS = [
   { n: '04', title: 'Schedule & publish', desc: 'Schedule to your connected Facebook, Instagram, LinkedIn and YouTube accounts.' },
 ];
 
-const AI_MODELS = ['Google Veo', 'Google Gemini', 'OpenAI', 'Sarvam AI'];
+const AI_MODELS = ['Google Gemini Omni', 'Google Gemini', 'OpenAI', 'Sarvam AI'];
 const PUBLISH_CHANNELS = ['Facebook', 'Instagram', 'LinkedIn', 'YouTube'];
 
 const COMPARISON_ROWS = [

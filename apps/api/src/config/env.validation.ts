@@ -69,6 +69,7 @@ export const envValidationSchema = Joi.object({
 
   // Video providers
   VEO_API_KEY: Joi.string().allow('').default(''),
+  GOOGLE_VIDEO_MODEL: Joi.string().allow('').default(''),
   RUNWAY_API_KEY: Joi.string().allow('').default(''),
   KLING_API_KEY: Joi.string().allow('').default(''),
   PIKA_API_KEY: Joi.string().allow('').default(''),

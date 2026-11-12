@@ -261,13 +261,13 @@ export default function VideoStudio() {
               <Chip key={s.id} label={s.label} selected={style === s.id} disabled={busy} onPress={() => setStyle(s.id)} />
             ))}
           </ChipRow>
-          <Muted>An {SECONDS}-second clip with natural sound, made by Google Veo. Avoid asking for on-screen text.</Muted>
+          <Muted>An {SECONDS}-second clip with natural sound, made by Google Gemini Omni. Avoid asking for on-screen text.</Muted>
         </Field>
 
         {__DEV__ && (
           <SwitchRow
             label="Test mode (development only)"
-            detail="Returns a free sample clip instead of calling Veo."
+            detail="Returns a free sample clip instead of calling Google."
             value={testMode}
             onValueChange={setTestMode}
           />

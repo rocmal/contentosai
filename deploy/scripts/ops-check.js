@@ -99,6 +99,17 @@ async function checkGemini() {
   } catch (err) {
     out('gemini api', `FAILED ${short(err.message, 140)}`);
   }
+  // Videos stopped for weeks when Google shut down the Veo model on 2026-10-22: say here if the model is gone.
+  const videoModel = process.env.GOOGLE_VIDEO_MODEL || 'gemini-omni-1.2-flash';
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${videoModel}`, {
+      headers: { 'x-goog-api-key': process.env.VEO_API_KEY || key },
+      signal: AbortSignal.timeout(15000),
+    });
+    out('google video model', res.ok ? `${videoModel} - available` : `${videoModel} - NOT AVAILABLE (status ${res.status}); videos will fail - set the GOOGLE_VIDEO_MODEL variable`);
+  } catch (err) {
+    out('google video model', `${videoModel} - could not check: ${short(err.message, 140)}`);
+  }
 }
 
 // LinkedIn posting: are the app keys there, and is the redirect address the one registered on the LinkedIn app?
