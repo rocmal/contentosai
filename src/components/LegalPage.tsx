@@ -7,6 +7,10 @@ const SITE = 'lumoraos.in';
 /** The registered business (GST, Udyam) behind Lumora; Meta's Business Verification checks the same name. */
 const OPERATOR = 'Aradhya Enterprises';
 const OPERATOR_PLACE = 'Amritsar, Punjab, India';
+/** A sole proprietorship: the GST certificate's legal name is the proprietor's, and Meta verified that name. */
+const PROPRIETOR = 'Rajni Mehra';
+/** As registered for GST (and in Meta Business Settings). */
+const OPERATOR_ADDRESS = 'Opp H No 90, Kharasiyan Wali Gali, Arya Samaj Mandir, Shakti Nagar, Amritsar, Punjab 143001, India';
 
 interface LegalPageProps {
   onBack: () => void;
@@ -68,7 +72,7 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
   <LegalPageLayout title="Privacy Policy" onBack={onBack}>
     <section>
       <p>
-        This Privacy Policy explains how {OPERATOR} ({OPERATOR_PLACE}), which runs LumoraOS ("Lumora", "we",
+        This Privacy Policy explains how {OPERATOR} (proprietor: {PROPRIETOR}), {OPERATOR_PLACE}, which runs LumoraOS ("Lumora", "we",
         "us"), collects, uses, and protects
         information when you use the Lumora Content OS platform at {SITE} (the "Service"), including
         when you connect third-party accounts such as Facebook, Instagram, YouTube, or LinkedIn to publish
@@ -190,8 +194,8 @@ export const PrivacyPolicyPage: React.FC<LegalPageProps> = ({ onBack }) => (
     <section>
       <h2>8. Contact us</h2>
       <p>Questions about this policy or your data can be sent to{' '}
-        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Lumora is run by {OPERATOR},
-        {OPERATOR_PLACE}.</p>
+        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>. Lumora is run by {OPERATOR}
+        (proprietor: {PROPRIETOR}), {OPERATOR_ADDRESS}.</p>
     </section>
   </LegalPageLayout>
 );
@@ -201,7 +205,7 @@ export const TermsOfServicePage: React.FC<LegalPageProps> = ({ onBack }) => (
     <section>
       <p>
         These Terms of Service ("Terms") govern your access to and use of the Lumora Content OS platform
-        at {SITE} (the "Service"), operated by {OPERATOR}, {OPERATOR_PLACE}, under the name LumoraOS
+        at {SITE} (the "Service"), operated by {OPERATOR} (proprietor: {PROPRIETOR}), {OPERATOR_PLACE}, under the name LumoraOS
         ("Lumora", "we", "us"). By creating an account or
         using the Service, you agree to these Terms.
       </p>
@@ -296,7 +300,7 @@ export const TermsOfServicePage: React.FC<LegalPageProps> = ({ onBack }) => (
     <section>
       <h2>10. Contact us</h2>
       <p>Questions about these Terms can be sent to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
-        Lumora is run by {OPERATOR}, {OPERATOR_PLACE}.</p>
+        Lumora is run by {OPERATOR} (proprietor: {PROPRIETOR}), {OPERATOR_ADDRESS}.</p>
     </section>
   </LegalPageLayout>
 );

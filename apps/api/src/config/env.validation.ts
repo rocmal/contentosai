@@ -128,6 +128,7 @@ export const envValidationSchema = Joi.object({
   META_APP_SECRET: Joi.string().allow('').default(''),
   META_REDIRECT_URI: Joi.string().allow('').default(''),
   META_GRAPH_API_VERSION: Joi.string().default('v21.0'),
+  META_INSTAGRAM_ENABLED: Joi.string().valid('true', 'false', '').default(''),
 
   // LinkedIn (member post publishing)
   LINKEDIN_CLIENT_ID: Joi.string().allow('').default(''),

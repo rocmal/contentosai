@@ -34,14 +34,16 @@ export interface ConnectedPage {
   igUsername?: string;
 }
 
-const OAUTH_SCOPES = [
+/** What posting to a Facebook Page needs - the permissions sent to Meta's App Review. */
+export const FACEBOOK_PAGE_SCOPES = [
   'pages_show_list',
   'pages_read_engagement',
   'pages_manage_posts',
-  'instagram_basic',
-  'instagram_content_publish',
   'business_management',
-].join(',');
+];
+/** Only with META_INSTAGRAM_ENABLED: nothing on the website posts to Instagram yet, and Meta refuses apps that ask for
+ * permissions a reviewer cannot see them use. */
+export const INSTAGRAM_SCOPES = ['instagram_basic', 'instagram_content_publish'];
 
 /**
  * Thin wrapper around Meta's Graph API OAuth + Pages endpoints. Only used
@@ -69,6 +71,17 @@ export class MetaGraphApiClient {
     return `https://graph.facebook.com/${version}`;
   }
 
+  private get instagramEnabled(): boolean {
+    return this.configService.get<boolean>('meta.instagramEnabled') === true;
+  }
+
+  /** The permissions the login dialog asks for. */
+  scopes(): string[] {
+    return this.instagramEnabled
+      ? [...FACEBOOK_PAGE_SCOPES, ...INSTAGRAM_SCOPES]
+      : FACEBOOK_PAGE_SCOPES;
+  }
+
   isConfigured(): boolean {
     return !!(this.appId && this.appSecret && this.redirectUri);
   }
@@ -79,7 +92,7 @@ export class MetaGraphApiClient {
       client_id: this.appId,
       redirect_uri: this.redirectUri,
       state,
-      scope: OAUTH_SCOPES,
+      scope: this.scopes().join(','),
       response_type: 'code',
     });
     return `https://www.facebook.com/${version}/dialog/oauth?${params.toString()}`;
@@ -128,7 +141,9 @@ export class MetaGraphApiClient {
    * token and (if linked) the Instagram Business account used for publishing. */
   async listConnectedPages(longLivedUserToken: string): Promise<ConnectedPage[]> {
     const params = new URLSearchParams({
-      fields: 'id,name,access_token,instagram_business_account{id,username}',
+      fields: this.instagramEnabled
+        ? 'id,name,access_token,instagram_business_account{id,username}'
+        : 'id,name,access_token',
       access_token: longLivedUserToken,
     });
     const response = await fetch(`${this.graphBaseUrl}/me/accounts?${params.toString()}`);

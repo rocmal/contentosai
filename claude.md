@@ -292,14 +292,21 @@ still accepts the other platforms. The Calendar and LinkedIn Posts refresh thems
   by ..."; the composer warns within 7 days and refuses a time after expiry; a daily job (09:00 India time,
   `ConnectionExpiryReminderService` on the social-publish queue) notifies whoever connected it 7 days before, the day before and on
   the day.
+- **Facebook for every customer needs Meta App Review** (the app was in Development mode on 2026-11-22: only people with a
+  role on it can connect). The paste-ready submission - permissions, reviewer steps, recording script, data answers - is
+  `docs/META-APP-REVIEW.md`; keep it in step with the screens. The login asks only for the Facebook Page permissions
+  (`FACEBOOK_PAGE_SCOPES`); the Instagram ones are behind the GitHub variable `META_INSTAGRAM_ENABLED` until the website
+  can post to Instagram, because Meta refuses permissions a reviewer cannot see used. The Integrations button is
+  "Connect Facebook".
 - Phone app: `apps/mobile/src/ui/PostSheet.tsx` (was ScheduleSheet) posts Gallery images and videos through the same endpoint.
 - Only personal profiles (`w_member_social`). Company Pages need LinkedIn's Community Management API approval (a separate LinkedIn
   app and review). Deploy keys: secret `LINKEDIN_CLIENT_SECRET`, variables `LINKEDIN_CLIENT_ID`, `LINKEDIN_REDIRECT_URI`
   (`https://lumoraos.in/api/v1/integrations/linkedin/callback`) and optional `LINKEDIN_API_VERSION`; the deploy log's ops-check
   prints whether they are set.
 - The Privacy Policy and Terms (`src/components/LegalPage.tsx`, /privacy and /terms) name the operator, **Aradhya
-  Enterprises, Amritsar** (the business with the GST and Udyam registrations, and the legal name in Meta Business
-  Verification - keep the three the same; also in the site footers), and describe the LinkedIn data and the
+  Enterprises (proprietor: Rajni Mehra), Amritsar**, with the GST-registered address in the contact sections (a sole
+  proprietorship: the GST legal name is the proprietor's, and Meta Business Verification was submitted with it on
+  2026-11-22 - keep website, GST and Meta the same; the footers say "a product of Aradhya Enterprises"), and describe the LinkedIn data and the
   one-profile-per-workspace rule; keep them true when posting changes. Disconnect wipes the stored token before the (soft)
   delete, as the policy promises. A square logo for LinkedIn forms is served at /lumora-logo.png (`public/`).
 - Local testing without a LinkedIn app: a fake connection in the local database makes the whole flow run; LinkedIn then refuses

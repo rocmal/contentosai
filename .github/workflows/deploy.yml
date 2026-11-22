@@ -233,7 +233,7 @@ jobs:
             MAIL_TRANSPORT AI_DEFAULT_PROVIDER OPENAI_IMAGE_MODEL SMTP_HOST SMTP_PORT SMTP_USERNAME
             SMTP_FROM GOOGLE_CLIENT_ID RAZORPAY_KEY_ID TRUST_PROXY
             LINKEDIN_CLIENT_ID LINKEDIN_REDIRECT_URI LINKEDIN_API_VERSION YOUTUBE_REDIRECT_URI
-            GOOGLE_VIDEO_MODEL
+            GOOGLE_VIDEO_MODEL META_INSTAGRAM_ENABLED
           # Secrets (sensitive)
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SARVAM_API_KEY: ${{ secrets.SARVAM_API_KEY }}
@@ -272,6 +272,8 @@ jobs:
           # Only when Google renames or retires its video model (default gemini-omni-1.2-flash); ops-check says
           # whether the one in use still exists.
           GOOGLE_VIDEO_MODEL: ${{ vars.GOOGLE_VIDEO_MODEL }}
+          # "true" once the website can post to Instagram and Meta has approved the Instagram permissions.
+          META_INSTAGRAM_ENABLED: ${{ vars.META_INSTAGRAM_ENABLED }}
 
       - name: Pull, migrate, recreate (with automatic rollback on failure)
         uses: appleboy/ssh-action@v1.2.0
