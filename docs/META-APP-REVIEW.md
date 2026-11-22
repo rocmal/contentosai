@@ -18,8 +18,12 @@ name both, with the registered address.
   - Privacy policy URL: `https://lumoraos.in/privacy`
   - Terms of service URL: `https://lumoraos.in/terms`
   - User data deletion → Data deletion instructions URL: `https://lumoraos.in/privacy#data-deletion`
-- **Facebook Login → Settings → Valid OAuth Redirect URIs** includes
-  `https://lumoraos.in/api/v1/integrations/meta/callback` (the server's `META_REDIRECT_URI`).
+- **Facebook Login for Business → Settings**: Client OAuth login and Web OAuth login on, and **Valid OAuth Redirect
+  URIs** includes `https://lumoraos.in/api/v1/integrations/meta/callback` (the server's `META_REDIRECT_URI`). Without
+  it Facebook answers "URL Blocked" (seen 2026-11-22).
+- **public_profile → Advanced Access** (the orange box on that settings page, or App Review → Permissions and Features).
+  Facebook Login for Business needs it before anyone without a role on the app - customers or Meta's reviewers - can sign
+  in. It is a click, not a review, once the business is verified.
 - **A reviewer account on Lumora**: Admin → New account, Pro for 1 month, "Set a password for them now". Then sign in
   as it once and put one short video in its Gallery (make one in Video Studio, or Video Studio → **Upload** an MP4 and
   save it to the Gallery), because posting to a Facebook Page here takes a video. Put the email and password only in Meta's form, never in this repository.
