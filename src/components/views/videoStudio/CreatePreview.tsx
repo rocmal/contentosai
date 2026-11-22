@@ -12,6 +12,7 @@ export const CreatePreview: React.FC<{ studio: VideoStudio }> = ({ studio }) => 
     setPreviewSceneIndex,
     source,
     stylePreset,
+    clipSeconds,
   } = studio;
   return (
     <div className="space-y-3 lg:sticky lg:top-4">
@@ -94,7 +95,7 @@ export const CreatePreview: React.FC<{ studio: VideoStudio }> = ({ studio }) => 
             ))}
         </div>
         <p className="text-[10px] text-slate-400 text-center">
-          {source === 'prompt' && `${stylePreset.aspectRatio} · ${stylePreset.durationSeconds}s`}
+          {source === 'prompt' && `${stylePreset.aspectRatio} · ${clipSeconds}s`}
           {source === 'scenes' &&
             scenes.length > 0 &&
             `Scene ${clampedPreviewSceneIndex + 1} of ${scenes.length}`}

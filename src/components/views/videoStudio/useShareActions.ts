@@ -70,13 +70,7 @@ export function useShareActions({ finalVideoUrl, finalMimeType, prompt }: { fina
     }
   };
 
-  const handleShareToFacebook = () => {
-    if (!finalVideoUrl) return;
-    const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(finalVideoUrl)}`;
-    window.open(shareUrl, '_blank', 'noopener,noreferrer');
-  };
-
-  return { handleDownload, handleShare, handleShareToFacebook, isDownloading, setShareStatus, shareStatus };
+  return { handleDownload, handleShare, isDownloading, setShareStatus, shareStatus };
 }
 
 export type ShareActions = ReturnType<typeof useShareActions>;

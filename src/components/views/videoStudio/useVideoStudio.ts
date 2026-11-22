@@ -131,6 +131,11 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
   const { setShareStatus } = share;
 
   const stylePreset = AI_STYLE_PRESETS.find((t) => t.id === stylePresetId) ?? AI_STYLE_PRESETS[0];
+  /** The clip length the person picked; null = the format's usual length. */
+  const [lengthSeconds, setLengthSeconds] = useState<number | null>(null);
+  const clipSeconds = lengthSeconds ?? stylePreset.durationSeconds;
+  /** Which finished-screen button is working: they all wait for the same Gallery save, but only that one spins. */
+  const [busyAction, setBusyAction] = useState<'gallery' | 'linkedin' | 'facebook' | 'youtube' | null>(null);
 
   // The "create" step's side preview only really knows a shape for the
   // prompt tab (from the chosen format) and the Scene Builder tab (from the
@@ -327,7 +332,7 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
       const job = await api.generateVideo({
         prompt: `${prompt.trim()}, ${stylePreset.styleSuffix}`,
         provider,
-        durationSeconds: stylePreset.durationSeconds,
+        durationSeconds: clipSeconds,
         aspectRatio: stylePreset.aspectRatio === '9:16' ? '9:16' : '16:9', // the two shapes Veo makes
         fresh,
       });
@@ -442,7 +447,12 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
       } else {
         // Named after the text on the video when there is some; otherwise the server names it from the prompt
         // (sent along, which also gives it "Create again"), or the date.
-        const name = hasOverlay && overlayText.trim() ? overlayText.trim().slice(0, 60) : `lumora-video-${Date.now()}`;
+        // "With text - " also tells it apart from the clip without text, which the server saved already - and keeps a
+        // number-only text (a phone number) from being taken for a machine name and replaced by the prompt.
+        const name =
+          hasOverlay && overlayText.trim()
+            ? `With text - ${overlayText.trim().slice(0, 60)}`
+            : `lumora-video-${Date.now()}`;
         const extension = finalMimeType.includes('webm') ? 'webm' : 'mp4';
         const file = new File([blob], `${name}.${extension}`, { type: finalMimeType || 'video/mp4' });
         const saved = await api.uploadToGallery(
@@ -464,12 +474,23 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     }
   };
 
-  /** Opens the post composer with the finished video, saving it to the Gallery first if it is not there yet. */
-  const handlePostVideo = async () => {
+  /** The Save to Gallery button itself. */
+  const handleSaveToGalleryButton = async () => {
+    setBusyAction('gallery');
+    await handleSaveToGallery();
+    setBusyAction(null);
+  };
+
+  /** Opens the post composer (LinkedIn, or the Facebook Page) with the finished video, saving it to the Gallery first
+   * if it is not there yet. */
+  const handlePostVideo = async (platform: 'linkedin' | 'facebook' = 'linkedin') => {
     if (!finalVideoUrl) return;
+    setBusyAction(platform);
     const assetId = savedAssetId ?? (await handleSaveToGallery());
+    setBusyAction(null);
     if (!assetId) return;
     openPostComposer({
+      platform,
       media: { assetId, type: 'video', url: finalVideoUrl, name: overlayText.trim() || undefined },
       topic: (source === 'scenes' ? narrationText : prompt).trim() || overlayText.trim() || undefined,
     });
@@ -478,7 +499,9 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
   /** Opens the YouTube upload window with the finished video, saving it to the Gallery first if it is not there yet. */
   const handleUploadToYouTube = async () => {
     if (!finalVideoUrl) return;
+    setBusyAction('youtube');
     const assetId = savedAssetId ?? (await handleSaveToGallery());
+    setBusyAction(null);
     if (!assetId) return;
     const about = (source === 'scenes' ? narrationText : prompt).trim();
     openYouTubeUpload({
@@ -556,6 +579,11 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     handlePostVideo,
     handleUploadToYouTube,
     handleSaveToGallery,
+    handleSaveToGalleryButton,
+    busyAction,
+    clipSeconds,
+    lengthSeconds,
+    setLengthSeconds,
     hasOverlay,
     improveError,
     isImprovingPrompt,

@@ -1,8 +1,11 @@
 import React from 'react';
 import { AlertTriangle, Bookmark, Check, Copy, Download, FolderPlus, Loader2, RotateCcw, Send, Share2, X, Youtube } from 'lucide-react';
+import { CHANNEL_ICON } from '../../../lib/channels';
 import { previewBoxWidth } from './constants';
 import { VideoShapeLabel } from './VideoShapeLabel';
 import type { VideoStudio } from './useVideoStudio';
+
+const FacebookIcon = CHANNEL_ICON.facebook!;
 
 const secondaryButton =
   'flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition-all disabled:cursor-default';
@@ -19,9 +22,9 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     handlePostVideo,
     handleUploadToYouTube,
     handleSaveTemplate,
-    handleSaveToGallery,
+    handleSaveToGalleryButton,
+    busyAction,
     handleShare,
-    handleShareToFacebook,
     hasOverlay,
     isDownloading,
     isSavingTemplate,
@@ -72,8 +75,17 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
           title="Post now or schedule it to your LinkedIn profile"
           className="flex items-center gap-2 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-md transition-all disabled:opacity-60"
         >
-          {isSavingToGallery ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+          {busyAction === 'linkedin' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           <span>Post to LinkedIn</span>
+        </button>
+        <button
+          onClick={() => void handlePostVideo('facebook')}
+          disabled={isSavingToGallery}
+          title="Post now or schedule it to your Facebook Page"
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#1877F2] hover:bg-[#166fe0] text-white font-bold text-sm shadow-md transition-all disabled:opacity-60"
+        >
+          {busyAction === 'facebook' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FacebookIcon className="w-4 h-4" />}
+          <span>Post to Facebook</span>
         </button>
         <button
           onClick={() => void handleUploadToYouTube()}
@@ -81,18 +93,18 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
           title="Upload now or schedule it to your YouTube channel"
           className="flex items-center gap-2 px-5 py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-md transition-all disabled:opacity-60"
         >
-          {isSavingToGallery ? <Loader2 className="w-4 h-4 animate-spin" /> : <Youtube className="w-4 h-4" />}
+          {busyAction === 'youtube' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Youtube className="w-4 h-4" />}
           <span>Upload to YouTube</span>
         </button>
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-2">
         <button
-          onClick={handleSaveToGallery}
+          onClick={() => void handleSaveToGalleryButton()}
           disabled={isSavingToGallery || savedToGallery}
           className={`${secondaryButton} ${savedToGallery ? '!text-emerald-600 dark:!text-emerald-400' : ''}`}
         >
-          {isSavingToGallery ? (
+          {busyAction === 'gallery' ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : savedToGallery ? (
             <Check className="w-3.5 h-3.5" />
@@ -113,11 +125,6 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
             <Share2 className="w-3.5 h-3.5" />
           )}
           <span>{shareStatus === 'shared' ? 'Shared' : shareStatus === 'copied' ? 'Link copied' : 'Share'}</span>
-        </button>
-
-        <button onClick={handleShareToFacebook} className={secondaryButton}>
-          <Share2 className="w-3.5 h-3.5 text-[#1877F2]" />
-          <span>Facebook</span>
         </button>
 
         <button onClick={handleOpenSaveTemplatePanel} className={secondaryButton}>
@@ -217,8 +224,10 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
       )}
 
       <p className="text-center text-[11px] text-slate-400 max-w-md mx-auto">
-        On a phone, <span className="font-semibold">Share</span> opens Instagram, WhatsApp and your other apps; on a
-        computer, download the video and post it from the app. Scheduling needs the account connected in Integrations.
+        <span className="font-semibold">Post to LinkedIn</span>, <span className="font-semibold">Post to Facebook</span> and{' '}
+        <span className="font-semibold">Upload to YouTube</span> each let you post now or pick a date and time (the account
+        must be connected in Integrations). On a phone, <span className="font-semibold">Share</span> opens WhatsApp and your
+        other apps.
       </p>
     </div>
   );

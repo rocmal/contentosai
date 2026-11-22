@@ -162,8 +162,9 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
 - **Prompt videos take time:** the waiting screen (`videoStudio/GeneratingStatus.tsx`, phone video screen) cycles messages
   every 4 s with a timer and, after 3 minutes, says it is fine to leave. The browser waits 10 minutes, then shows a calm "still
   rendering, it will be in your Gallery" note; the server keeps collecting the clip for 20 minutes
-  (`MAX_POLL_ATTEMPTS` in `video.processor.ts`; it was 5 minutes, so slow paid clips were lost). Veo makes 4, 6 or 8 s, so
-  the formats use those lengths (5 was rendered as 6 anyway).
+  (`MAX_POLL_ATTEMPTS` in `video.processor.ts`; it was 5 minutes, so slow paid clips were lost). **Length** (2026-11-22):
+  each format has its usual length and a Length row offers 4, 6, 8, 10 or 15 s (`VIDEO_LENGTH_CHOICES`), each with its
+  price - credits are per started 10 s, so up to 10 s is 180 and 15 s is 360. The phone app still makes 8 s.
 - **Image Studio:** OpenAI gpt-image-2 only (picker hidden); platform sizes FB/IG/YouTube/LinkedIn/WhatsApp (X and Pinterest removed);
   Improve with AI; mic dictation; "No text" default with a warning when the prompt asks for text.
 - **Google retired Veo 3.1 Fast (preview) on 2026-10-22** and every prompt video failed with "temporarily unavailable on our side"
@@ -181,11 +182,14 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   A Scene Builder draft remembers its voice recording (`video_projects.narrationRecordingId`, a custom voice id).
   The server saves every generated clip to the Gallery and says so in the job result (`savedToGallery`); the finished screen
   then shows "Saved to Gallery" instead of uploading a second copy (only text overlays, Scene Builder videos and uploads are
-  saved from the browser). Scene Builder's Generate button shows its price: 20 credits, plus the voice cost when a typed
+  saved from the browser; a text version is saved as "With text - <the text>", so it is told apart from the clip without
+  text, and the Gallery thumbnails show the frame at 0.5 s because a text version starts on black). Only the button
+  pressed on the finished screen shows a spinner (`busyAction`). Scene Builder's Generate button shows its price: 20 credits, plus the voice cost when a typed
   script is voiced.
   Finished screen: Download and "Post or schedule" are the main buttons ("Post or schedule" saves the video to the Gallery
-  first if needed, then opens the post composer); Save to Gallery, Share, Facebook, Save as template and Create another sit
-  below. A saved text version is named after its text and keeps the prompt, so it can be created again. Video job results
+  first if needed, then opens the post composer); Save to Gallery, Share, Save as template and Create another sit
+  below. The main row is Download, Post to LinkedIn, **Post to Facebook** (the composer in Facebook mode, added 2026-11-22;
+  the old "Facebook" button only opened Facebook's share-a-link page, which posts nothing to the Page) and Upload to YouTube. A saved text version is named after its text and keeps the prompt, so it can be created again. Video job results
   carry `mediaAssetId` (the clip's Gallery item).
   Code layout (split 2026-10-19): `VideoStudioView.tsx` is a thin shell; `src/components/views/videoStudio/useVideoStudio.ts`
   holds the step flow and combines the area hooks (`useNarration`, `useSceneBuilder`, `useTextOverlay`, `useVideoTemplates`,

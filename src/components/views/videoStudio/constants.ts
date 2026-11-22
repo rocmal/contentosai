@@ -27,7 +27,11 @@ export interface AiStylePreset {
   styleSuffix: string;
 }
 
-// Veo makes 4, 6 or 8-second clips (a 5 was rendered as 6 anyway), so every length here is one of those.
+/** Clip lengths offered under the formats. Google's video model (Gemini Omni Flash) makes 3-15 s; credits are
+ * charged per started 10 s, so 4-10 s cost the same and 15 s twice that. */
+export const VIDEO_LENGTH_CHOICES = [4, 6, 8, 10, 15];
+
+// Each format's usual length; the person can pick another (VIDEO_LENGTH_CHOICES).
 export const AI_STYLE_PRESETS: AiStylePreset[] = [
   {
     id: 'cinematic',

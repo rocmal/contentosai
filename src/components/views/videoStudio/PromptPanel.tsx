@@ -5,7 +5,7 @@ import VoiceInputButton, { appendSpoken } from '../../VoiceInputButton';
 import { VIDEO_PROMPT_CATEGORIES, VIDEO_PROMPT_TEMPLATES, VideoPromptTemplate } from '../../../lib/videoPromptTemplates';
 import { useTextHistory } from '../../../lib/useTextHistory';
 import { creditLabel, videoCreditCost } from '../../../lib/creditCost';
-import { AI_STYLE_PRESETS, PROVIDER_LABELS, SELECTABLE_VIDEO_PROVIDERS } from './constants';
+import { AI_STYLE_PRESETS, PROVIDER_LABELS, SELECTABLE_VIDEO_PROVIDERS, VIDEO_LENGTH_CHOICES } from './constants';
 import type { VideoStudio } from './useVideoStudio';
 
 /** Prompt tab: describe the video, pick a format and engine, generate. */
@@ -28,6 +28,8 @@ export const PromptPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
     setTemplateCategory,
     showAdvanced,
     stylePreset,
+    clipSeconds,
+    setLengthSeconds,
     stylePresetId,
     templateCategory,
   } = studio;
@@ -232,6 +234,34 @@ export const PromptPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         )}
       </div>
 
+      <div>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Length</h3>
+        <div className="flex flex-wrap gap-2">
+          {VIDEO_LENGTH_CHOICES.map((seconds) => {
+            const isActive = seconds === clipSeconds;
+            return (
+              <button
+                key={seconds}
+                type="button"
+                onClick={() => setLengthSeconds(seconds)}
+                className={`px-3.5 py-2 rounded-xl border text-xs font-semibold transition-all ${
+                  isActive
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
+                }`}
+              >
+                {seconds} seconds
+                {creditRates && (
+                  <span className="ml-1 font-normal text-slate-400">
+                    · {videoCreditCost(creditRates, provider, seconds)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <button
         onClick={() => handleGenerateFromPrompt()}
         disabled={!prompt.trim()}
@@ -240,13 +270,13 @@ export const PromptPanel: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         <Sparkles className="w-4 h-4" />
         <span>
           {creditRates
-            ? `Generate Video · ${creditLabel(videoCreditCost(creditRates, provider, stylePreset.durationSeconds))}`
+            ? `Generate Video · ${creditLabel(videoCreditCost(creditRates, provider, clipSeconds))}`
             : 'Generate Video'}
         </span>
       </button>
       {creditRates && (
         <p className="text-[10px] text-slate-400 text-center -mt-3">
-          A {stylePreset.durationSeconds}-second clip, charged when it starts. Asking for the same video again
+          A {clipSeconds}-second clip, charged when it starts. Asking for the same video again
           is free.
         </p>
       )}

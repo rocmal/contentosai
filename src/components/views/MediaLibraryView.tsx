@@ -79,7 +79,8 @@ const Thumb: React.FC<{ item: LibraryItem; className?: string }> = ({ item, clas
     return <img src={item.url} alt={item.fileName} loading="lazy" className={`object-cover ${className}`} />;
   }
   if (item.type === 'video' || item.type === 'character') {
-    return <video src={item.url} muted preload="metadata" className={`object-cover ${className}`} />;
+    // Half a second in: a clip with text on it starts on a black frame, which made a black thumbnail.
+    return <video src={`${item.url}#t=0.5`} muted preload="metadata" className={`object-cover ${className}`} />;
   }
   return (
     <div className={`flex items-center justify-center bg-slate-900 text-slate-500 ${className}`}>
