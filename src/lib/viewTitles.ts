@@ -55,6 +55,10 @@ export const VIEW_TITLES: Record<ViewType, { title: string; subtitle: string }> 
     title: 'Facebook Posts',
     subtitle: 'Post videos to your Facebook Page and track what is scheduled, published or failed.',
   },
+  'instagram-posts': {
+    title: 'Instagram',
+    subtitle: 'Post videos as Reels to your Instagram account and track what is scheduled, published or failed.',
+  },
   'youtube-posts': {
     title: 'YouTube',
     subtitle: 'Upload and schedule videos to your YouTube channel.',

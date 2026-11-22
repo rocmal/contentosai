@@ -30,9 +30,9 @@ name both, with the registered address.
 
 ## 2. Permissions to request (App Review → Permissions and Features → Request advanced access)
 
-The login asks for exactly these (`FACEBOOK_PAGE_SCOPES` in
-`apps/api/src/modules/integrations/infrastructure/meta-graph-api.client.ts`). Instagram is not asked for until the
-website can post to Instagram (see section 6).
+The login asks for exactly these six: `FACEBOOK_PAGE_SCOPES` and `INSTAGRAM_SCOPES` in
+`apps/api/src/modules/integrations/infrastructure/meta-graph-api.client.ts`. Request nothing else. Like the Page
+permissions, each Instagram one needs one successful call (a post through Lumora) before its button unlocks.
 
 **pages_show_list**
 > "When a Lumora user presses Connect Facebook (Integrations page), we list the Facebook Pages they manage so the
@@ -52,6 +52,15 @@ website can post to Instagram (see section 6).
 > "Many of our users' Pages are owned by a Meta business portfolio. business_management lets the connect step list
 > and use those Pages, so users whose Page belongs to a business portfolio can connect it too."
 
+**instagram_basic**
+> "When a Lumora user connects Facebook, we read the Instagram professional account linked to the Page they chose
+> (its ID and username) so they can post to it, and to show which account is connected. We read nothing else."
+
+**instagram_content_publish**
+> "Lumora users post the short videos they made in Lumora to their Instagram account as Reels, now or at a time they
+> schedule, with the caption they wrote. instagram_content_publish is used only to publish that Reel at the time they
+> chose. We never post without the user's action."
+
 ## 3. Instructions for the reviewer (paste into each request)
 
 > 1. Go to https://lumoraos.in/login and sign in with the test account below.
@@ -61,6 +70,9 @@ website can post to Instagram (see section 6).
 > 4. In the left menu, under Published, open **Facebook Posts** and press **New post**.
 > 5. Pick the video already in the Gallery, write a caption (or press Write with AI), choose **Post now** and send.
 > 6. The post appears under Published within a minute, with a link to it on the Facebook Page.
+> 7. Instagram: the test Page needs an Instagram professional account (Business or Creator) linked to it. In the left
+>    menu open **Instagram** and press **New post**, pick the same video, write a caption and choose **Post now**. It is
+>    posted as a Reel and appears under Published with **View on Instagram**.
 >
 > Test account: [email] / [password]. The account is pre-loaded with a short video so posting can be tested at once.
 
@@ -69,15 +81,18 @@ website can post to Instagram (see section 6).
 Record the browser, about 2 minutes, no sound needed:
 
 1. lumoraos.in sign-in, then the dashboard.
-2. Integrations → **Connect Facebook** → Facebook's login and permission screen (show the permissions list) → choose
-   the Page → back in Lumora, **Connected** with the Page name.
+2. Integrations → **Connect Facebook & Instagram** → Facebook's login and permission screen (show the permissions
+   list) → choose the Page and its Instagram account → back in Lumora, **Connected** with the Page name.
 3. Facebook Posts → **New post** → pick a video → caption → **Post now**.
 4. The post under Published with **View on Facebook** → click it → the post on the Facebook Page.
-5. Integrations → **Disconnect** (shows the user can remove the connection at any time).
+5. Instagram → **New post** → the same video → caption → **Post now** → under Published, **View on Instagram** → the
+   Reel on Instagram.
+6. Integrations → **Disconnect** (shows the user can remove the connection at any time).
 
 ## 5. Data handling questions
 
-- **What Facebook data do you store?** The connected Page's ID and name and a Page access token. The token is
+- **What Facebook data do you store?** The connected Page's ID and name, the linked Instagram account's ID and
+  username, and a Page access token. The token is
   encrypted before it is stored (`EncryptionService`) and is used only to publish posts the user asks for.
 - **Do you share or sell it?** No. It is not shared with third parties or used for ads or analytics.
 - **Where is it processed?** On Lumora's own server (lumoraos.in).
@@ -88,7 +103,7 @@ Record the browser, about 2 minutes, no sound needed:
 ## 6. After approval
 
 - Switch **App Mode** from Development to **Live**. Every customer can then connect their own Page in Integrations.
-- **Instagram later:** when the website can post to Instagram, set the GitHub variable `META_INSTAGRAM_ENABLED=true`
-  (the login then also asks for `instagram_basic` and `instagram_content_publish`), redeploy, and submit those two
-  permissions with their own recording. Customers already connected reconnect once to add Instagram.
+- **Instagram** is asked for and posted as Reels since 2026-11-22. To stop asking for it (for example if Meta refuses
+  the Instagram permissions but approves the Page ones), set the GitHub variable `META_INSTAGRAM_ENABLED=false` and
+  redeploy. Customers connected before Instagram was on reconnect once to add it.
 - **Until then, early customers:** App roles → Roles → Add People → Tester, and they accept the invite.

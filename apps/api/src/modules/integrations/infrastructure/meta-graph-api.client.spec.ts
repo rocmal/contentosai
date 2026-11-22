@@ -19,8 +19,8 @@ describe('MetaGraphApiClient', () => {
     global.fetch = fetchMock as unknown as typeof fetch;
   });
 
-  it('asks only for the Facebook Page permissions sent to App Review by default', () => {
-    const client = new MetaGraphApiClient(config(base));
+  it('asks only for the Facebook Page permissions when Instagram is turned off', () => {
+    const client = new MetaGraphApiClient(config({ ...base, 'meta.instagramEnabled': false }));
     expect(scopesIn(client.getLoginDialogUrl('state-1'))).toEqual([
       'pages_show_list',
       'pages_read_engagement',
@@ -29,8 +29,8 @@ describe('MetaGraphApiClient', () => {
     ]);
   });
 
-  it('adds the Instagram permissions only when META_INSTAGRAM_ENABLED is on', () => {
-    const client = new MetaGraphApiClient(config({ ...base, 'meta.instagramEnabled': true }));
+  it('asks for the Instagram permissions too by default', () => {
+    const client = new MetaGraphApiClient(config(base));
     expect(scopesIn(client.getLoginDialogUrl('state-1'))).toEqual(
       expect.arrayContaining(['instagram_basic', 'instagram_content_publish']),
     );
@@ -39,15 +39,15 @@ describe('MetaGraphApiClient', () => {
   it('reads the linked Instagram account only when Instagram is on', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: [] }) });
 
-    await new MetaGraphApiClient(config(base)).listConnectedPages('token');
+    await new MetaGraphApiClient(
+      config({ ...base, 'meta.instagramEnabled': false }),
+    ).listConnectedPages('token');
     expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('fields')).toBe(
       'id,name,access_token',
     );
 
     fetchMock.mockClear();
-    await new MetaGraphApiClient(
-      config({ ...base, 'meta.instagramEnabled': true }),
-    ).listConnectedPages('token');
+    await new MetaGraphApiClient(config(base)).listConnectedPages('token');
     expect(new URL(fetchMock.mock.calls[0][0]).searchParams.get('fields')).toContain(
       'instagram_business_account',
     );

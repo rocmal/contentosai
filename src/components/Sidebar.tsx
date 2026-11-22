@@ -113,6 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const publishedNav: NavItem[] = [
     { id: 'linkedin-posts', label: 'LinkedIn Posts', icon: CHANNEL_ICON.linkedin! },
     { id: 'facebook-posts', label: 'Facebook Posts', icon: CHANNEL_ICON.facebook! },
+    { id: 'instagram-posts', label: 'Instagram', icon: CHANNEL_ICON.instagram! },
     { id: 'youtube-posts', label: 'YouTube', icon: CHANNEL_ICON.youtube! },
   ];
 

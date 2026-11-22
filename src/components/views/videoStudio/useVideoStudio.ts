@@ -135,7 +135,9 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
   const [lengthSeconds, setLengthSeconds] = useState<number | null>(null);
   const clipSeconds = lengthSeconds ?? stylePreset.durationSeconds;
   /** Which finished-screen button is working: they all wait for the same Gallery save, but only that one spins. */
-  const [busyAction, setBusyAction] = useState<'gallery' | 'linkedin' | 'facebook' | 'youtube' | null>(null);
+  const [busyAction, setBusyAction] = useState<'gallery' | 'linkedin' | 'facebook' | 'instagram' | 'youtube' | null>(
+    null,
+  );
 
   // The "create" step's side preview only really knows a shape for the
   // prompt tab (from the chosen format) and the Scene Builder tab (from the
@@ -481,9 +483,9 @@ export function useVideoStudio(onNavigate: (view: ViewType) => void) {
     setBusyAction(null);
   };
 
-  /** Opens the post composer (LinkedIn, or the Facebook Page) with the finished video, saving it to the Gallery first
+  /** Opens the post composer (LinkedIn, the Facebook Page or Instagram) with the finished video, saving it to the Gallery first
    * if it is not there yet. */
-  const handlePostVideo = async (platform: 'linkedin' | 'facebook' = 'linkedin') => {
+  const handlePostVideo = async (platform: 'linkedin' | 'facebook' | 'instagram' = 'linkedin') => {
     if (!finalVideoUrl) return;
     setBusyAction(platform);
     const assetId = savedAssetId ?? (await handleSaveToGallery());

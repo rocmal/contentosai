@@ -41,8 +41,8 @@ export const FACEBOOK_PAGE_SCOPES = [
   'pages_manage_posts',
   'business_management',
 ];
-/** Only with META_INSTAGRAM_ENABLED: nothing on the website posts to Instagram yet, and Meta refuses apps that ask for
- * permissions a reviewer cannot see them use. */
+/** Asked for unless META_INSTAGRAM_ENABLED=false: the website posts Reels to the Instagram professional account linked
+ * to the Page. */
 export const INSTAGRAM_SCOPES = ['instagram_basic', 'instagram_content_publish'];
 
 /**
@@ -72,7 +72,7 @@ export class MetaGraphApiClient {
   }
 
   private get instagramEnabled(): boolean {
-    return this.configService.get<boolean>('meta.instagramEnabled') === true;
+    return this.configService.get<boolean>('meta.instagramEnabled') !== false;
   }
 
   /** The permissions the login dialog asks for. */

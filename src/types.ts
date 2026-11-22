@@ -12,6 +12,7 @@ export type ViewType =
   | 'media-library'
   | 'linkedin-posts'
   | 'facebook-posts'
+  | 'instagram-posts'
   | 'youtube-posts'
   | 'automation'
   | 'ai-agents'

@@ -1,8 +1,12 @@
 /** The accounts the post composer writes for. */
-export const POST_PLATFORMS = ['linkedin', 'facebook'] as const;
+export const POST_PLATFORMS = ['linkedin', 'facebook', 'instagram'] as const;
 export type PostPlatform = (typeof POST_PLATFORMS)[number];
 
-const PLATFORM_NAME: Record<PostPlatform, string> = { linkedin: 'LinkedIn', facebook: 'Facebook' };
+const PLATFORM_NAME: Record<PostPlatform, string> = {
+  linkedin: 'LinkedIn',
+  facebook: 'Facebook',
+  instagram: 'Instagram (a Reel caption)',
+};
 
 /** What goes with the post: a picture the model can see, a video it cannot (only its prompt), or nothing. */
 export type PostAttachment = 'picture' | 'video' | 'none';

@@ -6,11 +6,12 @@ import { openPostComposer, openYouTubeUpload, PLATFORM_MEDIA_SUPPORT } from '../
 import { ViewType } from '../../types';
 import { CalendarPost } from '../views/ContentCalendarView';
 
-type Channel = 'linkedin' | 'facebook' | 'youtube';
+type Channel = 'linkedin' | 'facebook' | 'instagram' | 'youtube';
 
 const ACTION_LABEL: Record<Channel, string> = {
   linkedin: 'Write post',
   facebook: 'Write post',
+  instagram: 'Write post',
   youtube: 'Upload',
 };
 
@@ -60,7 +61,7 @@ export const ChannelDrafts: React.FC<{
     const text = item.prompt ? cleanPrompt(studio ?? 'image', item.prompt) : undefined;
     if (channel === 'linkedin') openPostComposer({ media, topic: text });
     else if (channel === 'youtube') openYouTubeUpload({ media, title: text?.slice(0, 100), topic: text });
-    else openPostComposer({ platform: 'facebook', media, topic: text });
+    else openPostComposer({ platform: channel, media, topic: text });
   };
 
   return (

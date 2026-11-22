@@ -272,7 +272,7 @@ jobs:
           # Only when Google renames or retires its video model (default gemini-omni-1.2-flash); ops-check says
           # whether the one in use still exists.
           GOOGLE_VIDEO_MODEL: ${{ vars.GOOGLE_VIDEO_MODEL }}
-          # "true" once the website can post to Instagram and Meta has approved the Instagram permissions.
+          # Instagram is asked for by default; "false" stops the Facebook login asking for the Instagram permissions.
           META_INSTAGRAM_ENABLED: ${{ vars.META_INSTAGRAM_ENABLED }}
 
       - name: Pull, migrate, recreate (with automatic rollback on failure)

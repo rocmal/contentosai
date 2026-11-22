@@ -1259,7 +1259,7 @@ export async function generateText(input: {
 /** The post composer's Write / Improve with AI (free). With a Gallery image attached, the AI looks at the picture and
  * writes the post and hashtags from what it shows; a video is not watched, so its prompt is used. */
 export async function writePostText(input: {
-  platform: 'linkedin' | 'facebook';
+  platform: 'linkedin' | 'facebook' | 'instagram';
   /** What is in the text box: a post to improve, or a short note to follow. */
   draft?: string;
   /** What the picture or video was made from. */

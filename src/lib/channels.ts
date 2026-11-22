@@ -1,11 +1,12 @@
 import React from 'react';
-import { Facebook, Linkedin, Youtube } from 'lucide-react';
+import { Facebook, Instagram, Linkedin, Youtube } from 'lucide-react';
 import { SocialPlatform } from './api';
 
 /** One icon per publishing channel, used by the sidebar, the Create menu, the Calendar and Ctrl+K so a channel looks the same everywhere. */
 export const CHANNEL_ICON: Partial<Record<SocialPlatform, React.FC<{ className?: string }>>> = {
   linkedin: Linkedin,
   facebook: Facebook,
+  instagram: Instagram,
   youtube: Youtube,
 };
 
@@ -13,5 +14,6 @@ export const CHANNEL_ICON: Partial<Record<SocialPlatform, React.FC<{ className?:
 export const CHANNEL_TEXT: Partial<Record<SocialPlatform, string>> = {
   linkedin: 'text-[#0A66C2]',
   facebook: 'text-[#1877F2]',
+  instagram: 'text-[#E1306C]',
   youtube: 'text-red-500',
 };

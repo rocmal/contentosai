@@ -189,7 +189,8 @@ Search, type filter, rename (keeps file extension), download, delete, preview, *
   Finished screen: Download and "Post or schedule" are the main buttons ("Post or schedule" saves the video to the Gallery
   first if needed, then opens the post composer); Save to Gallery, Share, Save as template and Create another sit
   below. The main row is Download, Post to LinkedIn, **Post to Facebook** (the composer in Facebook mode, added 2026-11-22;
-  the old "Facebook" button only opened Facebook's share-a-link page, which posts nothing to the Page) and Upload to YouTube. A saved text version is named after its text and keeps the prompt, so it can be created again. Video job results
+  the old "Facebook" button only opened Facebook's share-a-link page, which posts nothing to the Page), **Post to
+  Instagram** (as a Reel) and Upload to YouTube. A saved text version is named after its text and keeps the prompt, so it can be created again. Video job results
   carry `mediaAssetId` (the clip's Gallery item).
   Code layout (split 2026-10-19): `VideoStudioView.tsx` is a thin shell; `src/components/views/videoStudio/useVideoStudio.ts`
   holds the step flow and combines the area hooks (`useNarration`, `useSceneBuilder`, `useTextOverlay`, `useVideoTemplates`,
@@ -298,10 +299,14 @@ still accepts the other platforms. The Calendar and LinkedIn Posts refresh thems
   the day.
 - **Facebook for every customer needs Meta App Review** (the app was in Development mode on 2026-11-22: only people with a
   role on it can connect). The paste-ready submission - permissions, reviewer steps, recording script, data answers - is
-  `docs/META-APP-REVIEW.md`; keep it in step with the screens. The login asks only for the Facebook Page permissions
-  (`FACEBOOK_PAGE_SCOPES`); the Instagram ones are behind the GitHub variable `META_INSTAGRAM_ENABLED` until the website
-  can post to Instagram, because Meta refuses permissions a reviewer cannot see used. The Integrations button is
-  "Connect Facebook".
+  `docs/META-APP-REVIEW.md`; keep it in step with the screens. The login asks for the Facebook Page permissions
+  (`FACEBOOK_PAGE_SCOPES`) and, since 2026-11-22, the Instagram ones (`INSTAGRAM_SCOPES`; the GitHub variable
+  `META_INSTAGRAM_ENABLED=false` turns them off - Meta refuses permissions a reviewer cannot see used, so they stay on
+  only while the website can post to Instagram). **Instagram** (view id `instagram-posts`, Published group): posts videos
+  as Reels to the Instagram professional account linked to the connected Page (`InstagramPublisherProvider`); the page is
+  `FacebookPostsView.tsx` (`MetaPostsView`, shared with Facebook Posts), the composer's Instagram mode is in
+  `PLATFORM_LOOK` (`PostComposer.tsx`), and Write with AI knows Instagram captions. The Integrations button is
+  "Connect Facebook & Instagram".
 - Phone app: `apps/mobile/src/ui/PostSheet.tsx` (was ScheduleSheet) posts Gallery images and videos through the same endpoint.
 - Only personal profiles (`w_member_social`). Company Pages need LinkedIn's Community Management API approval (a separate LinkedIn
   app and review). Deploy keys: secret `LINKEDIN_CLIENT_SECRET`, variables `LINKEDIN_CLIENT_ID`, `LINKEDIN_REDIRECT_URI`

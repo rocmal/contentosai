@@ -29,7 +29,7 @@ import { IntegrationsView } from './components/views/IntegrationsView';
 import { ResetPasswordPage, VerifyEmailPage } from './components/AuthLinkPages';
 import { MarketplaceView } from './components/views/MarketplaceView';
 import { MediaLibraryView } from './components/views/MediaLibraryView';
-import { FacebookPostsView } from './components/views/FacebookPostsView';
+import { FacebookPostsView, InstagramPostsView } from './components/views/FacebookPostsView';
 import { LinkedInPostsView } from './components/views/LinkedInPostsView';
 import { YouTubePostsView } from './components/views/YouTubePostsView';
 import { YouTubeUploaderHost } from './components/YouTubeUploader';
@@ -64,6 +64,7 @@ const VIEW_TYPES: ViewType[] = [
   'media-library',
   'linkedin-posts',
   'facebook-posts',
+  'instagram-posts',
   'youtube-posts',
   'automation',
   'ai-agents',
@@ -384,6 +385,10 @@ export function App() {
 
           {currentView === 'facebook-posts' && (
             <FacebookPostsView onNavigate={(v) => setCurrentView(v)} />
+          )}
+
+          {currentView === 'instagram-posts' && (
+            <InstagramPostsView onNavigate={(v) => setCurrentView(v)} />
           )}
 
           {currentView === 'youtube-posts' && (

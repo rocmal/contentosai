@@ -171,7 +171,7 @@ const SETUP_STEPS: { title: string; owner: SetupStepOwner; body: React.ReactNode
     ),
   },
   {
-    title: 'Click "Connect Facebook" below',
+    title: 'Click "Connect Facebook & Instagram" below',
     owner: 'you',
     body: (
       <>
@@ -387,7 +387,7 @@ const SocialPublishingConnect: React.FC = () => {
           className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1877F2] hover:opacity-90 text-white text-xs font-bold shadow-sm transition-all disabled:opacity-50"
         >
           {isConnecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power className="w-3.5 h-3.5" />}
-          <span>Connect Facebook</span>
+          <span>Connect Facebook & Instagram</span>
         </button>
       </div>
 

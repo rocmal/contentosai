@@ -6,6 +6,7 @@ import { VideoShapeLabel } from './VideoShapeLabel';
 import type { VideoStudio } from './useVideoStudio';
 
 const FacebookIcon = CHANNEL_ICON.facebook!;
+const InstagramIcon = CHANNEL_ICON.instagram!;
 
 const secondaryButton =
   'flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-xs transition-all disabled:cursor-default';
@@ -86,6 +87,15 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
         >
           {busyAction === 'facebook' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FacebookIcon className="w-4 h-4" />}
           <span>Post to Facebook</span>
+        </button>
+        <button
+          onClick={() => void handlePostVideo('instagram')}
+          disabled={isSavingToGallery}
+          title="Post now or schedule it as a Reel on your Instagram account"
+          className="flex items-center gap-2 px-5 py-3 rounded-xl bg-[#E1306C] hover:bg-[#c92a60] text-white font-bold text-sm shadow-md transition-all disabled:opacity-60"
+        >
+          {busyAction === 'instagram' ? <Loader2 className="w-4 h-4 animate-spin" /> : <InstagramIcon className="w-4 h-4" />}
+          <span>Post to Instagram</span>
         </button>
         <button
           onClick={() => void handleUploadToYouTube()}
@@ -224,7 +234,8 @@ export const ResultStep: React.FC<{ studio: VideoStudio }> = ({ studio }) => {
       )}
 
       <p className="text-center text-[11px] text-slate-400 max-w-md mx-auto">
-        <span className="font-semibold">Post to LinkedIn</span>, <span className="font-semibold">Post to Facebook</span> and{' '}
+        <span className="font-semibold">Post to LinkedIn</span>, <span className="font-semibold">Post to Facebook</span>,{' '}
+        <span className="font-semibold">Post to Instagram</span> and{' '}
         <span className="font-semibold">Upload to YouTube</span> each let you post now or pick a date and time (the account
         must be connected in Integrations). On a phone, <span className="font-semibold">Share</span> opens WhatsApp and your
         other apps.

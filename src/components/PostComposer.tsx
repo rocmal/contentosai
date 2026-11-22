@@ -6,6 +6,7 @@ import {
   Globe,
   ImagePlus,
   Facebook,
+  Instagram,
   Linkedin,
   Loader2,
   Send,
@@ -56,12 +57,45 @@ interface PostComposerProps {
  * only one that takes text and images; the server still accepts others (SocialPostsService). Opened from the LinkedIn
  * Posts page, the Calendar, the Gallery, the studios, the Create menus and Ctrl+K through openPostComposer().
  */
+/** How the composer looks and what it takes for each account. Facebook and Instagram take videos only (Instagram as
+ * a Reel) and connect through Facebook's sign-in. */
+const PLATFORM_LOOK = {
+  linkedin: {
+    accent: 'bg-[#0A66C2] hover:bg-[#09579f]',
+    Icon: Linkedin,
+    view: 'linkedin-posts',
+    videoOnly: false,
+    account: 'Your profile',
+    accountNote: ' · personal profile',
+    preview: 'Roughly how it looks on LinkedIn. LinkedIn shows the first few lines and a "...more" link.',
+  },
+  facebook: {
+    accent: 'bg-[#1877F2] hover:bg-[#1668d6]',
+    Icon: Facebook,
+    view: 'facebook-posts',
+    videoOnly: true,
+    account: 'Your Page',
+    accountNote: '',
+    preview: 'Roughly how it looks on Facebook.',
+  },
+  instagram: {
+    accent: 'bg-[#E1306C] hover:bg-[#c92a60]',
+    Icon: Instagram,
+    view: 'instagram-posts',
+    videoOnly: true,
+    account: 'Your Instagram account',
+    accountNote: ' · posted as a Reel',
+    preview: 'Roughly how it looks on Instagram, where it is posted as a Reel and the first lines of the caption show.',
+  },
+} satisfies Record<string, { accent: string; Icon: React.FC<{ className?: string }>; view: ViewType; videoOnly: boolean; account: string; accountNote: string; preview: string }>;
+
 export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, onNavigate }) => {
   const platform = request.platform ?? 'linkedin';
   const name = PLATFORM_LABEL[platform];
-  const isFacebook = platform === 'facebook';
-  const accent = isFacebook ? 'bg-[#1877F2] hover:bg-[#1668d6]' : 'bg-[#0A66C2] hover:bg-[#09579f]';
-  const PlatformIcon = isFacebook ? Facebook : Linkedin;
+  const look = PLATFORM_LOOK[platform];
+  const videoOnly = look.videoOnly;
+  const accent = look.accent;
+  const PlatformIcon = look.Icon;
   const [text, setText] = useState(request.text ?? '');
   // Ctrl+Z / Ctrl+Y over every change, including Speak and Write with AI.
   const textHistory = useTextHistory(text, setText);
@@ -114,14 +148,15 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
     !linkedInStatus.expired &&
     !!linkedInStatus.expiresAt &&
     new Date(linkedInStatus.expiresAt).getTime() - Date.now() < 7 * DAY_MS;
-  const canPost = state === 'idle' && linkedInReady && (trimmed || media) && !overLimit && (!isFacebook || media?.type === 'video');
+  const canPost = state === 'idle' && linkedInReady && (trimmed || media) && !overLimit && (!videoOnly || media?.type === 'video');
 
   /** Straight to LinkedIn's sign-in; LinkedIn sends the browser back to Integrations. */
   const connectLinkedIn = async () => {
     setConnecting(true);
     setError(null);
     try {
-      window.location.href = isFacebook ? await api.getMetaConnectUrl() : await api.getLinkedInConnectUrl();
+      window.location.href =
+        platform === 'linkedin' ? await api.getLinkedInConnectUrl() : await api.getMetaConnectUrl();
     } catch (err) {
       setError(err instanceof api.ApiError ? err.message : `Could not start connecting ${name}. Please try again.`);
       setConnecting(false);
@@ -161,7 +196,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
       .listMyGallery(undefined, 60)
       .then((items) =>
         setGalleryItems(
-          items.filter((i) => (isFacebook ? false : i.type === 'image') || i.type === 'video' || i.type === 'character'),
+          items.filter((i) => (videoOnly ? false : i.type === 'image') || i.type === 'video' || i.type === 'character'),
         ),
       )
       .catch(() => setGalleryItems([]));
@@ -276,7 +311,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                 type="button"
                 onClick={() => {
                   onClose();
-                  onNavigate(isFacebook ? 'facebook-posts' : 'linkedin-posts');
+                  onNavigate(look.view);
                 }}
                 className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
               >
@@ -307,7 +342,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                       {linkedInStatus === undefined
                         ? 'Checking your connection...'
                         : linkedInReady
-                          ? `${linkedInStatus.label || (isFacebook ? 'Your Page' : 'Your profile')}${isFacebook ? '' : ' · personal profile'}`
+                          ? `${linkedInStatus.label || look.account}${look.accountNote}`
                           : linkedInStatus.connected
                             ? `Your ${name} connection has run out`
                             : 'Not connected yet'}
@@ -396,7 +431,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
 
               {/* Media */}
               <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white mb-1.5">{isFacebook ? 'Video (required)' : 'Image or video'}</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white mb-1.5">{videoOnly ? 'Video (required)' : 'Image or video'}</p>
                 {media ? (
                   <div className="flex items-center gap-3 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                     <div className="w-16 h-12 rounded-lg overflow-hidden bg-slate-900 shrink-0">
@@ -429,7 +464,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
                     onClick={openPicker}
                     className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-blue-400"
                   >
-                    <ImagePlus className="w-4 h-4" /> {isFacebook ? 'Pick a video from your Gallery' : 'Add from your Gallery (optional)'}
+                    <ImagePlus className="w-4 h-4" /> {videoOnly ? 'Pick a video from your Gallery' : 'Add from your Gallery (optional)'}
                   </button>
                 )}
                 {pickerOpen && (
@@ -530,7 +565,7 @@ export const PostComposer: React.FC<PostComposerProps> = ({ request, onClose, on
               <p className="text-xs font-bold text-slate-900 dark:text-white">Preview</p>
               {preview}
               <p className="text-[10px] text-slate-400">
-                {isFacebook ? 'Roughly how it looks on Facebook.' : 'Roughly how it looks on LinkedIn. LinkedIn shows the first few lines and a "...more" link.'}
+                {look.preview}
               </p>
             </div>
           </div>
