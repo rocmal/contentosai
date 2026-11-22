@@ -297,7 +297,9 @@ still accepts the other platforms. The Calendar and LinkedIn Posts refresh thems
   app and review). Deploy keys: secret `LINKEDIN_CLIENT_SECRET`, variables `LINKEDIN_CLIENT_ID`, `LINKEDIN_REDIRECT_URI`
   (`https://lumoraos.in/api/v1/integrations/linkedin/callback`) and optional `LINKEDIN_API_VERSION`; the deploy log's ops-check
   prints whether they are set.
-- The Privacy Policy and Terms (`src/components/LegalPage.tsx`, /privacy and /terms) describe the LinkedIn data and the
+- The Privacy Policy and Terms (`src/components/LegalPage.tsx`, /privacy and /terms) name the operator, **Aradhya
+  Enterprises, Amritsar** (the business with the GST and Udyam registrations, and the legal name in Meta Business
+  Verification - keep the three the same; also in the site footers), and describe the LinkedIn data and the
   one-profile-per-workspace rule; keep them true when posting changes. Disconnect wipes the stored token before the (soft)
   delete, as the policy promises. A square logo for LinkedIn forms is served at /lumora-logo.png (`public/`).
 - Local testing without a LinkedIn app: a fake connection in the local database makes the whole flow run; LinkedIn then refuses

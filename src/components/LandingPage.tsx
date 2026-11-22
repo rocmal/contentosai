@@ -510,7 +510,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLoginClick, onSignup
             </div>
           </div>
           <div className="border-t border-white/[0.08] pt-6">
-            <p className="text-xs text-[#475569]">© 2026 LumoraOS. All rights reserved.</p>
+            <p className="text-xs text-[#475569]">© 2026 LumoraOS, a product of Aradhya Enterprises. All rights reserved.</p>
           </div>
         </div>
       </footer>
