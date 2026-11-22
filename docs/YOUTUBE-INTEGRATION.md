@@ -16,8 +16,8 @@ Contents:
 ## 1. Set it up (once, by the account owner)
 
 YouTube uses the same Google Cloud project and OAuth client as "Sign in with Google" (`GOOGLE_CLIENT_ID` /
-`GOOGLE_CLIENT_SECRET`), with its own redirect address. Until 1.4 is done, **Connect YouTube** says "YouTube
-publishing is not configured".
+`GOOGLE_CLIENT_SECRET`), with its own redirect address. Until 1.4 is done, **Connect YouTube** tells customers "YouTube
+is not switched on for Lumora yet" (the server log names the three missing settings).
 
 ### 1.1 Turn on the YouTube API
 

@@ -127,7 +127,7 @@ export const CONNECT_GUIDES: ConnectGuide[] = [
     ],
     problems: [
       {
-        q: 'Connect YouTube says it is not set up yet.',
+        q: 'Lumora says YouTube is not switched on for Lumora yet.',
         a: `YouTube is still being switched on for Lumora. Try again later, or email ${SUPPORT_EMAIL}.`,
       },
       {

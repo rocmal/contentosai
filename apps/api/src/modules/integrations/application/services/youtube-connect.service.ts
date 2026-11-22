@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EncryptionService } from '@shared/security/encryption.service';
 import { YouTubeApiClient } from '../../infrastructure/youtube-api.client';
@@ -33,6 +38,8 @@ export interface YouTubeConnectionCheck {
  */
 @Injectable()
 export class YouTubeConnectService {
+  private readonly logger = new Logger(YouTubeConnectService.name);
+
   constructor(
     private readonly youTubeApiClient: YouTubeApiClient,
     private readonly encryptionService: EncryptionService,
@@ -53,8 +60,12 @@ export class YouTubeConnectService {
     returnTo?: string,
   ): string {
     if (!this.youTubeApiClient.isConfigured()) {
+      // The setting names are for us (server log), not for the customer pressing Connect YouTube.
+      this.logger.error(
+        'YouTube is not configured: set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET and YOUTUBE_REDIRECT_URI (docs/YOUTUBE-INTEGRATION.md)',
+      );
       throw new ServiceUnavailableException(
-        'YouTube publishing is not configured - set GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/YOUTUBE_REDIRECT_URI',
+        'YouTube is not switched on for Lumora yet. Please try again later.',
       );
     }
     if (!user.organizationId || !user.workspaceId) {
