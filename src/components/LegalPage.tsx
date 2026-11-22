@@ -22,11 +22,13 @@ interface LegalPageProps {
  * authenticated app shell (Sidebar/Header), and are reachable even while
  * logged out - Meta's App Review process requires working Privacy Policy /
  * Terms of Service URLs it can open without an account. */
-const LegalPageLayout: React.FC<{ title: string; onBack: () => void; children: React.ReactNode }> = ({
-  title,
-  onBack,
-  children,
-}) => (
+/** Also used by the connect guides (ConnectGuidePage), which pass their own subtitle. */
+export const LegalPageLayout: React.FC<{
+  title: string;
+  onBack: () => void;
+  children: React.ReactNode;
+  subtitle?: string;
+}> = ({ title, onBack, children, subtitle }) => (
   <div className="bg-[#0B1120] text-[#F8FAFC] min-h-screen font-['Inter',system-ui,-apple-system,sans-serif] antialiased">
     <header className="sticky top-0 z-50 backdrop-blur-[10px] bg-[#0B1120]/80 border-b border-white/[0.08]">
       <div className="max-w-[860px] mx-auto px-6 py-4 flex items-center justify-between gap-4">
@@ -56,7 +58,7 @@ const LegalPageLayout: React.FC<{ title: string; onBack: () => void; children: R
 
     <main className="max-w-[860px] mx-auto px-6 py-14">
       <h1 className="text-[32px] font-extrabold tracking-[-0.01em] mb-2">{title}</h1>
-      <p className="text-sm text-[#64748B] mb-10">Effective {EFFECTIVE_DATE}</p>
+      <p className="text-sm text-[#64748B] mb-10">{subtitle ?? `Effective ${EFFECTIVE_DATE}`}</p>
       <div className="space-y-8 text-[15px] leading-7 text-[#CBD5E1] [&_h2]:text-lg [&_h2]:font-bold [&_h2]:text-white [&_h2]:mb-3 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5 [&_a]:text-[#60A5FA] [&_a]:underline">
         {children}
       </div>

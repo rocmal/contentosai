@@ -4,6 +4,7 @@ import * as api from '../../lib/api';
 import { openYouTubeUpload } from '../../lib/socialPosts';
 import { ViewType } from '../../types';
 import { ChannelDrafts } from '../social/ChannelDrafts';
+import { ConnectGuideLink } from '../social/ConnectHelp';
 import { SocialPostList, postMedia, postText, usePlatformPosts } from '../social/SocialPostList';
 
 /**
@@ -88,6 +89,7 @@ export const YouTubePostsView: React.FC<{ onNavigate: (view: ViewType) => void }
                 <p className="text-xs text-red-600 dark:text-red-400">
                   {connection.problem ?? 'The connection needs renewing.'}
                 </p>
+                <ConnectGuideLink guide="youtube" />
               </>
             ) : (
               <>
@@ -95,6 +97,7 @@ export const YouTubePostsView: React.FC<{ onNavigate: (view: ViewType) => void }
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Upload videos from your Gallery to your channel, now or at a time you pick.
                 </p>
+                <ConnectGuideLink guide="youtube" />
               </>
             )}
           </div>

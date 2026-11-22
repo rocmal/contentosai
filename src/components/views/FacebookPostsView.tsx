@@ -4,6 +4,7 @@ import * as api from '../../lib/api';
 import { ViewType } from '../../types';
 import { openPostComposer } from '../../lib/socialPosts';
 import { ChannelDrafts } from '../social/ChannelDrafts';
+import { ConnectGuideLink } from '../social/ConnectHelp';
 import { SocialPostList, postMedia, postText, usePlatformPosts } from '../social/SocialPostList';
 
 type MetaChannel = 'facebook' | 'instagram';
@@ -112,6 +113,7 @@ const MetaPostsView: React.FC<{ channel: MetaChannel; onNavigate: (view: ViewTyp
                   {status.connected ? `Your ${look.name} connection has run out` : look.connectTitle}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">{look.connectNote}</p>
+                <ConnectGuideLink guide="facebook-instagram" />
               </>
             )}
           </div>

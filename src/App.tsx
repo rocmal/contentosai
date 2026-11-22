@@ -7,6 +7,7 @@ import { GuidedTourModal } from './components/GuidedTourModal';
 import { Header } from './components/Header';
 import { LandingPage } from './components/LandingPage';
 import { PrivacyPolicyPage, TermsOfServicePage } from './components/LegalPage';
+import { ConnectGuidePage, guideIdFromPath } from './components/ConnectGuidePage';
 import { LoginView } from './components/LoginView';
 import { MobileNav } from './components/MobileNav';
 import { Sidebar } from './components/Sidebar';
@@ -98,13 +99,22 @@ function getViewFromHash(): ViewType | null {
  * via plain pushState instead of a router dependency, since server.ts
  * already falls back to index.html for any unmatched path in both dev
  * (Vite's appType: 'spa') and prod (its explicit `app.get('*', ...)`). */
-type PublicRoute = 'landing' | 'login' | 'signup' | 'privacy' | 'terms' | 'reset-password' | 'verify-email';
+type PublicRoute =
+  | 'landing'
+  | 'login'
+  | 'signup'
+  | 'privacy'
+  | 'terms'
+  | 'guide'
+  | 'reset-password'
+  | 'verify-email';
 
 function getPublicRouteFromPath(): PublicRoute {
   if (window.location.pathname === '/login') return 'login';
   if (window.location.pathname === '/signup') return 'signup';
   if (window.location.pathname === '/privacy') return 'privacy';
   if (window.location.pathname === '/terms') return 'terms';
+  if (window.location.pathname === '/guides' || window.location.pathname.startsWith('/guides/')) return 'guide';
   if (window.location.pathname === '/reset-password') return 'reset-password';
   if (window.location.pathname === '/verify-email') return 'verify-email';
   return 'landing';
@@ -265,6 +275,10 @@ export function App() {
   // resolves, even mid-session for a logged-in user.
   if (publicRoute === 'privacy') {
     return <PrivacyPolicyPage onBack={navigateToLanding} />;
+  }
+  // The connect guides (/guides, /guides/<id>) open the same way, so they can be sent to someone.
+  if (publicRoute === 'guide') {
+    return <ConnectGuidePage guideId={guideIdFromPath(window.location.pathname)} onBack={navigateToLanding} />;
   }
   if (publicRoute === 'terms') {
     return <TermsOfServicePage onBack={navigateToLanding} />;

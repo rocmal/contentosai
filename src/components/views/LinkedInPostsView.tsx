@@ -4,6 +4,7 @@ import * as api from '../../lib/api';
 import { openPostComposer } from '../../lib/socialPosts';
 import { ViewType } from '../../types';
 import { ChannelDrafts } from '../social/ChannelDrafts';
+import { ConnectGuideLink } from '../social/ConnectHelp';
 import { SocialPostList, postMedia, postText, usePlatformPosts } from '../social/SocialPostList';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -90,6 +91,7 @@ export const LinkedInPostsView: React.FC<{ onNavigate: (view: ViewType) => void 
                     ? 'LinkedIn sign-ins last 60 days. Reconnect to keep posting; scheduled posts keep their times.'
                     : 'Post text, a picture or a video from your Gallery to your profile, now or at a time you pick.'}
                 </p>
+                <ConnectGuideLink guide="linkedin" />
               </>
             )}
           </div>

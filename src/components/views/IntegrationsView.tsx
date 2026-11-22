@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ViewType } from '../../types';
 import * as api from '../../lib/api';
+import { ConnectHelp } from '../social/ConnectHelp';
 
 interface IntegrationsViewProps {
   onNavigate: (view: ViewType) => void;
@@ -315,6 +316,14 @@ const DisconnectButton: React.FC<{
 
 /** Facebook/Instagram publishing connection, backed by the real Meta OAuth
  * flow (GET /integrations/meta/connect + /callback). */
+/** Facebook's own error text (and our error codes) never reach the customer as they are: plain words, and the guide. */
+function metaErrorMessage(code: string): string {
+  if (code === 'no_pages_found') {
+    return 'Facebook did not share any Page with Lumora. Connect again, and in the Facebook step choose your Page (open "Edit settings" if you do not see it). The (?) above has the steps.';
+  }
+  return 'Facebook did not finish connecting. Please try again; if it keeps failing, the (?) above has the steps and what to check.';
+}
+
 const SocialPublishingConnect: React.FC = () => {
   const [status, setStatus] = useState<Record<api.SocialPlatform, api.SocialConnectionStatus> | null>(null);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
@@ -328,7 +337,7 @@ const SocialPublishingConnect: React.FC = () => {
     if (metaConnected) {
       setBanner({ kind: 'connected' });
     } else if (metaError) {
-      setBanner({ kind: 'error', message: decodeURIComponent(metaError) });
+      setBanner({ kind: 'error', message: metaErrorMessage(metaError) });
     }
     if (metaConnected || metaError) {
       params.delete('meta_connected');
@@ -376,7 +385,9 @@ const SocialPublishingConnect: React.FC = () => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <span className="text-[10px] font-bold text-slate-400 uppercase">Publishing</span>
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Facebook & Instagram</h3>
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+            Facebook & Instagram <ConnectHelp guide="facebook-instagram" />
+          </h3>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
             Required for scheduled/automated posting from Video Studio.
           </p>
@@ -568,7 +579,9 @@ const LinkedInYouTubeConnect: React.FC = () => {
                 <div className="flex items-center gap-2 min-w-0">
                   <Icon className="w-4 h-4 shrink-0" style={{ color }} />
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white">{label}</p>
+                    <p className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1">
+                      {label} <ConnectHelp guide={id} />
+                    </p>
                     {connected && platformStatus?.label && (
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                         {platformStatus.label}

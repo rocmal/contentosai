@@ -307,6 +307,13 @@ still accepts the other platforms. The Calendar and LinkedIn Posts refresh thems
   `FacebookPostsView.tsx` (`MetaPostsView`, shared with Facebook Posts), the composer's Instagram mode is in
   `PLATFORM_LOOK` (`PostComposer.tsx`), and Write with AI knows Instagram captions. The Integrations button is
   "Connect Facebook & Instagram".
+- **Connect guides** (2026-11-22): public pages `/guides`, `/guides/linkedin`, `/guides/facebook-instagram`,
+  `/guides/youtube` (`src/components/ConnectGuidePage.tsx`, open without signing in like /privacy, so they can be sent to
+  a customer), a (?) next to each Connect button in Integrations (`social/ConnectHelp.tsx`: the short steps + a link), a
+  "How to connect" link on each channel page while it is not connected, and a section in Help & Tutorial. One source:
+  `src/lib/connectGuides.ts` - change it when a button or step changes. Each guide has a `videoUrl` slot for a real
+  screen recording (put it in `public/guides/`); none yet - never use a made-up video there. Facebook's connect errors
+  show plain words, not Facebook's text (`metaErrorMessage` in IntegrationsView).
 - Phone app: `apps/mobile/src/ui/PostSheet.tsx` (was ScheduleSheet) posts Gallery images and videos through the same endpoint.
 - Only personal profiles (`w_member_social`). Company Pages need LinkedIn's Community Management API approval (a separate LinkedIn
   app and review). Deploy keys: secret `LINKEDIN_CLIENT_SECRET`, variables `LINKEDIN_CLIENT_ID`, `LINKEDIN_REDIRECT_URI`
