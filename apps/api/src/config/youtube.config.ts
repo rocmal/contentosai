@@ -7,6 +7,11 @@ import { registerAs } from '@nestjs/config';
 export default registerAs('youtube', () => ({
   clientId: process.env.GOOGLE_CLIENT_ID ?? '',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
-  redirectUri: process.env.YOUTUBE_REDIRECT_URI ?? '',
+  // Unset = this site's own address (like Sign in with Google's callback), so the variable is optional.
+  redirectUri:
+    process.env.YOUTUBE_REDIRECT_URI ||
+    (process.env.APP_URL
+      ? `${process.env.APP_URL.replace(/\/$/, '')}/api/v1/integrations/youtube/callback`
+      : ''),
   frontendUrl: process.env.FRONTEND_URL ?? 'http://localhost:3000',
 }));

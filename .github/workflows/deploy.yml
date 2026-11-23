@@ -262,7 +262,8 @@ jobs:
           SMTP_PORT: ${{ vars.SMTP_PORT }}
           SMTP_USERNAME: ${{ vars.SMTP_USERNAME }}
           SMTP_FROM: ${{ vars.SMTP_FROM }}
-          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
+          # Not secret, so either tab works (it was easy to save it under Secrets and see YouTube stay off).
+          GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID || secrets.GOOGLE_CLIENT_ID }}
           RAZORPAY_KEY_ID: ${{ vars.RAZORPAY_KEY_ID }}
           TRUST_PROXY: ${{ vars.TRUST_PROXY }}
           LINKEDIN_CLIENT_ID: ${{ vars.LINKEDIN_CLIENT_ID }}

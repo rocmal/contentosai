@@ -61,6 +61,9 @@ to Google), so set all three in GitHub → **Settings → Secrets and variables 
 | Variable | `GOOGLE_CLIENT_ID` | The web client's ID (ends in `.apps.googleusercontent.com`) |
 | Variable | `YOUTUBE_REDIRECT_URI` | `https://lumoraos.in/api/v1/integrations/youtube/callback` |
 
+Since 2026-11-23 the Client ID works from either tab (it is not secret), and `YOUTUBE_REDIRECT_URI` is optional: unset,
+the server uses its own address (`APP_URL` + `/api/v1/integrations/youtube/callback`). The secret must be a Secret.
+
 Sign in with Google also needs `https://lumoraos.in/api/v1/auth/google/callback` among the client's redirect URIs.
 The next deploy copies the values to the server; its ops-check lines show:
 
