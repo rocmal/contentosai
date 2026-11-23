@@ -170,9 +170,48 @@ async function checkPlatformAdminAccounts() {
   }
 }
 
-function checkYouTube() {
-  out('youtube keys set', `google client id ${Boolean(process.env.GOOGLE_CLIENT_ID)}, secret ${Boolean(process.env.GOOGLE_CLIENT_SECRET)}`);
-  out('youtube redirect', process.env.YOUTUBE_REDIRECT_URI || '(not set - Connect YouTube will say "not configured")');
+// YouTube and Sign in with Google share one Google client. A client id with another client's secret starts Google's
+// sign-in fine and then fails with "invalid_client" when the server swaps the code, so test the pair here.
+async function checkYouTube() {
+  const id = (process.env.GOOGLE_CLIENT_ID || '').trim();
+  const secret = (process.env.GOOGLE_CLIENT_SECRET || '').trim();
+  out('youtube keys set', `google client id ${Boolean(id)}, secret ${Boolean(secret)}`);
+  const appUrl = (process.env.APP_URL || '').replace(/\/$/, '');
+  const redirect = process.env.YOUTUBE_REDIRECT_URI || (appUrl ? `${appUrl}/api/v1/integrations/youtube/callback` : '');
+  out('youtube redirect', redirect || '(none - set APP_URL or YOUTUBE_REDIRECT_URI)');
+  if (!id || !secret) return;
+  out(
+    'google client id',
+    id.endsWith('.apps.googleusercontent.com')
+      ? `project number ${id.split('-')[0]}`
+      : 'does NOT look like an OAuth client id (it should end in .apps.googleusercontent.com)',
+  );
+  try {
+    // A made-up code: "invalid_grant" = Google accepts the id + secret (only the code is wrong); "invalid_client" = not.
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: 'lumora-ops-check',
+        client_id: id,
+        client_secret: secret,
+        redirect_uri: redirect,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const body = await res.json().catch(() => ({}));
+    out(
+      'google client id + secret',
+      body.error === 'invalid_grant'
+        ? 'match (Google accepts them)'
+        : body.error === 'invalid_client'
+          ? `DO NOT MATCH - Google says invalid_client (${short(body.error_description || '', 60)}): the GOOGLE_CLIENT_SECRET secret is not this client's; copy the id and a secret from the same OAuth client`
+          : `could not tell (status ${res.status} ${body.error || ''})`,
+    );
+  } catch (err) {
+    out('google client id + secret', `could not check: ${short(err.message, 140)}`);
+  }
 }
 
 async function checkUser() {
@@ -291,7 +330,7 @@ async function checkQueue() {
   await checkOpenAi();
   await checkGemini();
   checkLinkedIn();
-  checkYouTube();
+  await checkYouTube();
   checkPlatformAdmins();
   await checkPlatformAdminAccounts();
   await checkUser();

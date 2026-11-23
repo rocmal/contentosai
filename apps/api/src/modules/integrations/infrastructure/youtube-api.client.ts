@@ -58,6 +58,32 @@ export class YouTubeApiClient {
     });
   }
 
+  /** Whether Google accepts this server's client id and secret as a pair. A made-up code goes to Google's token
+   * address: "invalid_grant" means the pair is fine (only the code is wrong), "invalid_client" means the secret is
+   * not this client's (or the client is gone). Nothing is created at Google. null = could not tell. */
+  async clientCredentialsAccepted(): Promise<boolean | null> {
+    try {
+      const res = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code: 'lumora-client-check',
+          client_id: this.clientId,
+          client_secret: this.clientSecret,
+          redirect_uri: this.redirectUri,
+        }),
+        signal: AbortSignal.timeout(10000),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (body.error === 'invalid_grant') return true;
+      if (body.error === 'invalid_client') return false;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   /** Confirms a stored sign-in still works: Google refreshes it and the channel is read. Throws Google's error when
    * it does not (e.g. invalid_grant: revoked, or expired because the Google app is still in Testing mode). */
   async checkChannel(refreshToken: string): Promise<{ channelTitle?: string }> {

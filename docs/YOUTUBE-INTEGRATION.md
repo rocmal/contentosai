@@ -70,7 +70,15 @@ The next deploy copies the values to the server; its ops-check lines show:
 ```
 [ops-check] youtube keys set: google client id true, secret true
 [ops-check] youtube redirect: https://lumoraos.in/api/v1/integrations/youtube/callback
+[ops-check] google client id: project number 1079469642724
+[ops-check] google client id + secret: match (Google accepts them)
 ```
+
+The last line sends Google a made-up code with the id and secret (nothing is created): `DO NOT MATCH` means the
+secret is not this client's, and Google's sign-in then starts normally but ends in `invalid_client` (found
+2026-11-23: the id and the secret in GitHub came from different clients). Copy the Client ID and a secret from the
+**same** client in Google Auth Platform → Clients ("Add secret" makes a new one; the old ones keep working until
+disabled), save the secret in the **Secrets** tab (a Variable with the same name is ignored), and redeploy.
 
 ### 1.5 Ask Google for the YouTube audit (for public videos)
 
@@ -137,6 +145,7 @@ and `containsSyntheticMedia`. The stored credentials are `{ channelId, channelTi
 | "YouTube publishing is not configured" | `YOUTUBE_REDIRECT_URI` (or the Google client) is missing on the server | 1.4, then deploy |
 | "YouTube is not set up on this server yet (the Google client is missing)" | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` are not on the server | 1.4, deploy, then reconnect YouTube |
 | "...not set up correctly on the server (the Google client)" / Google says "invalid_request" | The stored sign-in was made with a different Google client (e.g. a test copy) or the client is incomplete | Fix 1.4, then reconnect YouTube |
+| "YouTube is not set up correctly on our side yet" / Google says "invalid_client" | The Google client secret on the server is not the secret of the client id (or the client was deleted); the server log says so | Fix 1.4 with the id and a secret of the same client, deploy, check the ops-check line "google client id + secret: match", then reconnect |
 | Google says "redirect_uri_mismatch" | The address is not listed on the OAuth client | 1.3 |
 | "The YouTube sign-in has expired or was removed" | Revoked in the Google account, or the app is in Testing (7-day limit) | Reconnect; publish the app (1.2) |
 | "Google did not return a refresh token" | Google remembered an earlier approval | Remove Lumora at <https://myaccount.google.com/permissions>, connect again |

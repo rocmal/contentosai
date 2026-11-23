@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -22,6 +23,32 @@ const STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 /** Screens a connect can return to; anything else returns to Integrations. */
 const RETURN_VIEWS = ['integrations', 'youtube-posts'];
+
+/** Shown when Google refuses Lumora's own Google client (not the person's account): nothing they can fix. */
+const SERVER_SETUP_PROBLEM =
+  'YouTube is not set up correctly on our side yet, so it cannot connect. Please try again later.';
+
+/** For our server log: Google said invalid_client, so the secret is not the client id's (or the client is gone). */
+const CLIENT_MISMATCH_LOG =
+  'Google refused the Google client (invalid_client): GOOGLE_CLIENT_SECRET is not the secret of GOOGLE_CLIENT_ID, or that client was deleted. Put the id and a secret of the same OAuth client in GitHub and redeploy (ops-check prints "google client id + secret").';
+
+/** Words for the person when the connect fails. Google's own error text stays in the server log. */
+function connectFailureMessage(error: unknown, logger: Logger): string {
+  if (error instanceof HttpException) return error.message;
+  const message = error instanceof Error ? error.message : String(error);
+  if (/invalid_client|unauthorized_client/i.test(message)) {
+    logger.error(`${CLIENT_MISMATCH_LOG} Google said: ${message}`);
+    return SERVER_SETUP_PROBLEM;
+  }
+  logger.error(`YouTube connect failed: ${message}`);
+  if (/invalid_grant/i.test(message)) {
+    return 'Google’s sign-in had expired or was already used. Please press Connect YouTube again.';
+  }
+  if (/accessNotConfigured|has not been used in project|is disabled/i.test(message)) {
+    return SERVER_SETUP_PROBLEM;
+  }
+  return 'Google did not finish connecting YouTube. Please try again in a minute.';
+}
 
 export interface YouTubeConnectionCheck {
   connected: boolean;
@@ -112,7 +139,7 @@ export class YouTubeConnectService {
 
       return `${this.frontendUrl}/?youtube_connected=1#${back}`;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'unknown_error';
+      const message = connectFailureMessage(error, this.logger);
       return `${this.frontendUrl}/?youtube_error=${encodeURIComponent(message)}#${back}`;
     }
   }
@@ -141,13 +168,31 @@ export class YouTubeConnectService {
       return { connected: true, working: true, channelTitle: channelTitle ?? storedTitle };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // A refused sign-in can be the person's (expired, removed) or ours (the server's client secret is wrong):
+      // ask Google about our client before telling them to reconnect, which would fail the same way.
+      if ((await this.youTubeApiClient.clientCredentialsAccepted()) === false) {
+        this.logger.error(`${CLIENT_MISMATCH_LOG} Google said: ${message}`);
+        return {
+          connected: true,
+          working: false,
+          channelTitle: storedTitle,
+          problem: SERVER_SETUP_PROBLEM,
+        };
+      }
+      if (/invalid_grant|invalid_client|unauthorized_client/i.test(message)) {
+        return {
+          connected: true,
+          working: false,
+          channelTitle: storedTitle,
+          problem: 'The YouTube sign-in has expired or was removed. Reconnect YouTube.',
+        };
+      }
+      this.logger.error(`YouTube check failed: ${message}`);
       return {
         connected: true,
         working: false,
         channelTitle: storedTitle,
-        problem: /invalid_grant|invalid_client|unauthorized_client/i.test(message)
-          ? 'The YouTube sign-in has expired or was removed. Reconnect YouTube.'
-          : `Google could not confirm the connection: ${message}`,
+        problem: 'Google could not confirm the connection right now. Please try again in a minute.',
       };
     }
   }

@@ -5,8 +5,8 @@ import { registerAs } from '@nestjs/config';
  * allows multiple authorized redirect URIs per OAuth client, so this avoids
  * provisioning a second Google Cloud project just for YouTube. */
 export default registerAs('youtube', () => ({
-  clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+  clientId: (process.env.GOOGLE_CLIENT_ID ?? '').trim(),
+  clientSecret: (process.env.GOOGLE_CLIENT_SECRET ?? '').trim(),
   // Unset = this site's own address (like Sign in with Google's callback), so the variable is optional.
   redirectUri:
     process.env.YOUTUBE_REDIRECT_URI ||
