@@ -99,6 +99,13 @@ Record the browser, about 2 minutes, no sound needed:
 - **How is it deleted?** Disconnect in Integrations wipes the token at once. A user can also ask for deletion by email
   as described at https://lumoraos.in/privacy#data-deletion; it is done within 30 days.
 - **Responsible business:** Aradhya Enterprises (proprietor: Rajni Mehra), Amritsar, Punjab, India.
+- **Responsible person or entity (data controller):** "Rajni Mehra, proprietor, trading as Aradhya Enterprises";
+  country India.
+- **Data processors with access to Platform Data:** none. Platform Data is never sent to AI providers or used to
+  train AI (Privacy Policy section 2).
+- **Requests from public authorities:** none received. The policies question can be answered with the first four
+  boxes (legality review, challenging unlawful requests, data minimisation, documentation): Privacy Policy section 6
+  commits to all four.
 
 ## 6. After approval
 

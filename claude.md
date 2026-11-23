@@ -322,7 +322,10 @@ still accepts the other platforms. The Calendar and LinkedIn Posts refresh thems
 - The Privacy Policy and Terms (`src/components/LegalPage.tsx`, /privacy and /terms) name the operator, **Aradhya
   Enterprises (proprietor: Rajni Mehra), Amritsar**, with the GST-registered address in the contact sections (a sole
   proprietorship: the GST legal name is the proprietor's, and Meta Business Verification was submitted with it on
-  2026-11-22 - keep website, GST and Meta the same; the footers say "a product of Aradhya Enterprises"), and describe the LinkedIn data and the
+  2026-11-22 - keep website, GST and Meta the same; the footers say "a product of Aradhya Enterprises"), and (since 2026-11-23) name
+  the AI and other providers, say platform data (Facebook, Instagram, LinkedIn, YouTube) is never sent to AI providers
+  or used for training, cover browser storage (no tracking cookies), staff support access (logged), requests from
+  public authorities, and rights and grievances (India DPDP Act) - keep them true when a provider or feature changes; and describe the LinkedIn data and the
   one-profile-per-workspace rule; keep them true when posting changes. Disconnect wipes the stored token before the (soft)
   delete, as the policy promises. A square logo for LinkedIn forms is served at /lumora-logo.png (`public/`).
 - Local testing without a LinkedIn app: a fake connection in the local database makes the whole flow run; LinkedIn then refuses
